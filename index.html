@@ -374,17 +374,18 @@
           <input type="text" id="fac-cliente" placeholder="Nombre del cliente">
         </div>
         <div class="row">
-          <div class="field"><label>Cédula</label><input type="text" id="fac-cedula" placeholder="N.° de cédula"></div>
+          <div class="field"><label>Cédula</label><input type="text" id="fac-cedula" placeholder="N.° de cédula" onblur="buscarClientePorCedula()" onkeydown="if(event.key==='Enter'){event.preventDefault();buscarClientePorCedula();}"></div>
           <div class="field"><label>Teléfono</label><input type="text" id="fac-telefono-cliente" placeholder="Teléfono"></div>
         </div>
+        <div id="fac-cliente-estado" style="margin-bottom:10px;"></div>
         <div class="row">
           <div class="field"><label>Correo</label><input type="email" id="fac-correo" placeholder="correo@ejemplo.com"></div>
           <div class="field"><label>Dirección</label><input type="text" id="fac-direccion" placeholder="Dirección"></div>
         </div>
         <div id="carrito-items"><div class="empty">Aún no has agregado artículos.</div></div>
         <div class="field">
-          <label>Descuento ($)</label>
-          <input type="number" id="fac-descuento" value="0" min="0" oninput="renderCarrito()">
+          <label>Descuento (%)</label>
+          <input type="number" id="fac-descuento" value="0" min="0" max="100" step="0.1" oninput="renderCarrito()">
         </div>
         <div class="field">
           <label>Método de pago</label>
@@ -554,12 +555,12 @@
   <div class="view" id="view-combos">
     <div class="view-head">
       <div><h1>Combos</h1><p>Arma paquetes con tus referencias existentes — el costo se calcula solo, sumando los componentes.</p></div>
-      <button class="btn gold" onclick="abrirModalCombo()">+ Nuevo combo</button>
+      <button class="btn gold solo-gerencia" onclick="abrirModalCombo()">+ Nuevo combo</button>
     </div>
     <hr class="stitch head-stitch">
     <div class="card">
       <table>
-        <thead><tr><th>Combo</th><th>Componentes</th><th class="right">Costo</th><th class="right">Precio</th><th class="right">Utilidad</th><th class="right">Disponibles</th><th></th></tr></thead>
+        <thead><tr><th>Combo</th><th>Componentes</th><th class="right solo-gerencia">Costo</th><th class="right">Precio</th><th class="right solo-gerencia">Utilidad</th><th class="right">Disponibles</th><th class="solo-gerencia"></th></tr></thead>
         <tbody id="tbl-combos"></tbody>
       </table>
     </div>
@@ -1415,7 +1416,7 @@ function toast(msg){
 
 /* ---------------- Sesión y permisos ---------------- */
 const PERMISOS = {
-  asesor:['facturar','ventas','cierre','devoluciones','inventario'],
+  asesor:['facturar','ventas','cierre','devoluciones','inventario','clientes','combos','gastos'],
   gerencia:['dashboard','facturar','ventas','cierre','devoluciones','inventario','combos','clientes','proveedores','activos','gastos','reportes','equilibrio','flujo','config']
 };
 let currentRole = null;
@@ -2124,10 +2125,11 @@ function renderCarrito(){
       </div>`).join('');
   }
   const subtotal=carrito.reduce((s,it)=>s+it.precio*it.cantidad,0);
-  const descuento=parseFloat(document.getElementById('fac-descuento').value)||0;
+  const pct=Math.min(100, Math.max(0, parseFloat(document.getElementById('fac-descuento').value)||0));
+  const descuento=subtotal*pct/100;
   const total=Math.max(0, subtotal-descuento);
   document.getElementById('fac-subtotal').textContent=fmt(subtotal);
-  document.getElementById('fac-desc-mostrar').textContent=fmt(descuento);
+  document.getElementById('fac-desc-mostrar').textContent=fmt(descuento)+(pct>0? ' ('+pct+'%)':'');
   document.getElementById('fac-total').textContent=fmt(total);
 }
 function setCantidad(id, val){
@@ -2154,12 +2156,28 @@ function ajustarStockPorItem(it, cantidad, signo){
     if(a) a.stock=Math.max(0, a.stock+signo*cantidad);
   }
 }
+function buscarClientePorCedula(){
+  const cedula=document.getElementById('fac-cedula').value.trim();
+  const estado=document.getElementById('fac-cliente-estado');
+  if(!cedula){ estado.innerHTML=''; return; }
+  const cliente=DB.clientes.find(c=>c.cedula && c.cedula===cedula);
+  if(cliente){
+    document.getElementById('fac-cliente').value=cliente.nombre||'';
+    document.getElementById('fac-telefono-cliente').value=cliente.telefono||'';
+    document.getElementById('fac-correo').value=cliente.correo||'';
+    document.getElementById('fac-direccion').value=cliente.direccion||'';
+    estado.innerHTML='<span class="badge success">✓ Cliente encontrado: '+cliente.nombre+'</span>';
+  } else {
+    estado.innerHTML='<span class="badge gold">Cliente nuevo — se guardará al facturar</span>';
+  }
+}
 function guardarVenta(){
   if(diaCierrePendiente()){ toast('No puedes facturar: hay un cierre de caja pendiente. Ve a Cierre de caja.'); return; }
   if(!carrito.length){ toast('Agrega al menos un artículo'); return; }
   const subtotal=carrito.reduce((s,it)=>s+it.precio*it.cantidad,0);
   const costoTotal=carrito.reduce((s,it)=>s+it.costo*it.cantidad,0);
-  const descuento=Math.min(parseFloat(document.getElementById('fac-descuento').value)||0, subtotal);
+  const pctDescuento=Math.min(100, Math.max(0, parseFloat(document.getElementById('fac-descuento').value)||0));
+  const descuento=subtotal*pctDescuento/100;
   const total=subtotal-descuento;
   const cliente=document.getElementById('fac-cliente').value.trim();
   const cedula=document.getElementById('fac-cedula').value.trim();
@@ -2180,8 +2198,19 @@ function guardarVenta(){
   };
   DB.ventas.push(venta);
   DB.config.siguienteNumero=numero+1;
-  if(telefonoCliente && !DB.clientes.some(c=>c.telefono===telefonoCliente)){
-    DB.clientes.push({id:uid(), nombre:venta.cliente, telefono:telefonoCliente, cedula, correo, direccion, notas:'', fechaRegistro:hoyISO()});
+  if(cedula || telefonoCliente){
+    let clienteExistente=null;
+    if(cedula) clienteExistente=DB.clientes.find(c=>c.cedula===cedula);
+    if(!clienteExistente && telefonoCliente) clienteExistente=DB.clientes.find(c=>c.telefono===telefonoCliente);
+    if(clienteExistente){
+      clienteExistente.nombre=venta.cliente;
+      if(telefonoCliente) clienteExistente.telefono=telefonoCliente;
+      if(correo) clienteExistente.correo=correo;
+      if(direccion) clienteExistente.direccion=direccion;
+      if(cedula) clienteExistente.cedula=cedula;
+    } else {
+      DB.clientes.push({id:uid(), nombre:venta.cliente, telefono:telefonoCliente, cedula, correo, direccion, notas:'', fechaRegistro:hoyISO()});
+    }
   }
   guardarDB();
 
@@ -2191,6 +2220,7 @@ function guardarVenta(){
   btnWa.style.display = venta.telefonoCliente ? 'block' : 'none';
   carrito=[];
   ['fac-cliente','fac-cedula','fac-telefono-cliente','fac-correo','fac-direccion'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fac-cliente-estado').innerHTML='';
   document.getElementById('fac-descuento').value=0;
   renderCarrito();
   renderCatalogo();
@@ -2446,11 +2476,11 @@ function renderCombos(){
     return `<tr>
       <td>${c.nombre}</td>
       <td style="font-size:12px;color:var(--ink-soft);">${resumen}</td>
-      <td class="right num">${fmt(costo)}</td>
+      <td class="right num solo-gerencia">${fmt(costo)}</td>
       <td class="right num">${fmt(c.precio)}</td>
-      <td class="right num">${fmt(utilidad)}</td>
+      <td class="right num solo-gerencia">${fmt(utilidad)}</td>
       <td class="right num">${disp<=0?'<span class="badge danger">0</span>':disp}</td>
-      <td class="right"><button class="btn ghost sm" onclick="editarCombo('${c.id}')">Editar</button></td>
+      <td class="right solo-gerencia"><button class="btn ghost sm" onclick="editarCombo('${c.id}')">Editar</button></td>
     </tr>`;
   }).join('');
 }
