@@ -466,7 +466,7 @@
           <div class="field"><label>Desde</label><input type="date" id="cc-hist-desde" onchange="renderHistorialCierres()"></div>
           <div class="field"><label>Hasta</label><input type="date" id="cc-hist-hasta" onchange="renderHistorialCierres()"></div>
         </div>
-        <table><thead><tr><th>Fecha</th><th class="right">Ventas</th><th class="right">Esperado</th><th class="right">Contado</th><th class="right">Diferencia</th></tr></thead>
+        <table><thead><tr><th>Fecha</th><th class="right">Ventas</th><th class="right">Esperado</th><th class="right">Contado</th><th class="right">Diferencia</th><th></th></tr></thead>
         <tbody id="tbl-cierres"></tbody></table>
       </div>
     </div>
@@ -1186,6 +1186,30 @@
   </div>
 </div>
 
+<!-- ===== Modal: detalle de cierre ===== -->
+<div class="modal-bg" id="modal-detalle-cierre">
+  <div class="modal" style="width:440px;">
+    <h3>Detalle del cierre — <span id="dc-fecha"></span></h3>
+    <div class="tot-line"><span>Ventas en efectivo</span><span class="num" id="dc-efectivo">$0</span></div>
+    <div class="tot-line"><span>Ventas por transferencia</span><span class="num" id="dc-transferencia">$0</span></div>
+    <div class="tot-line"><span>Ventas con tarjeta</span><span class="num" id="dc-tarjeta">$0</span></div>
+    <div class="tot-line"><span>Ventas mixtas</span><span class="num" id="dc-mixto">$0</span></div>
+    <div class="tot-line big"><span>Total ventas</span><span class="num" id="dc-total-ventas">$0</span></div>
+    <hr class="stitch" style="margin:12px 0;">
+    <div class="tot-line"><span>Base de caja</span><span class="num" id="dc-base">$0</span></div>
+    <div class="tot-line"><span>Salidas de efectivo</span><span class="num" id="dc-salidas">$0</span></div>
+    <div class="tot-line"><span>Efectivo esperado</span><span class="num" id="dc-esperado">$0</span></div>
+    <div class="tot-line"><span>Efectivo contado</span><span class="num" id="dc-contado">$0</span></div>
+    <div class="tot-line big"><span>Diferencia</span><span class="num" id="dc-diferencia">$0</span></div>
+    <div id="dc-notas-cont" style="margin-top:10px;font-size:13px;"></div>
+    <div style="font-size:11px;color:var(--ink-soft);margin-top:10px;" id="dc-meta"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="cerrarModal('modal-detalle-cierre')">Cerrar</button>
+      <button class="btn gold" onclick="exportarCierrePDFHistorico()">Descargar PDF</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <!-- ===== Área imprimible (formato tirilla) ===== -->
@@ -1405,7 +1429,13 @@ function exportarProveedoresPDF(){
 }
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
-function hoyISO(){ return new Date().toISOString().slice(0,10); }
+function fechaISOLocal(d){
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,'0');
+  const dia=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${dia}`;
+}
+function hoyISO(){ return fechaISOLocal(new Date()); }
 function fmt(n){ return '$'+Math.round(n).toLocaleString('es-CO'); }
 function toast(msg){
   const t=document.getElementById('toast');
@@ -1629,11 +1659,51 @@ function renderHistorialCierres(){
   if(hasta) lista=lista.filter(c=>c.fecha<=hasta);
   if(!desde && !hasta) lista=lista.slice(0,15);
   const tbody=document.getElementById('tbl-cierres');
-  if(!lista.length){ tbody.innerHTML='<tr><td colspan="5"><div class="empty">Aún no has cerrado ninguna caja.</div></td></tr>'; return; }
+  if(!lista.length){ tbody.innerHTML='<tr><td colspan="6"><div class="empty">Aún no has cerrado ninguna caja.</div></td></tr>'; return; }
   tbody.innerHTML=lista.map(c=>`
     <tr><td>${c.fecha}</td><td class="right num">${fmt(c.totalVentas)}</td><td class="right num">${fmt(c.efectivoEsperado)}</td>
     <td class="right num">${fmt(c.efectivoContado)}</td>
-    <td class="right num" style="color:${c.diferencia===0?'inherit':(c.diferencia>0?'var(--success)':'var(--danger)')};">${fmt(c.diferencia)}</td></tr>`).join('');
+    <td class="right num" style="color:${c.diferencia===0?'inherit':(c.diferencia>0?'var(--success)':'var(--danger)')};">${fmt(c.diferencia)}</td>
+    <td class="right"><button class="btn ghost sm" onclick="verDetalleCierre('${c.id}')">Ver detalle</button></td></tr>`).join('');
+}
+let cierreDetalleActual=null;
+function verDetalleCierre(id){
+  const c=DB.cierres.find(x=>x.id===id); if(!c) return;
+  cierreDetalleActual=c;
+  document.getElementById('dc-fecha').textContent=c.fecha;
+  document.getElementById('dc-efectivo').textContent=fmt(c.ventasEfectivo||0);
+  document.getElementById('dc-transferencia').textContent=fmt(c.ventasTransferencia||0);
+  document.getElementById('dc-tarjeta').textContent=fmt(c.ventasTarjeta||0);
+  document.getElementById('dc-mixto').textContent=fmt(c.ventasMixto||0);
+  document.getElementById('dc-total-ventas').textContent=fmt(c.totalVentas||0);
+  document.getElementById('dc-base').textContent=fmt(c.baseCaja||0);
+  document.getElementById('dc-salidas').textContent=fmt(c.salidasEfectivo||0);
+  document.getElementById('dc-esperado').textContent=fmt(c.efectivoEsperado||0);
+  document.getElementById('dc-contado').textContent=fmt(c.efectivoContado||0);
+  const diffEl=document.getElementById('dc-diferencia');
+  diffEl.textContent=fmt(c.diferencia||0);
+  diffEl.style.color = c.diferencia===0 ? 'var(--ink)' : (c.diferencia>0 ? 'var(--success)' : 'var(--danger)');
+  document.getElementById('dc-notas-cont').innerHTML = c.notas ? ('<strong>Notas:</strong> '+c.notas) : '';
+  document.getElementById('dc-meta').textContent = c.cerradoEn ? ('Cerrado el '+new Date(c.cerradoEn).toLocaleString('es-CO')+(c.cerradoPor? ' — por '+c.cerradoPor : '')) : '';
+  abrirModal('modal-detalle-cierre');
+}
+function exportarCierrePDFHistorico(){
+  const c=cierreDetalleActual; if(!c) return;
+  const headers=['Concepto','Valor'];
+  const rows=[
+    ['Ventas en efectivo', fmt(c.ventasEfectivo||0)],
+    ['Ventas por transferencia', fmt(c.ventasTransferencia||0)],
+    ['Ventas con tarjeta', fmt(c.ventasTarjeta||0)],
+    ['Ventas mixtas', fmt(c.ventasMixto||0)],
+    ['Total ventas', fmt(c.totalVentas||0)],
+    ['Base de caja', fmt(c.baseCaja||0)],
+    ['Salidas de efectivo', fmt(c.salidasEfectivo||0)],
+    ['Efectivo esperado', fmt(c.efectivoEsperado||0)],
+    ['Efectivo contado', fmt(c.efectivoContado||0)],
+    ['Diferencia', fmt(c.diferencia||0)]
+  ];
+  if(c.notas) rows.push(['Notas', c.notas]);
+  generarPDF('cierre-caja-'+c.fecha+'.pdf', 'Cierre de caja diario', c.fecha, headers, rows);
 }
 
 /* ---------------- Bloqueo de facturación por cierre pendiente ---------------- */
@@ -3076,7 +3146,7 @@ function renderDashboard(){
   } else { recFlujo.innerHTML=''; }
 
   const limite=new Date(); limite.setDate(limite.getDate()-30);
-  const limiteISO=limite.toISOString().slice(0,10);
+  const limiteISO=fechaISOLocal(limite);
   const sinRotacion=DB.articulos.filter(a=>a.stock>0 && !DB.ventas.some(v=>v.fecha>=limiteISO && v.items.some(it=>it.articuloId===a.id))).slice(0,8);
   document.getElementById('tbl-sin-rotacion').innerHTML = sinRotacion.length ? sinRotacion.map(a=>`
     <tr><td>${a.nombre}</td><td class="center">${a.talla}</td><td class="center">${a.color}</td><td class="right">${a.stock}</td></tr>`).join('')
@@ -3147,7 +3217,7 @@ function imprimirReporte(){
 }
 function renderReportes(){
   const desdeEl=document.getElementById('rf-desde'), hastaEl=document.getElementById('rf-hasta');
-  if(!desdeEl.value){ const d=new Date(); d.setDate(d.getDate()-6); desdeEl.value=d.toISOString().slice(0,10); }
+  if(!desdeEl.value){ const d=new Date(); d.setDate(d.getDate()-6); desdeEl.value=fechaISOLocal(d); }
   if(!hastaEl.value){ hastaEl.value=hoyISO(); }
   const desde=desdeEl.value, hasta=hastaEl.value;
 
@@ -3220,7 +3290,7 @@ function exportarReportePDF(){
 }
 function renderGraficoVentasDias(){
   const dias=[];
-  for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); dias.push(d.toISOString().slice(0,10)); }
+  for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); dias.push(fechaISOLocal(d)); }
   const valores=dias.map(f=>DB.ventas.filter(v=>v.fecha===f).reduce((s,v)=>s+v.total,0));
   const max=Math.max(...valores,1);
   const w=480,h=160,gap=8,barW=Math.floor(w/dias.length)-gap;
@@ -3268,13 +3338,13 @@ function renderComisiones(ventasFiltradas){
 
 /* ================= FLUJO DE CAJA SEMANAL ================= */
 function fechaLocalDesdeISO(iso){ const [y,m,d]=iso.split('-').map(Number); return new Date(y,m-1,d); }
-function domingoDeLunes(lunesStr){ const l=fechaLocalDesdeISO(lunesStr); const dom=new Date(l); dom.setDate(dom.getDate()+6); return dom.toISOString().slice(0,10); }
-function semanaActualLunesStr(){ return lunesDeSemana(new Date()).toISOString().slice(0,10); }
+function domingoDeLunes(lunesStr){ const l=fechaLocalDesdeISO(lunesStr); const dom=new Date(l); dom.setDate(dom.getDate()+6); return fechaISOLocal(dom); }
+function semanaActualLunesStr(){ return fechaISOLocal(lunesDeSemana(new Date())); }
 function semanaFlujoPendiente(){
   const semanaActual=semanaActualLunesStr();
   const semanas=new Set();
-  DB.ventas.forEach(v=>{ const s=lunesDeSemana(fechaLocalDesdeISO(v.fecha)).toISOString().slice(0,10); if(s<semanaActual) semanas.add(s); });
-  DB.gastos.forEach(g=>{ const s=lunesDeSemana(fechaLocalDesdeISO(g.fecha)).toISOString().slice(0,10); if(s<semanaActual) semanas.add(s); });
+  DB.ventas.forEach(v=>{ const s=fechaISOLocal(lunesDeSemana(fechaLocalDesdeISO(v.fecha))); if(s<semanaActual) semanas.add(s); });
+  DB.gastos.forEach(g=>{ const s=fechaISOLocal(lunesDeSemana(fechaLocalDesdeISO(g.fecha))); if(s<semanaActual) semanas.add(s); });
   const pendientes=[...semanas].filter(s=>{
     const registro=DB.flujoCaja.find(f=>f.semanaInicio===s);
     if(!registro) return true;
@@ -3425,7 +3495,7 @@ function calcularEquilibrio(){
   const ventaMensual=ventaSemanal*4.33;
   const lunes=lunesDeSemana(new Date());
   const domingo=new Date(lunes); domingo.setDate(domingo.getDate()+6);
-  const lunesISO=lunes.toISOString().slice(0,10), domingoISO=domingo.toISOString().slice(0,10);
+  const lunesISO=fechaISOLocal(lunes), domingoISO=fechaISOLocal(domingo);
   const vendidoSemana=DB.ventas.filter(v=>v.fecha>=lunesISO && v.fecha<=domingoISO).reduce((s,v)=>s+v.total,0);
   return {costosMes, costosSem, margen, margenUtilidad, porcentajeGastos, ventaSemanal, ventaDiaria, ventaMensual, lunesISO, domingoISO, vendidoSemana, diff:ventaSemanal-vendidoSemana};
 }
