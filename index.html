@@ -489,8 +489,9 @@
     <div id="dev-panel" style="display:none;margin-bottom:18px;">
       <div class="card">
         <h3 id="dev-venta-titulo">Venta</h3>
+        <p id="dev-descuento-original" style="font-size:12px;color:var(--ink-soft);margin-top:-4px;"></p>
         <table>
-          <thead><tr><th>Artículo</th><th class="center">Talla</th><th class="center">Color</th><th class="right">Cant. original</th><th class="right">Cant. a devolver</th><th class="right">Valor</th></tr></thead>
+          <thead><tr><th>Artículo</th><th class="center">Talla</th><th class="center">Color</th><th class="right">Cant. original</th><th class="right">Cant. a devolver</th><th class="right">Precio catálogo</th><th class="right">Precio real vendido</th><th class="right">Valor</th></tr></thead>
           <tbody id="dev-items-tbody"></tbody>
         </table>
 
@@ -501,8 +502,9 @@
               <option value="cambio">Cambio por otro producto</option>
             </select>
           </div>
-          <div class="field"><label>Motivo</label><input type="text" id="dev-motivo-input" placeholder="Ej: talla incorrecta, prenda defectuosa…"></div>
+          <div class="field"><label>Descuento adicional sobre la devolución (%)</label><input type="number" id="dev-descuento-adicional" value="0" min="0" max="100" step="0.1" oninput="renderTotalesDevolucion()"></div>
         </div>
+        <div class="field"><label>Motivo</label><input type="text" id="dev-motivo-input" placeholder="Ej: talla incorrecta, prenda defectuosa…"></div>
 
         <div id="dev-zona-cambio" style="display:none;margin-top:10px;">
           <hr class="stitch" style="margin:12px 0;">
@@ -1738,10 +1740,15 @@ function buscarVentaDevolucion(){
     return;
   }
   ventaDevolucionActual=v;
-  itemsDevolver=v.items.map(it=>({...it, cantidadDevolver:0}));
+  const descuentoRatio = v.subtotal>0 ? (v.descuento||0)/v.subtotal : 0;
+  itemsDevolver=v.items.map(it=>({...it, cantidadDevolver:0, precioReal:it.precio*(1-descuentoRatio)}));
   itemsCambioNuevos=[];
   document.getElementById('dev-venta-titulo').textContent=`Venta N.° ${v.numero} — ${v.fecha} — Cliente: ${v.cliente}`;
+  document.getElementById('dev-descuento-original').textContent = descuentoRatio>0
+    ? `Esta venta tuvo un descuento del ${(descuentoRatio*100).toFixed(1)}% — el valor a devolver ya lo tiene en cuenta.`
+    : 'Esta venta no tuvo descuento.';
   document.getElementById('dev-tipo-select').value='devolucion';
+  document.getElementById('dev-descuento-adicional').value=0;
   document.getElementById('dev-motivo-input').value='';
   document.getElementById('dev-buscar-cambio').value='';
   document.getElementById('dev-zona-cambio').style.display='none';
@@ -1758,7 +1765,9 @@ function renderItemsDevolucion(){
     <tr><td>${it.nombre}</td><td class="center">${it.talla}</td><td class="center">${it.color}</td>
     <td class="right">${it.cantidad}</td>
     <td class="right"><input type="number" value="${it.cantidadDevolver}" min="0" max="${it.cantidad}" style="width:60px;" onchange="cambiarCantidadDevolver(${idx}, this.value)"></td>
-    <td class="right num">${fmt(it.precio*it.cantidadDevolver)}</td></tr>`).join('');
+    <td class="right num" style="color:var(--ink-soft);">${fmt(it.precio)}</td>
+    <td class="right num">${fmt(it.precioReal)}</td>
+    <td class="right num">${fmt(it.precioReal*it.cantidadDevolver)}</td></tr>`).join('');
   renderTotalesDevolucion();
 }
 function cambiarCantidadDevolver(idx, val){
@@ -1816,10 +1825,12 @@ function renderCarritoCambio(){
   renderTotalesDevolucion();
 }
 function renderTotalesDevolucion(){
-  const valorDevuelto=itemsDevolver.reduce((s,it)=>s+it.precio*it.cantidadDevolver,0);
+  const valorBruto=itemsDevolver.reduce((s,it)=>s+it.precioReal*it.cantidadDevolver,0);
+  const pctAdicional=Math.min(100, Math.max(0, parseFloat(document.getElementById('dev-descuento-adicional').value)||0));
+  const valorDevuelto=valorBruto*(1-pctAdicional/100);
   const tipo=document.getElementById('dev-tipo-select')?.value||'devolucion';
   const valorNuevo= tipo==='cambio' ? itemsCambioNuevos.reduce((s,it)=>s+it.precio*it.cantidad,0) : 0;
-  document.getElementById('dev-valor-devuelto').textContent=fmt(valorDevuelto);
+  document.getElementById('dev-valor-devuelto').textContent=fmt(valorDevuelto)+(pctAdicional>0? ' (con '+pctAdicional+'% adicional)':'');
   document.getElementById('dev-valor-nuevo').textContent=fmt(valorNuevo);
   const diferencia=valorNuevo-valorDevuelto;
   const label=document.getElementById('dev-diferencia-label');
@@ -1834,6 +1845,7 @@ function procesarDevolucion(){
   if(totalDevolver<=0){ toast('Selecciona al menos una unidad para devolver'); return; }
   const tipo=document.getElementById('dev-tipo-select').value;
   const motivo=document.getElementById('dev-motivo-input').value.trim();
+  const pctAdicional=Math.min(100, Math.max(0, parseFloat(document.getElementById('dev-descuento-adicional').value)||0));
 
   itemsDevolver.forEach(it=>{
     if(it.cantidadDevolver>0) ajustarStockPorItem(it, it.cantidadDevolver, +1);
@@ -1846,13 +1858,14 @@ function procesarDevolucion(){
       valorNuevo+=it.precio*it.cantidad;
     });
   }
-  const valorDevuelto=itemsDevolver.reduce((s,it)=>s+it.precio*it.cantidadDevolver,0);
+  const valorBruto=itemsDevolver.reduce((s,it)=>s+it.precioReal*it.cantidadDevolver,0);
+  const valorDevuelto=valorBruto*(1-pctAdicional/100);
   const diferencia=valorNuevo-valorDevuelto;
 
   DB.devoluciones.push({
     id:uid(), fecha:hoyISO(), ventaId:ventaDevolucionActual.id, ventaNumero:ventaDevolucionActual.numero,
-    tipo,
-    itemsDevueltos:itemsDevolver.filter(it=>it.cantidadDevolver>0).map(it=>({nombre:it.nombre,talla:it.talla,color:it.color,cantidad:it.cantidadDevolver,precio:it.precio})),
+    tipo, descuentoAdicionalPct:pctAdicional,
+    itemsDevueltos:itemsDevolver.filter(it=>it.cantidadDevolver>0).map(it=>({nombre:it.nombre,talla:it.talla,color:it.color,cantidad:it.cantidadDevolver,precioCatalogo:it.precio,precioReal:it.precioReal})),
     itemsNuevos: tipo==='cambio' ? itemsCambioNuevos.map(it=>({nombre:it.nombre,talla:it.talla,color:it.color,cantidad:it.cantidad,precio:it.precio})) : [],
     valorDevuelto, valorNuevo, diferencia, motivo, creadoEn:new Date().toISOString()
   });
