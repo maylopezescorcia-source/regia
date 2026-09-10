@@ -269,6 +269,7 @@
     <button class="nav-btn" data-view="devoluciones"><span class="ic">↺</span> Devoluciones/Cambios</button>
     <button class="nav-btn" data-view="inventario"><span class="ic">▤</span> Inventario</button>
     <button class="nav-btn" data-view="combos"><span class="ic">🎁</span> Combos</button>
+    <button class="nav-btn" data-view="apartados"><span class="ic">📌</span> Apartados</button>
     <button class="nav-btn" data-view="clientes"><span class="ic">☺</span> Clientes</button>
     <button class="nav-btn" data-view="proveedores"><span class="ic">🚚</span> Proveedores</button>
     <button class="nav-btn" data-view="activos"><span class="ic">🏢</span> Activos Fijos</button>
@@ -519,6 +520,12 @@
           <div class="tot-line" id="dev-linea-valor-nuevo" style="display:none;"><span>Valor de los nuevos productos</span><span class="num" id="dev-valor-nuevo">$0</span></div>
           <div class="tot-line big"><span id="dev-diferencia-label">Sin diferencia</span><span class="num" id="dev-diferencia">$0</span></div>
         </div>
+        <div class="field" id="dev-metodo-diferencia-field" style="display:none;margin-top:10px;">
+          <label id="dev-metodo-diferencia-label">Método de pago de la diferencia</label>
+          <select id="dev-metodo-diferencia">
+            <option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Mixto</option>
+          </select>
+        </div>
         <button class="btn gold" style="width:100%;margin-top:12px;" onclick="procesarDevolucion()">Procesar</button>
       </div>
     </div>
@@ -527,6 +534,54 @@
       <h3>Historial de devoluciones y cambios</h3>
       <table><thead><tr><th>Fecha</th><th>N.° venta</th><th>Tipo</th><th class="right">Valor devuelto</th><th class="right">Diferencia</th><th>Motivo</th></tr></thead>
       <tbody id="tbl-devoluciones"></tbody></table>
+    </div>
+  </div>
+
+  <!-- ================= APARTADOS ================= -->
+  <div class="view" id="view-apartados">
+    <div class="view-head"><div><h1>Apartados</h1><p>Reserva prendas para un cliente con un abono, y lleva el control del saldo pendiente.</p></div></div>
+    <hr class="stitch head-stitch">
+
+    <div class="grid grid-2">
+      <div class="card">
+        <h3 style="margin-bottom:10px;">Artículos a apartar</h3>
+        <div class="field search-box"><input type="text" id="apt-buscar-articulo" placeholder="Buscar artículo, talla o color…" oninput="renderCatalogoApartado()"></div>
+        <div id="apt-catalogo-list"></div>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom:10px;">Datos del apartado</h3>
+        <div class="field"><label>Cliente</label><input type="text" id="apt-cliente" placeholder="Nombre del cliente"></div>
+        <div class="row">
+          <div class="field"><label>Cédula</label><input type="text" id="apt-cedula" placeholder="N.° de cédula" onblur="buscarClienteApartadoPorCedula()" onkeydown="if(event.key==='Enter'){event.preventDefault();buscarClienteApartadoPorCedula();}"></div>
+          <div class="field"><label>Teléfono</label><input type="text" id="apt-telefono"></div>
+        </div>
+        <div id="apt-cliente-estado" style="margin-bottom:10px;"></div>
+        <div id="apt-carrito-items"><div class="empty">Aún no has agregado artículos.</div></div>
+        <div class="tot-line big"><span>Valor total</span><span class="num" id="apt-total">$0</span></div>
+        <div class="row">
+          <div class="field"><label>Abono inicial</label><input type="number" id="apt-abono-inicial" min="0" value="0" oninput="renderTotalesApartado()"></div>
+          <div class="field"><label>Método de pago</label>
+            <select id="apt-metodo-abono"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Mixto</option></select>
+          </div>
+        </div>
+        <div class="tot-line"><span>Saldo pendiente</span><span class="num" id="apt-saldo">$0</span></div>
+        <div class="field"><label>Fecha límite para completar el pago (opcional)</label><input type="date" id="apt-fecha-limite"></div>
+        <div class="field"><label>Notas</label><input type="text" id="apt-notas" placeholder="Ej: talla a confirmar, cliente frecuente…"></div>
+        <button class="btn gold" style="width:100%;margin-top:10px;" onclick="guardarApartado()">Guardar apartado</button>
+        <p style="font-size:11px;color:var(--ink-soft);margin-top:8px;">Al guardar, las prendas se descuentan del inventario para que queden reservadas y no se le vendan a otro cliente.</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:18px;">
+      <h3>Apartados activos</h3>
+      <table><thead><tr><th>N.°</th><th>Fecha</th><th>Cliente</th><th>Artículos</th><th class="right">Total</th><th class="right">Abonado</th><th class="right">Saldo</th><th>Vence</th><th></th></tr></thead>
+      <tbody id="tbl-apartados-activos"></tbody></table>
+    </div>
+
+    <div class="card" style="margin-top:18px;">
+      <h3>Historial (entregados / cancelados)</h3>
+      <table><thead><tr><th>N.°</th><th>Fecha</th><th>Cliente</th><th class="right">Total</th><th>Estado</th></tr></thead>
+      <tbody id="tbl-apartados-historial"></tbody></table>
     </div>
   </div>
 
@@ -1212,6 +1267,44 @@
   </div>
 </div>
 
+<!-- ===== Modal: abono a apartado ===== -->
+<div class="modal-bg" id="modal-abono">
+  <div class="modal">
+    <h3>Registrar abono — Apartado N.° <span id="abono-numero"></span></h3>
+    <input type="hidden" id="abono-apartado-id">
+    <div class="tot-line"><span>Saldo pendiente actual</span><span class="num" id="abono-saldo-actual">$0</span></div>
+    <div class="field"><label>Valor del abono</label><input type="number" id="abono-valor" min="0"></div>
+    <div class="field"><label>Método de pago</label>
+      <select id="abono-metodo"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Mixto</option></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="cerrarModal('modal-abono')">Cancelar</button>
+      <button class="btn gold" onclick="guardarAbono()">Registrar abono</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal: detalle de apartado ===== -->
+<div class="modal-bg" id="modal-detalle-apartado">
+  <div class="modal" style="width:460px;">
+    <h3>Apartado N.° <span id="da-numero"></span></h3>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-6px;" id="da-cliente"></p>
+    <div id="da-items" style="margin-bottom:10px;"></div>
+    <div class="tot-line big"><span>Valor total</span><span class="num" id="da-total">$0</span></div>
+    <hr class="stitch" style="margin:10px 0;">
+    <label>Historial de abonos</label>
+    <div id="da-abonos" style="margin-bottom:8px;"></div>
+    <div class="tot-line"><span>Total abonado</span><span class="num" id="da-abonado">$0</span></div>
+    <div class="tot-line big"><span>Saldo pendiente</span><span class="num" id="da-saldo">$0</span></div>
+    <div id="da-notas" style="margin-top:8px;font-size:13px;"></div>
+    <div class="modal-actions">
+      <button class="btn danger" onclick="cancelarApartado()">Cancelar apartado</button>
+      <button class="btn ghost" onclick="cerrarModal('modal-detalle-apartado')">Cerrar</button>
+      <button class="btn gold" onclick="marcarApartadoEntregado()">Marcar entregado</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <!-- ===== Área imprimible (formato tirilla) ===== -->
@@ -1255,6 +1348,8 @@ function cargarDB(){
   if(!db.devoluciones) db.devoluciones=[]; // {id, fecha, ventaNumero, tipo, itemsDevueltos, itemsNuevos, diferencia, motivo}
   if(!db.activosFijos) db.activosFijos=[]; // {id, nombre, categoria, fechaAdquisicion, valorCompra, vidaUtilAnios, ubicacion, estado, proveedor, placa, notas}
   if(!db.combos) db.combos=[]; // {id, nombre, descripcion, items:[{articuloId,nombre,talla,color,cantidad}], precio, codigoBarras}
+  if(!db.apartados) db.apartados=[]; // {id, numero, fecha, cliente, cedula, telefono, items:[...], total, abonos:[{fecha,valor,metodo}], totalAbonado, saldoPendiente, estado, fechaLimite, notas}
+  if(db.config.siguienteNumeroApartado===undefined) db.config.siguienteNumeroApartado=1;
   if(!db.flujoCaja) db.flujoCaja=[]; // {id, semanaInicio, semanaFin, ingresos, egresos, saldoDisponible, asignaciones:[{concepto,valor}], totalAsignado, saldoSinAsignar}
   if(db.config.vendedores===undefined) db.config.vendedores=[]; // ['Nombre1','Nombre2']
   if(db.config.comisionPct===undefined) db.config.comisionPct=0;
@@ -1448,8 +1543,8 @@ function toast(msg){
 
 /* ---------------- Sesión y permisos ---------------- */
 const PERMISOS = {
-  asesor:['facturar','ventas','cierre','devoluciones','inventario','clientes','combos','gastos'],
-  gerencia:['dashboard','facturar','ventas','cierre','devoluciones','inventario','combos','clientes','proveedores','activos','gastos','reportes','equilibrio','flujo','config']
+  asesor:['facturar','ventas','cierre','devoluciones','apartados','inventario','clientes','combos','gastos'],
+  gerencia:['dashboard','facturar','ventas','cierre','devoluciones','apartados','inventario','combos','clientes','proveedores','activos','gastos','reportes','equilibrio','flujo','config']
 };
 let currentRole = null;
 
@@ -1495,6 +1590,7 @@ function goTo(view){
   if(view==='ventas') renderVentas();
   if(view==='cierre') renderCierre();
   if(view==='devoluciones') renderDevoluciones();
+  if(view==='apartados') renderApartados();
   if(view==='inventario') renderInventario();
   if(view==='combos') renderCombos();
   if(view==='clientes') renderClientes();
@@ -1724,6 +1820,235 @@ function actualizarBloqueoFacturacion(){
   }
 }
 
+/* ================= APARTADOS ================= */
+function registrarMovimientoCaja(valor, metodo, etiquetaCliente, flagCampo){
+  const numero=DB.config.siguienteNumero||1;
+  const venta={
+    id:uid(), numero, fecha:hoyISO(), hora:new Date().toISOString(),
+    cliente:etiquetaCliente, cedula:'', telefonoCliente:'', correo:'', direccion:'',
+    metodo, vendedor:'', items:[], subtotal:valor, descuento:0, total:valor, costoTotal:0
+  };
+  venta[flagCampo]=true;
+  DB.ventas.push(venta);
+  DB.config.siguienteNumero=numero+1;
+}
+
+let carritoApartado=[];
+function renderCatalogoApartado(){
+  const q=(document.getElementById('apt-buscar-articulo')?.value||'').toLowerCase();
+  const cont=document.getElementById('apt-catalogo-list');
+  const lista=DB.articulos.filter(a=>a.stock>0 && (a.nombre+a.talla+a.color).toLowerCase().includes(q)).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  if(!lista.length){ cont.innerHTML='<div class="empty">Sin artículos disponibles en stock.</div>'; return; }
+  cont.innerHTML=lista.map(a=>`
+    <div class="cat-item" onclick="agregarAlCarritoApartado('${a.id}')">
+      <div><div class="nm">${a.nombre}</div><div class="meta">${a.talla} · ${a.color} · stock ${a.stock}</div></div>
+      <div class="pr">${fmt(a.precio)}</div>
+    </div>`).join('');
+}
+function agregarAlCarritoApartado(id){
+  const a=DB.articulos.find(x=>x.id===id); if(!a) return;
+  const existente=carritoApartado.find(c=>c.articuloId===id);
+  if(existente){
+    if(existente.cantidad<a.stock) existente.cantidad++;
+    else toast('No hay más stock disponible');
+  } else {
+    carritoApartado.push({articuloId:a.id, nombre:a.nombre, talla:a.talla, color:a.color, cantidad:1, precio:a.precio, stockDisponible:a.stock});
+  }
+  renderCarritoApartado();
+}
+function cambiarCantidadApartado(id, delta){
+  const it=carritoApartado.find(c=>c.articuloId===id); if(!it) return;
+  it.cantidad+=delta;
+  if(it.cantidad<=0) carritoApartado=carritoApartado.filter(c=>c.articuloId!==id);
+  else if(it.cantidad>it.stockDisponible){ it.cantidad=it.stockDisponible; toast('Stock máximo alcanzado'); }
+  renderCarritoApartado();
+}
+function quitarDelCarritoApartado(id){ carritoApartado=carritoApartado.filter(c=>c.articuloId!==id); renderCarritoApartado(); }
+function renderCarritoApartado(){
+  const cont=document.getElementById('apt-carrito-items');
+  if(!carritoApartado.length){ cont.innerHTML='<div class="empty">Aún no has agregado artículos.</div>'; }
+  else{
+    cont.innerHTML=carritoApartado.map(it=>`
+      <div class="carr-row">
+        <div class="nm">${it.nombre}<br><span style="color:var(--ink-soft);font-size:11.5px;">${it.talla} · ${it.color}</span></div>
+        <button class="btn ghost sm" onclick="cambiarCantidadApartado('${it.articuloId}',-1)">−</button>
+        <span style="width:24px;text-align:center;">${it.cantidad}</span>
+        <button class="btn ghost sm" onclick="cambiarCantidadApartado('${it.articuloId}',1)">+</button>
+        <div class="num" style="width:70px;text-align:right;">${fmt(it.precio*it.cantidad)}</div>
+        <button class="btn danger sm" onclick="quitarDelCarritoApartado('${it.articuloId}')">×</button>
+      </div>`).join('');
+  }
+  renderTotalesApartado();
+}
+function renderTotalesApartado(){
+  const total=carritoApartado.reduce((s,it)=>s+it.precio*it.cantidad,0);
+  const abono=Math.min(total, Math.max(0, parseFloat(document.getElementById('apt-abono-inicial').value)||0));
+  document.getElementById('apt-total').textContent=fmt(total);
+  document.getElementById('apt-saldo').textContent=fmt(total-abono);
+}
+function buscarClienteApartadoPorCedula(){
+  const cedula=document.getElementById('apt-cedula').value.trim();
+  const estado=document.getElementById('apt-cliente-estado');
+  if(!cedula){ estado.innerHTML=''; return; }
+  const cliente=DB.clientes.find(c=>c.cedula && c.cedula===cedula);
+  if(cliente){
+    document.getElementById('apt-cliente').value=cliente.nombre||'';
+    document.getElementById('apt-telefono').value=cliente.telefono||'';
+    estado.innerHTML='<span class="badge success">✓ Cliente encontrado: '+cliente.nombre+'</span>';
+  } else {
+    estado.innerHTML='<span class="badge gold">Cliente nuevo — se guardará al apartar</span>';
+  }
+}
+function guardarApartado(){
+  if(!carritoApartado.length){ toast('Agrega al menos un artículo para apartar'); return; }
+  const cliente=document.getElementById('apt-cliente').value.trim();
+  if(!cliente){ toast('Escribe el nombre del cliente'); return; }
+  const cedula=document.getElementById('apt-cedula').value.trim();
+  const telefono=document.getElementById('apt-telefono').value.trim();
+  const total=carritoApartado.reduce((s,it)=>s+it.precio*it.cantidad,0);
+  const abonoInicial=Math.min(total, Math.max(0, parseFloat(document.getElementById('apt-abono-inicial').value)||0));
+  const metodoAbono=document.getElementById('apt-metodo-abono').value;
+  const fechaLimite=document.getElementById('apt-fecha-limite').value;
+  const notas=document.getElementById('apt-notas').value.trim();
+
+  // reservar stock
+  carritoApartado.forEach(it=>{
+    const a=DB.articulos.find(x=>x.id===it.articuloId);
+    if(a) a.stock=Math.max(0, a.stock-it.cantidad);
+  });
+
+  const numero=DB.config.siguienteNumeroApartado||1;
+  const apartado={
+    id:uid(), numero, fecha:hoyISO(), creadoEn:new Date().toISOString(),
+    cliente, cedula, telefono,
+    items:carritoApartado.map(it=>({...it})), total,
+    abonos:[], totalAbonado:0, saldoPendiente:total,
+    estado:'activo', fechaLimite, notas
+  };
+  if(abonoInicial>0){
+    apartado.abonos.push({fecha:hoyISO(), valor:abonoInicial, metodo:metodoAbono, creadoEn:new Date().toISOString()});
+    apartado.totalAbonado=abonoInicial;
+    apartado.saldoPendiente=total-abonoInicial;
+    registrarMovimientoCaja(abonoInicial, metodoAbono, 'Abono apartado N.° '+numero+' — '+cliente, 'esAbonoApartado');
+  }
+  if(cedula || telefono){
+    let clienteExistente=null;
+    if(cedula) clienteExistente=DB.clientes.find(c=>c.cedula===cedula);
+    if(!clienteExistente && telefono) clienteExistente=DB.clientes.find(c=>c.telefono===telefono);
+    if(!clienteExistente) DB.clientes.push({id:uid(), nombre:cliente, telefono, cedula, correo:'', direccion:'', notas:'', fechaRegistro:hoyISO()});
+  }
+  DB.apartados.push(apartado);
+  DB.config.siguienteNumeroApartado=numero+1;
+  guardarDB();
+
+  carritoApartado=[];
+  ['apt-cliente','apt-cedula','apt-telefono','apt-notas','apt-fecha-limite'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('apt-cliente-estado').innerHTML='';
+  document.getElementById('apt-abono-inicial').value=0;
+  renderCarritoApartado();
+  renderCatalogoApartado();
+  renderApartados();
+  toast('Apartado N.° '+numero+' guardado');
+}
+function renderApartados(){
+  const activos=DB.apartados.filter(a=>a.estado==='activo').sort((a,b)=>b.numero-a.numero);
+  const tbodyActivos=document.getElementById('tbl-apartados-activos');
+  if(!activos.length){ tbodyActivos.innerHTML='<tr><td colspan="9"><div class="empty">No hay apartados activos.</div></td></tr>'; }
+  else{
+    tbodyActivos.innerHTML=activos.map(a=>{
+      const resumen=a.items.map(it=>`${it.cantidad}x ${it.nombre} (${it.talla}/${it.color})`).join(', ');
+      const vencido = a.fechaLimite && a.fechaLimite<hoyISO() && a.saldoPendiente>0;
+      return `<tr>
+        <td>${a.numero}</td><td>${a.fecha}</td><td>${a.cliente}</td>
+        <td style="font-size:12px;color:var(--ink-soft);">${resumen}</td>
+        <td class="right num">${fmt(a.total)}</td>
+        <td class="right num">${fmt(a.totalAbonado)}</td>
+        <td class="right num" style="color:${a.saldoPendiente>0?'var(--danger)':'var(--success)'};">${fmt(a.saldoPendiente)}</td>
+        <td>${a.fechaLimite||'—'}${vencido?' <span class="badge danger">vencido</span>':''}</td>
+        <td class="right">
+          ${a.saldoPendiente>0? `<button class="btn gold sm" onclick="abrirModalAbono('${a.id}')">Abonar</button>` : ''}
+          <button class="btn ghost sm" onclick="verDetalleApartado('${a.id}')">Ver</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+  const historial=DB.apartados.filter(a=>a.estado!=='activo').sort((a,b)=>b.numero-a.numero).slice(0,20);
+  const tbodyHist=document.getElementById('tbl-apartados-historial');
+  if(!historial.length){ tbodyHist.innerHTML='<tr><td colspan="5"><div class="empty">Aún no hay apartados entregados o cancelados.</div></td></tr>'; }
+  else{
+    tbodyHist.innerHTML=historial.map(a=>`
+      <tr><td>${a.numero}</td><td>${a.fecha}</td><td>${a.cliente}</td><td class="right num">${fmt(a.total)}</td>
+      <td>${a.estado==='completado'? '<span class="badge success">Entregado</span>' : '<span class="badge danger">Cancelado</span>'}</td></tr>`).join('');
+  }
+}
+function abrirModalAbono(id){
+  const a=DB.apartados.find(x=>x.id===id); if(!a) return;
+  document.getElementById('abono-apartado-id').value=a.id;
+  document.getElementById('abono-numero').textContent=a.numero;
+  document.getElementById('abono-saldo-actual').textContent=fmt(a.saldoPendiente);
+  document.getElementById('abono-valor').value='';
+  document.getElementById('abono-metodo').value='Efectivo';
+  abrirModal('modal-abono');
+}
+function guardarAbono(){
+  const id=document.getElementById('abono-apartado-id').value;
+  const a=DB.apartados.find(x=>x.id===id); if(!a) return;
+  const valor=Math.min(a.saldoPendiente, Math.max(0, parseFloat(document.getElementById('abono-valor').value)||0));
+  if(valor<=0){ toast('Ingresa un valor válido'); return; }
+  const metodo=document.getElementById('abono-metodo').value;
+  a.abonos.push({fecha:hoyISO(), valor, metodo, creadoEn:new Date().toISOString()});
+  a.totalAbonado+=valor;
+  a.saldoPendiente=Math.max(0, a.total-a.totalAbonado);
+  registrarMovimientoCaja(valor, metodo, 'Abono apartado N.° '+a.numero+' — '+a.cliente, 'esAbonoApartado');
+  guardarDB();
+  cerrarModal('modal-abono');
+  renderApartados();
+  toast('Abono registrado');
+}
+let apartadoDetalleActual=null;
+function verDetalleApartado(id){
+  const a=DB.apartados.find(x=>x.id===id); if(!a) return;
+  apartadoDetalleActual=a;
+  document.getElementById('da-numero').textContent=a.numero;
+  document.getElementById('da-cliente').textContent=a.cliente+(a.telefono? ' · '+a.telefono : '')+(a.cedula? ' · CC '+a.cedula : '');
+  document.getElementById('da-items').innerHTML=a.items.map(it=>`
+    <div class="tot-line"><span>${it.cantidad}x ${it.nombre} (${it.talla}/${it.color})</span><span class="num">${fmt(it.precio*it.cantidad)}</span></div>`).join('');
+  document.getElementById('da-total').textContent=fmt(a.total);
+  document.getElementById('da-abonos').innerHTML = a.abonos.length
+    ? a.abonos.map(ab=>`<div class="tot-line"><span>${ab.fecha} — ${ab.metodo}</span><span class="num">${fmt(ab.valor)}</span></div>`).join('')
+    : '<div class="empty">Sin abonos registrados.</div>';
+  document.getElementById('da-abonado').textContent=fmt(a.totalAbonado);
+  document.getElementById('da-saldo').textContent=fmt(a.saldoPendiente);
+  document.getElementById('da-notas').innerHTML = a.notas? ('<strong>Notas:</strong> '+a.notas) : '';
+  abrirModal('modal-detalle-apartado');
+}
+function marcarApartadoEntregado(){
+  const a=apartadoDetalleActual; if(!a) return;
+  if(a.saldoPendiente>0 && !confirm('Este apartado todavía tiene un saldo pendiente de '+fmt(a.saldoPendiente)+'. ¿Marcarlo como entregado de todas formas?')) return;
+  a.estado='completado';
+  guardarDB();
+  cerrarModal('modal-detalle-apartado');
+  renderApartados();
+  toast('Apartado marcado como entregado');
+}
+function cancelarApartado(){
+  const a=apartadoDetalleActual; if(!a) return;
+  if(!confirm('¿Cancelar este apartado? Las prendas volverán al inventario disponible.')) return;
+  a.items.forEach(it=>{
+    const art=DB.articulos.find(x=>x.id===it.articuloId);
+    if(art) art.stock+=it.cantidad;
+  });
+  if(a.totalAbonado>0 && confirm('Este apartado tiene '+fmt(a.totalAbonado)+' abonado. ¿Deseas registrar el reembolso en efectivo al cliente?')){
+    registrarMovimientoCaja(-a.totalAbonado, 'Efectivo', 'Reembolso cancelación apartado N.° '+a.numero+' — '+a.cliente, 'esAjusteDevolucion');
+  }
+  a.estado='cancelado';
+  guardarDB();
+  cerrarModal('modal-detalle-apartado');
+  renderApartados();
+  renderInventario();
+  toast('Apartado cancelado');
+}
+
 /* ================= DEVOLUCIONES Y CAMBIOS ================= */
 let ventaDevolucionActual=null;
 let itemsDevolver=[];
@@ -1835,9 +2160,20 @@ function renderTotalesDevolucion(){
   const diferencia=valorNuevo-valorDevuelto;
   const label=document.getElementById('dev-diferencia-label');
   const el=document.getElementById('dev-diferencia');
-  if(diferencia>0){ label.textContent='El cliente debe pagar'; el.textContent=fmt(diferencia); el.style.color='var(--danger)'; }
-  else if(diferencia<0){ label.textContent='A favor del cliente (reembolso)'; el.textContent=fmt(Math.abs(diferencia)); el.style.color='var(--success)'; }
-  else { label.textContent='Sin diferencia'; el.textContent='$0'; el.style.color='var(--ink)'; }
+  const campoMetodo=document.getElementById('dev-metodo-diferencia-field');
+  const labelMetodo=document.getElementById('dev-metodo-diferencia-label');
+  if(diferencia>0){
+    label.textContent='El cliente debe pagar'; el.textContent=fmt(diferencia); el.style.color='var(--danger)';
+    labelMetodo.textContent='¿Con qué método paga el cliente la diferencia?';
+    campoMetodo.style.display='block';
+  } else if(diferencia<0){
+    label.textContent='A favor del cliente (reembolso)'; el.textContent=fmt(Math.abs(diferencia)); el.style.color='var(--success)';
+    labelMetodo.textContent='¿Con qué método se le reembolsa al cliente?';
+    campoMetodo.style.display='block';
+  } else {
+    label.textContent='Sin diferencia'; el.textContent='$0'; el.style.color='var(--ink)';
+    campoMetodo.style.display='none';
+  }
 }
 function procesarDevolucion(){
   if(!ventaDevolucionActual) return;
@@ -1861,14 +2197,30 @@ function procesarDevolucion(){
   const valorBruto=itemsDevolver.reduce((s,it)=>s+it.precioReal*it.cantidadDevolver,0);
   const valorDevuelto=valorBruto*(1-pctAdicional/100);
   const diferencia=valorNuevo-valorDevuelto;
+  const hayDiferencia=Math.round(diferencia)!==0;
+  const metodoDiferencia=hayDiferencia ? document.getElementById('dev-metodo-diferencia').value : '';
 
   DB.devoluciones.push({
     id:uid(), fecha:hoyISO(), ventaId:ventaDevolucionActual.id, ventaNumero:ventaDevolucionActual.numero,
-    tipo, descuentoAdicionalPct:pctAdicional,
+    tipo, descuentoAdicionalPct:pctAdicional, metodoDiferencia,
     itemsDevueltos:itemsDevolver.filter(it=>it.cantidadDevolver>0).map(it=>({nombre:it.nombre,talla:it.talla,color:it.color,cantidad:it.cantidadDevolver,precioCatalogo:it.precio,precioReal:it.precioReal})),
     itemsNuevos: tipo==='cambio' ? itemsCambioNuevos.map(it=>({nombre:it.nombre,talla:it.talla,color:it.color,cantidad:it.cantidad,precio:it.precio})) : [],
     valorDevuelto, valorNuevo, diferencia, motivo, creadoEn:new Date().toISOString()
   });
+
+  // registrar la diferencia como movimiento real para que aparezca en Ventas, Cierre de caja y Reportes
+  if(hayDiferencia){
+    const numero=DB.config.siguienteNumero||1;
+    DB.ventas.push({
+      id:uid(), numero, fecha:hoyISO(), hora:new Date().toISOString(),
+      cliente:'Ajuste '+(tipo==='cambio'?'de cambio':'de devolución')+' — Venta N.° '+ventaDevolucionActual.numero,
+      cedula:ventaDevolucionActual.cedula||'', telefonoCliente:'', correo:'', direccion:'',
+      metodo:metodoDiferencia, vendedor:'',
+      items:[], subtotal:diferencia, descuento:0, total:diferencia, costoTotal:0,
+      esAjusteDevolucion:true
+    });
+    DB.config.siguienteNumero=numero+1;
+  }
   guardarDB();
   toast('Devolución/cambio procesado correctamente');
   document.getElementById('dev-panel').style.display='none';
@@ -1885,7 +2237,7 @@ function renderDevoluciones(){
   tbody.innerHTML=lista.map(d=>`
     <tr><td>${d.fecha}</td><td>${d.ventaNumero}</td><td>${d.tipo==='cambio'?'Cambio':'Devolución'}</td>
     <td class="right num">${fmt(d.valorDevuelto)}</td>
-    <td class="right num" style="color:${d.diferencia>0?'var(--danger)':(d.diferencia<0?'var(--success)':'inherit')};">${fmt(d.diferencia)}</td>
+    <td class="right num" style="color:${d.diferencia>0?'var(--danger)':(d.diferencia<0?'var(--success)':'inherit')};">${fmt(d.diferencia)}${d.metodoDiferencia?' ('+d.metodoDiferencia+')':''}</td>
     <td>${d.motivo||'—'}</td></tr>`).join('');
 }
 
@@ -2415,7 +2767,7 @@ function renderVentas(){
   if(!lista.length){ tbody.innerHTML='<tr><td colspan="7"><div class="empty">No hay ventas en este rango.</div></td></tr>'; return; }
   tbody.innerHTML=lista.map(v=>`
     <tr>
-      <td>${v.numero}</td><td>${v.fecha}</td><td>${v.cliente}${v.editada?' <span class="badge gold">editada</span>':''}</td>
+      <td>${v.numero}</td><td>${v.fecha}</td><td>${v.cliente}${v.editada?' <span class="badge gold">editada</span>':''}${v.esAjusteDevolucion?' <span class="badge indigo">ajuste</span>':''}${v.esAbonoApartado?' <span class="badge gold">abono</span>':''}</td>
       <td class="right num solo-gerencia">${fmt(v.costoTotal)}</td>
       <td class="right num">${fmt(v.total)}</td>
       <td class="right num solo-gerencia">${fmt(v.total-v.costoTotal)}</td>
