@@ -448,6 +448,15 @@
       <h3>Ventas totales del día</h3>
       <div class="kpi gold" style="font-size:24px;" id="cc-total-ventas">$0</div>
       <div class="kpi-sub" id="cc-num-facturas">0 factura(s)</div>
+      <hr class="stitch" style="margin:12px 0;">
+      <div class="tot-line"><span>Ventas de mercancía</span><span class="num" id="cc-ventas-mercancia">$0</span></div>
+      <div class="tot-line"><span>Abonos de apartados</span><span class="num" id="cc-abonos-apartados">$0</span></div>
+      <div class="tot-line"><span>Ajustes de devoluciones/cambios</span><span class="num" id="cc-ajustes-devolucion">$0</span></div>
+    </div>
+
+    <div class="card" style="margin-bottom:18px;">
+      <h3>Productos vendidos este día</h3>
+      <div id="cc-productos-vendidos"></div>
     </div>
 
     <div class="grid grid-2">
@@ -532,7 +541,7 @@
 
     <div class="card">
       <h3>Historial de devoluciones y cambios</h3>
-      <table><thead><tr><th>Fecha</th><th>N.° venta</th><th>Tipo</th><th class="right">Valor devuelto</th><th class="right">Diferencia</th><th>Motivo</th></tr></thead>
+      <table><thead><tr><th>Fecha</th><th>N.° venta</th><th>Tipo</th><th class="right">Valor devuelto</th><th class="right">Diferencia</th><th>Motivo</th><th></th></tr></thead>
       <tbody id="tbl-devoluciones"></tbody></table>
     </div>
   </div>
@@ -1258,6 +1267,9 @@
     <div class="tot-line"><span>Efectivo esperado</span><span class="num" id="dc-esperado">$0</span></div>
     <div class="tot-line"><span>Efectivo contado</span><span class="num" id="dc-contado">$0</span></div>
     <div class="tot-line big"><span>Diferencia</span><span class="num" id="dc-diferencia">$0</span></div>
+    <hr class="stitch" style="margin:10px 0;">
+    <label>Productos vendidos ese día</label>
+    <div id="dc-productos-vendidos" style="margin-top:6px;"></div>
     <div id="dc-notas-cont" style="margin-top:10px;font-size:13px;"></div>
     <div style="font-size:11px;color:var(--ink-soft);margin-top:10px;" id="dc-meta"></div>
     <div class="modal-actions">
@@ -1301,6 +1313,27 @@
       <button class="btn danger" onclick="cancelarApartado()">Cancelar apartado</button>
       <button class="btn ghost" onclick="cerrarModal('modal-detalle-apartado')">Cerrar</button>
       <button class="btn gold" onclick="marcarApartadoEntregado()">Marcar entregado</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal: detalle de devolución ===== -->
+<div class="modal-bg" id="modal-detalle-devolucion">
+  <div class="modal" style="width:460px;">
+    <h3>Devolución/cambio — Venta N.° <span id="dd-venta-numero"></span></h3>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-6px;" id="dd-meta"></p>
+    <label>Prendas devueltas</label>
+    <div id="dd-items-devueltos" style="margin-bottom:10px;"></div>
+    <div id="dd-zona-cambio" style="display:none;">
+      <label>Prendas del cambio</label>
+      <div id="dd-items-nuevos" style="margin-bottom:10px;"></div>
+    </div>
+    <div class="tot-line"><span>Valor devuelto</span><span class="num" id="dd-valor-devuelto">$0</span></div>
+    <div class="tot-line" id="dd-linea-valor-nuevo" style="display:none;"><span>Valor de los nuevos productos</span><span class="num" id="dd-valor-nuevo">$0</span></div>
+    <div class="tot-line big"><span id="dd-diferencia-label">Diferencia</span><span class="num" id="dd-diferencia">$0</span></div>
+    <div id="dd-motivo" style="margin-top:8px;font-size:13px;"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="cerrarModal('modal-detalle-devolucion')">Cerrar</button>
     </div>
   </div>
 </div>
@@ -1356,6 +1389,7 @@ function cargarDB(){
   return db;
 }
 function guardarDB(){
+  DB._updatedAtMs=Date.now();
   localStorage.setItem(DB_KEY, JSON.stringify(DB));
   if(syncActivo && firestoreRef && !aplicandoSnapshotRemoto){
     const tamano=new Blob([JSON.stringify(DB)]).size;
@@ -1624,7 +1658,26 @@ function calcularCierreCaja(fecha){
   ventasDia.forEach(v=>{ porMetodo[v.metodo]=(porMetodo[v.metodo]||0)+v.total; });
   const totalVentas=ventasDia.reduce((s,v)=>s+v.total,0);
   const gastosDia=DB.gastos.filter(g=>g.fecha===fecha).reduce((s,g)=>s+g.valor,0);
-  return {porMetodo, totalVentas, gastosDia, numFacturas:ventasDia.length};
+  const ventasMercancia=ventasDia.filter(v=>!v.esAbonoApartado && !v.esAjusteDevolucion).reduce((s,v)=>s+v.total,0);
+  const abonosApartados=ventasDia.filter(v=>v.esAbonoApartado).reduce((s,v)=>s+v.total,0);
+  const ajustesDevolucion=ventasDia.filter(v=>v.esAjusteDevolucion).reduce((s,v)=>s+v.total,0);
+  return {porMetodo, totalVentas, gastosDia, numFacturas:ventasDia.length, ventasMercancia, abonosApartados, ajustesDevolucion};
+}
+function renderProductosVendidosDia(fecha, contenedorId){
+  const cont=document.getElementById(contenedorId);
+  if(!cont) return;
+  const ventasDia=DB.ventas.filter(v=>v.fecha===fecha && !v.esAbonoApartado && !v.esAjusteDevolucion);
+  const mapa={};
+  ventasDia.forEach(v=>v.items.forEach(it=>{
+    const key=it.nombre+'|'+it.talla+'|'+it.color;
+    if(!mapa[key]) mapa[key]={nombre:it.nombre, talla:it.talla, color:it.color, cantidad:0, total:0};
+    mapa[key].cantidad+=it.cantidad;
+    mapa[key].total+=it.precio*it.cantidad;
+  }));
+  const lista=Object.values(mapa).sort((a,b)=>b.total-a.total);
+  if(!lista.length){ cont.innerHTML='<div class="empty">Sin productos vendidos ese día.</div>'; return; }
+  cont.innerHTML=`<table><thead><tr><th>Artículo</th><th class="center">Talla</th><th class="center">Color</th><th class="right">Cant.</th><th class="right">Total</th></tr></thead>
+    <tbody>${lista.map(p=>`<tr><td>${p.nombre}</td><td class="center">${p.talla}</td><td class="center">${p.color}</td><td class="right">${p.cantidad}</td><td class="right num">${fmt(p.total)}</td></tr>`).join('')}</tbody></table>`;
 }
 function renderCierre(){
   const pendiente=diaCierrePendiente();
@@ -1637,6 +1690,10 @@ function renderCierre(){
   document.getElementById('cc-mixto').textContent=fmt(r.porMetodo.Mixto||0);
   document.getElementById('cc-total-ventas').textContent=fmt(r.totalVentas);
   document.getElementById('cc-num-facturas').textContent=r.numFacturas+' factura(s)';
+  document.getElementById('cc-ventas-mercancia').textContent=fmt(r.ventasMercancia);
+  document.getElementById('cc-abonos-apartados').textContent=fmt(r.abonosApartados);
+  document.getElementById('cc-ajustes-devolucion').textContent=fmt(r.ajustesDevolucion);
+  renderProductosVendidosDia(fechaCierreActual, 'cc-productos-vendidos');
 
   const cierres=[...DB.cierres].sort((a,b)=>b.fecha.localeCompare(a.fecha));
   const cierreDelDia=cierres.find(c=>c.fecha===fechaCierreActual);
@@ -1783,6 +1840,7 @@ function verDetalleCierre(id){
   diffEl.style.color = c.diferencia===0 ? 'var(--ink)' : (c.diferencia>0 ? 'var(--success)' : 'var(--danger)');
   document.getElementById('dc-notas-cont').innerHTML = c.notas ? ('<strong>Notas:</strong> '+c.notas) : '';
   document.getElementById('dc-meta').textContent = c.cerradoEn ? ('Cerrado el '+new Date(c.cerradoEn).toLocaleString('es-CO')+(c.cerradoPor? ' — por '+c.cerradoPor : '')) : '';
+  renderProductosVendidosDia(c.fecha, 'dc-productos-vendidos');
   abrirModal('modal-detalle-cierre');
 }
 function exportarCierrePDFHistorico(){
@@ -1900,6 +1958,7 @@ function buscarClienteApartadoPorCedula(){
   }
 }
 function guardarApartado(){
+ try{
   if(!carritoApartado.length){ toast('Agrega al menos un artículo para apartar'); return; }
   const cliente=document.getElementById('apt-cliente').value.trim();
   if(!cliente){ toast('Escribe el nombre del cliente'); return; }
@@ -1931,14 +1990,18 @@ function guardarApartado(){
     apartado.saldoPendiente=total-abonoInicial;
     registrarMovimientoCaja(abonoInicial, metodoAbono, 'Abono apartado N.° '+numero+' — '+cliente, 'esAbonoApartado');
   }
+
+  // guardar el apartado primero, antes de cualquier otro efecto secundario
+  DB.apartados.push(apartado);
+  DB.config.siguienteNumeroApartado=numero+1;
+
   if(cedula || telefono){
     let clienteExistente=null;
     if(cedula) clienteExistente=DB.clientes.find(c=>c.cedula===cedula);
     if(!clienteExistente && telefono) clienteExistente=DB.clientes.find(c=>c.telefono===telefono);
     if(!clienteExistente) DB.clientes.push({id:uid(), nombre:cliente, telefono, cedula, correo:'', direccion:'', notas:'', fechaRegistro:hoyISO()});
   }
-  DB.apartados.push(apartado);
-  DB.config.siguienteNumeroApartado=numero+1;
+
   guardarDB();
 
   carritoApartado=[];
@@ -1949,6 +2012,10 @@ function guardarApartado(){
   renderCatalogoApartado();
   renderApartados();
   toast('Apartado N.° '+numero+' guardado');
+ }catch(err){
+  console.error('Error al guardar apartado', err);
+  toast('⚠ Ocurrió un error al guardar el apartado. Revisa que todos los campos estén completos e intenta de nuevo.');
+ }
 }
 function renderApartados(){
   const activos=DB.apartados.filter(a=>a.estado==='activo').sort((a,b)=>b.numero-a.numero);
@@ -1966,7 +2033,8 @@ function renderApartados(){
         <td class="right num" style="color:${a.saldoPendiente>0?'var(--danger)':'var(--success)'};">${fmt(a.saldoPendiente)}</td>
         <td>${a.fechaLimite||'—'}${vencido?' <span class="badge danger">vencido</span>':''}</td>
         <td class="right">
-          ${a.saldoPendiente>0? `<button class="btn gold sm" onclick="abrirModalAbono('${a.id}')">Abonar</button>` : ''}
+          ${a.saldoPendiente>0? `<button class="btn gold sm" onclick="abrirModalAbono('${a.id}')">Abonar</button>
+          <button class="btn ghost sm" onclick="abrirModalAbono('${a.id}', true)">Pagar saldo</button>` : ''}
           <button class="btn ghost sm" onclick="verDetalleApartado('${a.id}')">Ver</button>
         </td>
       </tr>`;
@@ -1981,12 +2049,12 @@ function renderApartados(){
       <td>${a.estado==='completado'? '<span class="badge success">Entregado</span>' : '<span class="badge danger">Cancelado</span>'}</td></tr>`).join('');
   }
 }
-function abrirModalAbono(id){
+function abrirModalAbono(id, pagarTodo){
   const a=DB.apartados.find(x=>x.id===id); if(!a) return;
   document.getElementById('abono-apartado-id').value=a.id;
   document.getElementById('abono-numero').textContent=a.numero;
   document.getElementById('abono-saldo-actual').textContent=fmt(a.saldoPendiente);
-  document.getElementById('abono-valor').value='';
+  document.getElementById('abono-valor').value=pagarTodo? a.saldoPendiente : '';
   document.getElementById('abono-metodo').value='Efectivo';
   abrirModal('modal-abono');
 }
@@ -2233,12 +2301,39 @@ function procesarDevolucion(){
 function renderDevoluciones(){
   const lista=[...DB.devoluciones].sort((a,b)=>b.creadoEn.localeCompare(a.creadoEn));
   const tbody=document.getElementById('tbl-devoluciones');
-  if(!lista.length){ tbody.innerHTML='<tr><td colspan="6"><div class="empty">Aún no se han registrado devoluciones o cambios.</div></td></tr>'; return; }
+  if(!lista.length){ tbody.innerHTML='<tr><td colspan="7"><div class="empty">Aún no se han registrado devoluciones o cambios.</div></td></tr>'; return; }
   tbody.innerHTML=lista.map(d=>`
     <tr><td>${d.fecha}</td><td>${d.ventaNumero}</td><td>${d.tipo==='cambio'?'Cambio':'Devolución'}</td>
     <td class="right num">${fmt(d.valorDevuelto)}</td>
     <td class="right num" style="color:${d.diferencia>0?'var(--danger)':(d.diferencia<0?'var(--success)':'inherit')};">${fmt(d.diferencia)}${d.metodoDiferencia?' ('+d.metodoDiferencia+')':''}</td>
-    <td>${d.motivo||'—'}</td></tr>`).join('');
+    <td>${d.motivo||'—'}</td>
+    <td class="right"><button class="btn ghost sm" onclick="verDetalleDevolucion('${d.id}')">Ver detalle</button></td></tr>`).join('');
+}
+function verDetalleDevolucion(id){
+  const d=DB.devoluciones.find(x=>x.id===id); if(!d) return;
+  document.getElementById('dd-venta-numero').textContent=d.ventaNumero;
+  document.getElementById('dd-meta').textContent=d.fecha+' — '+(d.tipo==='cambio'?'Cambio':'Devolución')+(d.descuentoAdicionalPct? ' · '+d.descuentoAdicionalPct+'% descuento adicional':'');
+  document.getElementById('dd-items-devueltos').innerHTML=(d.itemsDevueltos||[]).map(it=>`
+    <div class="tot-line"><span>${it.cantidad}x ${it.nombre} (${it.talla}/${it.color})</span><span class="num">${fmt((it.precioReal!=null?it.precioReal:it.precioCatalogo)*it.cantidad)}</span></div>`).join('') || '<div class="empty">Sin prendas registradas.</div>';
+  const zonaCambio=document.getElementById('dd-zona-cambio');
+  if(d.tipo==='cambio' && (d.itemsNuevos||[]).length){
+    zonaCambio.style.display='block';
+    document.getElementById('dd-items-nuevos').innerHTML=d.itemsNuevos.map(it=>`
+      <div class="tot-line"><span>${it.cantidad}x ${it.nombre} (${it.talla}/${it.color})</span><span class="num">${fmt(it.precio*it.cantidad)}</span></div>`).join('');
+    document.getElementById('dd-linea-valor-nuevo').style.display='flex';
+  } else {
+    zonaCambio.style.display='none';
+    document.getElementById('dd-linea-valor-nuevo').style.display='none';
+  }
+  document.getElementById('dd-valor-devuelto').textContent=fmt(d.valorDevuelto);
+  document.getElementById('dd-valor-nuevo').textContent=fmt(d.valorNuevo||0);
+  const label=document.getElementById('dd-diferencia-label');
+  const el=document.getElementById('dd-diferencia');
+  if(d.diferencia>0){ label.textContent='El cliente pagó'; el.textContent=fmt(d.diferencia)+(d.metodoDiferencia?' ('+d.metodoDiferencia+')':''); el.style.color='var(--danger)'; }
+  else if(d.diferencia<0){ label.textContent='Reembolsado al cliente'; el.textContent=fmt(Math.abs(d.diferencia))+(d.metodoDiferencia?' ('+d.metodoDiferencia+')':''); el.style.color='var(--success)'; }
+  else { label.textContent='Sin diferencia'; el.textContent='$0'; el.style.color='var(--ink)'; }
+  document.getElementById('dd-motivo').innerHTML = d.motivo? ('<strong>Motivo:</strong> '+d.motivo) : '';
+  abrirModal('modal-detalle-devolucion');
 }
 
 /* ================= INVENTARIO ================= */
@@ -4048,8 +4143,10 @@ async function conectarSincronizacion(firebaseConfigObj, storeCode, esConexionMa
     }
     firestoreRef.onSnapshot(doc=>{
       if(!doc.exists || aplicandoSnapshotRemoto) return;
+      const nuevo=doc.data();
+      if((nuevo._updatedAtMs||0) < (DB._updatedAtMs||0)) return; // ignorar eco viejo/atrasado que pisaría cambios más recientes
       aplicandoSnapshotRemoto=true;
-      DB=doc.data();
+      DB=nuevo;
       localStorage.setItem(DB_KEY, JSON.stringify(DB));
       const hayModalAbierto=document.querySelector('.modal-bg.active');
       const enfocadoEnCampo=document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
