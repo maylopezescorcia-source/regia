@@ -1390,11 +1390,17 @@ function cargarDB(){
 }
 function guardarDB(){
   DB._updatedAtMs=Date.now();
-  localStorage.setItem(DB_KEY, JSON.stringify(DB));
+  try{
+    localStorage.setItem(DB_KEY, JSON.stringify(DB));
+  }catch(err){
+    console.error('Error guardando en almacenamiento local', err);
+    toast('⚠ El almacenamiento de este navegador está lleno (posiblemente por fotos de productos). El cambio no quedó guardado localmente — intenta borrar alguna imagen de un artículo.');
+  }
   if(syncActivo && firestoreRef && !aplicandoSnapshotRemoto){
-    const tamano=new Blob([JSON.stringify(DB)]).size;
+    let tamano;
+    try{ tamano=new Blob([JSON.stringify(DB)]).size; }catch(err){ console.error('Error midiendo tamaño de datos', err); return; }
     if(tamano>900000){
-      toast('⚠ Los datos ya casi llegan al límite de la nube (imágenes muy pesadas). Este cambio se guardó solo en este dispositivo.');
+      toast('⚠ Los datos ya casi llegan al límite de la nube (imágenes muy pesadas). Este cambio no se pudo sincronizar.');
       return;
     }
     firestoreRef.set(DB).catch(err=>{ console.error('Error sincronizando', err); toast('⚠ No se pudo sincronizar con la nube (revisa tu conexión)'); });
@@ -2014,7 +2020,7 @@ function guardarApartado(){
   toast('Apartado N.° '+numero+' guardado');
  }catch(err){
   console.error('Error al guardar apartado', err);
-  toast('⚠ Ocurrió un error al guardar el apartado. Revisa que todos los campos estén completos e intenta de nuevo.');
+  toast('⚠ Error al guardar: '+(err && err.message ? err.message : 'desconocido'));
  }
 }
 function renderApartados(){
