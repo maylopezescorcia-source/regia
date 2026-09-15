@@ -2,6 +2,9 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Estudio Tributario · Sistema de Almacén de Ropa</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -282,6 +285,7 @@
   <div id="sidebar-foot">
     <div style="margin-bottom:8px;">Sesión: <strong id="rol-actual">—</strong></div>
     <div id="sidebar-sync-badge" style="margin-bottom:8px;font-size:11px;color:#B7C0CB;">📴 Solo este dispositivo</div>
+    <div style="margin-bottom:8px;font-size:10px;color:#8E99A6;">Versión 2026-09-12 20:10</div>
     <button class="btn ghost sm" style="width:100%;color:#EDEFF2;border-color:rgba(255,255,255,.28);" onclick="cerrarSesion()">Cerrar sesión</button>
   </div>
 </div>
@@ -371,12 +375,17 @@
       <div class="card">
         <h3 style="margin-bottom:10px;">Comprobante</h3>
         <div class="field">
+          <label>Buscar cliente por nombre o celular</label>
+          <input type="text" id="fac-buscar-cliente" placeholder="Escribe el nombre o el celular…" oninput="renderBusquedaClienteFacturar()">
+          <div id="fac-resultados-cliente" style="max-height:150px;overflow:auto;"></div>
+        </div>
+        <div class="field">
           <label>Cliente (opcional)</label>
           <input type="text" id="fac-cliente" placeholder="Nombre del cliente">
         </div>
         <div class="row">
           <div class="field"><label>Cédula</label><input type="text" id="fac-cedula" placeholder="N.° de cédula" onblur="buscarClientePorCedula()" onkeydown="if(event.key==='Enter'){event.preventDefault();buscarClientePorCedula();}"></div>
-          <div class="field"><label>Teléfono</label><input type="text" id="fac-telefono-cliente" placeholder="Teléfono"></div>
+          <div class="field"><label>Teléfono</label><input type="text" id="fac-telefono-cliente" placeholder="Teléfono" onblur="buscarClientePorTelefono()"></div>
         </div>
         <div id="fac-cliente-estado" style="margin-bottom:10px;"></div>
         <div class="row">
@@ -559,10 +568,15 @@
       </div>
       <div class="card">
         <h3 style="margin-bottom:10px;">Datos del apartado</h3>
+        <div class="field">
+          <label>Buscar cliente por nombre o celular</label>
+          <input type="text" id="apt-buscar-cliente" placeholder="Escribe el nombre o el celular…" oninput="renderBusquedaClienteApartado()">
+          <div id="apt-resultados-cliente" style="max-height:150px;overflow:auto;"></div>
+        </div>
         <div class="field"><label>Cliente</label><input type="text" id="apt-cliente" placeholder="Nombre del cliente"></div>
         <div class="row">
           <div class="field"><label>Cédula</label><input type="text" id="apt-cedula" placeholder="N.° de cédula" onblur="buscarClienteApartadoPorCedula()" onkeydown="if(event.key==='Enter'){event.preventDefault();buscarClienteApartadoPorCedula();}"></div>
-          <div class="field"><label>Teléfono</label><input type="text" id="apt-telefono"></div>
+          <div class="field"><label>Teléfono</label><input type="text" id="apt-telefono" onblur="buscarClienteApartadoPorTelefono()"></div>
         </div>
         <div id="apt-cliente-estado" style="margin-bottom:10px;"></div>
         <div id="apt-carrito-items"><div class="empty">Aún no has agregado artículos.</div></div>
@@ -1963,6 +1977,41 @@ function buscarClienteApartadoPorCedula(){
     estado.innerHTML='<span class="badge gold">Cliente nuevo — se guardará al apartar</span>';
   }
 }
+function buscarClienteApartadoPorTelefono(){
+  const telefono=document.getElementById('apt-telefono').value.trim();
+  const estado=document.getElementById('apt-cliente-estado');
+  if(!telefono) return;
+  const cliente=DB.clientes.find(c=>c.telefono && c.telefono===telefono);
+  if(cliente){
+    document.getElementById('apt-cliente').value=cliente.nombre||'';
+    document.getElementById('apt-cedula').value=cliente.cedula||'';
+    estado.innerHTML='<span class="badge success">✓ Cliente encontrado: '+cliente.nombre+'</span>';
+  }
+}
+function buscarClientesFuzzy(query){
+  const q=(query||'').trim().toLowerCase();
+  if(!q) return [];
+  return DB.clientes.filter(c=>(c.nombre||'').toLowerCase().includes(q) || (c.telefono||'').includes(q)).slice(0,8);
+}
+function renderBusquedaClienteApartado(){
+  const q=document.getElementById('apt-buscar-cliente').value;
+  const cont=document.getElementById('apt-resultados-cliente');
+  const resultados=buscarClientesFuzzy(q);
+  if(!q.trim() || !resultados.length){ cont.innerHTML=''; return; }
+  cont.innerHTML=resultados.map(c=>`
+    <div class="cat-item" onclick="seleccionarClienteApartado('${c.id}')">
+      <div><div class="nm">${c.nombre}</div><div class="meta">${c.telefono||'sin teléfono'}${c.cedula? ' · CC '+c.cedula:''}</div></div>
+    </div>`).join('');
+}
+function seleccionarClienteApartado(id){
+  const c=DB.clientes.find(x=>x.id===id); if(!c) return;
+  document.getElementById('apt-cliente').value=c.nombre||'';
+  document.getElementById('apt-cedula').value=c.cedula||'';
+  document.getElementById('apt-telefono').value=c.telefono||'';
+  document.getElementById('apt-buscar-cliente').value='';
+  document.getElementById('apt-resultados-cliente').innerHTML='';
+  document.getElementById('apt-cliente-estado').innerHTML='<span class="badge success">✓ Cliente encontrado: '+c.nombre+'</span>';
+}
 function guardarApartado(){
  try{
   if(!carritoApartado.length){ toast('Agrega al menos un artículo para apartar'); return; }
@@ -2706,6 +2755,40 @@ function buscarClientePorCedula(){
   } else {
     estado.innerHTML='<span class="badge gold">Cliente nuevo — se guardará al facturar</span>';
   }
+}
+function buscarClientePorTelefono(){
+  const telefono=document.getElementById('fac-telefono-cliente').value.trim();
+  const estado=document.getElementById('fac-cliente-estado');
+  if(!telefono) return;
+  const cliente=DB.clientes.find(c=>c.telefono && c.telefono===telefono);
+  if(cliente){
+    document.getElementById('fac-cliente').value=cliente.nombre||'';
+    document.getElementById('fac-cedula').value=cliente.cedula||'';
+    document.getElementById('fac-correo').value=cliente.correo||'';
+    document.getElementById('fac-direccion').value=cliente.direccion||'';
+    estado.innerHTML='<span class="badge success">✓ Cliente encontrado: '+cliente.nombre+'</span>';
+  }
+}
+function renderBusquedaClienteFacturar(){
+  const q=document.getElementById('fac-buscar-cliente').value;
+  const cont=document.getElementById('fac-resultados-cliente');
+  const resultados=buscarClientesFuzzy(q);
+  if(!q.trim() || !resultados.length){ cont.innerHTML=''; return; }
+  cont.innerHTML=resultados.map(c=>`
+    <div class="cat-item" onclick="seleccionarClienteFacturar('${c.id}')">
+      <div><div class="nm">${c.nombre}</div><div class="meta">${c.telefono||'sin teléfono'}${c.cedula? ' · CC '+c.cedula:''}</div></div>
+    </div>`).join('');
+}
+function seleccionarClienteFacturar(id){
+  const c=DB.clientes.find(x=>x.id===id); if(!c) return;
+  document.getElementById('fac-cliente').value=c.nombre||'';
+  document.getElementById('fac-cedula').value=c.cedula||'';
+  document.getElementById('fac-telefono-cliente').value=c.telefono||'';
+  document.getElementById('fac-correo').value=c.correo||'';
+  document.getElementById('fac-direccion').value=c.direccion||'';
+  document.getElementById('fac-buscar-cliente').value='';
+  document.getElementById('fac-resultados-cliente').innerHTML='';
+  document.getElementById('fac-cliente-estado').innerHTML='<span class="badge success">✓ Cliente encontrado: '+c.nombre+'</span>';
 }
 function guardarVenta(){
   if(diaCierrePendiente()){ toast('No puedes facturar: hay un cierre de caja pendiente. Ve a Cierre de caja.'); return; }
