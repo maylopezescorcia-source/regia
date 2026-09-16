@@ -558,7 +558,9 @@
 
   <!-- ================= APARTADOS ================= -->
   <div class="view" id="view-apartados">
-    <div class="view-head"><div><h1>Apartados</h1><p>Reserva prendas para un cliente con un abono, y lleva el control del saldo pendiente.</p></div></div>
+    <div class="view-head"><div><h1>Apartados</h1><p>Reserva prendas para un cliente con un abono, y lleva el control del saldo pendiente.</p></div>
+      <button class="btn ghost" onclick="abrirModalRecuperarApartado()">Recuperar apartado sin registrar</button>
+    </div>
     <hr class="stitch head-stitch">
 
     <div class="grid grid-2">
@@ -1389,6 +1391,42 @@
     <div class="modal-actions">
       <button class="btn ghost" onclick="cerrarModal('modal-editar-apartado')">Cancelar</button>
       <button class="btn gold" onclick="guardarEdicionApartado()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal: recuperar apartado sin registrar ===== -->
+<div class="modal-bg" id="modal-recuperar-apartado">
+  <div class="modal" style="width:680px;">
+    <h3>Recuperar apartado sin registrar</h3>
+    <p style="font-size:11.5px;color:var(--ink-soft);margin-top:-8px;margin-bottom:12px;">Úsalo cuando un abono quedó en Ventas pero el apartado nunca se guardó. Esto NO vuelve a descontar inventario ni a cobrar el abono otra vez — solo re-crea el apartado con las prendas que indiques y deja el abono ya recibido enlazado, con el saldo pendiente listo para seguir abonando.</p>
+    <div class="field"><label>Abono huérfano a vincular</label>
+      <select id="ra-venta-select" onchange="seleccionarVentaRecuperar()"></select>
+    </div>
+    <div class="row">
+      <div class="field"><label>Cliente</label><input type="text" id="ra-cliente"></div>
+      <div class="field"><label>Cédula</label><input type="text" id="ra-cedula"></div>
+      <div class="field"><label>Teléfono</label><input type="text" id="ra-telefono"></div>
+    </div>
+    <div class="grid grid-2">
+      <div>
+        <h3 style="margin-bottom:10px;">Prendas que se apartaron</h3>
+        <div class="field search-box"><input type="text" id="ra-buscar-articulo" placeholder="Buscar artículo, talla o color…" oninput="renderCatalogoRecuperarApartado()"></div>
+        <div id="ra-catalogo-list" style="max-height:220px;overflow:auto;"></div>
+      </div>
+      <div>
+        <h3 style="margin-bottom:10px;">Prendas agregadas</h3>
+        <div id="ra-carrito-items"><div class="empty">Sin artículos.</div></div>
+        <div class="tot-line big"><span>Valor total</span><span class="num" id="ra-total">$0</span></div>
+        <div class="tot-line"><span>Ya abonado (del registro original)</span><span class="num" id="ra-abonado">$0</span></div>
+        <div class="tot-line"><span>Saldo pendiente</span><span class="num" id="ra-saldo">$0</span></div>
+        <div class="field" style="margin-top:10px;"><label>Fecha límite (opcional)</label><input type="date" id="ra-fecha-limite"></div>
+        <div class="field"><label>Notas</label><input type="text" id="ra-notas"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="cerrarModal('modal-recuperar-apartado')">Cancelar</button>
+      <button class="btn gold" onclick="guardarApartadoRecuperado()">Registrar apartado recuperado</button>
     </div>
   </div>
 </div>
@@ -2373,6 +2411,137 @@ function guardarEdicionApartado(){
  }catch(err){
   console.error('Error al editar apartado', err);
   toast('⚠ Error al guardar los cambios: '+(err && err.message ? err.message : 'desconocido'));
+ }
+}
+
+/* ---------------- Recuperar apartado sin registrar (abono huérfano) ---------------- */
+let carritoRecuperarApartado=[];
+let ventaRecuperarSeleccionada=null;
+function abrirModalRecuperarApartado(){
+  carritoRecuperarApartado=[];
+  ventaRecuperarSeleccionada=null;
+  document.getElementById('ra-cliente').value='';
+  document.getElementById('ra-cedula').value='';
+  document.getElementById('ra-telefono').value='';
+  document.getElementById('ra-fecha-limite').value='';
+  document.getElementById('ra-notas').value='';
+  document.getElementById('ra-buscar-articulo').value='';
+  poblarSelectVentasRecuperar();
+  renderCatalogoRecuperarApartado();
+  renderCarritoRecuperarApartado();
+  abrirModal('modal-recuperar-apartado');
+}
+function poblarSelectVentasRecuperar(){
+  const sel=document.getElementById('ra-venta-select');
+  const candidatas=DB.ventas.filter(v=>v.esAbonoApartado && !v.usadaEnRecuperacion).sort((a,b)=>(b.hora||'').localeCompare(a.hora||''));
+  if(!candidatas.length){ sel.innerHTML='<option value="">No hay abonos de apartado sin vincular</option>'; return; }
+  sel.innerHTML='<option value="">— Selecciona el abono —</option>' + candidatas.map(v=>{
+    const m=v.cliente.match(/Abono apartado N\.\° (\d+) — (.+)/);
+    const numeroOriginal=m? m[1] : '?';
+    const nombreCliente=m? m[2] : v.cliente;
+    const yaExisteEseNumero=DB.apartados.some(a=>String(a.numero)===numeroOriginal);
+    return `<option value="${v.id}">${v.fecha} — ${nombreCliente} — ${fmt(v.total)}${yaExisteEseNumero? ' (ojo: ya hay un apartado con ese N.° original, revisa antes de usar)' : ''}</option>`;
+  }).join('');
+}
+function seleccionarVentaRecuperar(){
+  const id=document.getElementById('ra-venta-select').value;
+  ventaRecuperarSeleccionada = id? DB.ventas.find(v=>v.id===id) : null;
+  if(ventaRecuperarSeleccionada){
+    const m=ventaRecuperarSeleccionada.cliente.match(/Abono apartado N\.\° (\d+) — (.+)/);
+    if(m) document.getElementById('ra-cliente').value=m[2];
+  }
+  renderCarritoRecuperarApartado();
+}
+function renderCatalogoRecuperarApartado(){
+  const q=(document.getElementById('ra-buscar-articulo')?.value||'').toLowerCase();
+  const cont=document.getElementById('ra-catalogo-list');
+  const lista=DB.articulos.filter(a=>(a.nombre+a.talla+a.color).toLowerCase().includes(q)).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  if(!lista.length){ cont.innerHTML='<div class="empty">Sin artículos.</div>'; return; }
+  cont.innerHTML=lista.map(a=>`
+    <div class="cat-item" onclick="agregarAlCarritoRecuperar('${a.id}')">
+      <div><div class="nm">${a.nombre}</div><div class="meta">${a.talla} · ${a.color} · stock actual ${a.stock}</div></div>
+      <div class="pr">${fmt(a.precio)}</div>
+    </div>`).join('');
+}
+function agregarAlCarritoRecuperar(articuloId){
+  const art=DB.articulos.find(x=>x.id===articuloId); if(!art) return;
+  const existente=carritoRecuperarApartado.find(c=>c.articuloId===articuloId);
+  if(existente) existente.cantidad++;
+  else carritoRecuperarApartado.push({articuloId:art.id, nombre:art.nombre, talla:art.talla, color:art.color, cantidad:1, precio:art.precio});
+  renderCarritoRecuperarApartado();
+}
+function cambiarCantidadRecuperar(articuloId, delta){
+  const it=carritoRecuperarApartado.find(c=>c.articuloId===articuloId); if(!it) return;
+  it.cantidad+=delta;
+  if(it.cantidad<=0) carritoRecuperarApartado=carritoRecuperarApartado.filter(c=>c.articuloId!==articuloId);
+  renderCarritoRecuperarApartado();
+}
+function quitarDelCarritoRecuperar(articuloId){
+  carritoRecuperarApartado=carritoRecuperarApartado.filter(c=>c.articuloId!==articuloId);
+  renderCarritoRecuperarApartado();
+}
+function renderCarritoRecuperarApartado(){
+  const cont=document.getElementById('ra-carrito-items');
+  if(!carritoRecuperarApartado.length){ cont.innerHTML='<div class="empty">Sin artículos. Agrega al menos uno.</div>'; }
+  else{
+    cont.innerHTML=carritoRecuperarApartado.map(it=>`
+      <div class="carr-row">
+        <div class="nm">${it.nombre}<br><span style="color:var(--ink-soft);font-size:11.5px;">${it.talla} · ${it.color}</span></div>
+        <button class="btn ghost sm" onclick="cambiarCantidadRecuperar('${it.articuloId}',-1)">−</button>
+        <span style="width:24px;text-align:center;">${it.cantidad}</span>
+        <button class="btn ghost sm" onclick="cambiarCantidadRecuperar('${it.articuloId}',1)">+</button>
+        <div class="num" style="width:70px;text-align:right;">${fmt(it.precio*it.cantidad)}</div>
+        <button class="btn danger sm" onclick="quitarDelCarritoRecuperar('${it.articuloId}')">×</button>
+      </div>`).join('');
+  }
+  const total=carritoRecuperarApartado.reduce((s,it)=>s+it.precio*it.cantidad,0);
+  const abonado=ventaRecuperarSeleccionada? ventaRecuperarSeleccionada.total : 0;
+  document.getElementById('ra-total').textContent=fmt(total);
+  document.getElementById('ra-abonado').textContent=fmt(abonado);
+  const saldo=total-abonado;
+  const elSaldo=document.getElementById('ra-saldo');
+  elSaldo.textContent=fmt(saldo);
+  elSaldo.style.color = saldo<0 ? 'var(--danger)' : '';
+}
+function guardarApartadoRecuperado(){
+ try{
+  if(!ventaRecuperarSeleccionada){ toast('Selecciona el abono huérfano que quieres vincular'); return; }
+  if(!carritoRecuperarApartado.length){ toast('Agrega al menos una prenda'); return; }
+  const cliente=document.getElementById('ra-cliente').value.trim();
+  if(!cliente){ toast('Escribe el nombre del cliente'); return; }
+  const cedula=document.getElementById('ra-cedula').value.trim();
+  const telefono=document.getElementById('ra-telefono').value.trim();
+  const fechaLimite=document.getElementById('ra-fecha-limite').value;
+  const notas=document.getElementById('ra-notas').value.trim();
+  const total=carritoRecuperarApartado.reduce((s,it)=>s+it.precio*it.cantidad,0);
+  const totalAbonado=ventaRecuperarSeleccionada.total;
+
+  if(total<totalAbonado && !confirm('El valor de las prendas ('+fmt(total)+') es menor que lo ya abonado ('+fmt(totalAbonado)+'). ¿Continuar de todas formas?')) return;
+
+  const numero=DB.config.siguienteNumeroApartado||1;
+  const m=ventaRecuperarSeleccionada.cliente.match(/Abono apartado N\.\° (\d+) — (.+)/);
+  const apartado={
+    id:uid(), numero, fecha:ventaRecuperarSeleccionada.fecha, creadoEn:new Date().toISOString(),
+    cliente, cedula, telefono,
+    items:carritoRecuperarApartado.map(it=>({...it})), total,
+    abonos:[{fecha:ventaRecuperarSeleccionada.fecha, valor:totalAbonado, metodo:ventaRecuperarSeleccionada.metodo||'Efectivo', creadoEn:ventaRecuperarSeleccionada.hora||new Date().toISOString()}],
+    totalAbonado, saldoPendiente:Math.max(0, total-totalAbonado),
+    estado:'activo', fechaLimite,
+    notas:(notas? notas+' — ' : '')+'Recuperado de un abono huérfano (N.° original '+(m? m[1] : '—')+').',
+    recuperado:true
+  };
+  // No se toca el inventario: las prendas ya habían sido descontadas cuando se intentó crear el apartado original.
+  DB.apartados.push(apartado);
+  DB.config.siguienteNumeroApartado=numero+1;
+  ventaRecuperarSeleccionada.usadaEnRecuperacion=true;
+
+  guardarDB();
+  cerrarModal('modal-recuperar-apartado');
+  renderApartados();
+  toast('Apartado N.° '+numero+' recuperado correctamente (sin tocar inventario)');
+ }catch(err){
+  console.error('Error al recuperar apartado', err);
+  toast('⚠ Error al recuperar: '+(err && err.message ? err.message : 'desconocido'));
  }
 }
 
