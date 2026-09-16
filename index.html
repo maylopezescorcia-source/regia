@@ -2271,8 +2271,14 @@ function cancelarApartado(){
   const a=apartadoDetalleActual; if(!a) return;
   if(!confirm('¿Cancelar este apartado? Las prendas volverán al inventario disponible.')) return;
   a.items.forEach(it=>{
-    const art=DB.articulos.find(x=>x.id===it.articuloId);
-    if(art) art.stock+=it.cantidad;
+    let art=DB.articulos.find(x=>x.id===it.articuloId);
+    if(!art){
+      // La prenda fue eliminada de Inventario después de crear el apartado: se recrea para no perder el stock que se está devolviendo.
+      art={ id:uid(), nombre:it.nombre, talla:it.talla||'', color:it.color||'', categoria:'', costo:0, precio:it.precio||0, stock:0 };
+      DB.articulos.push(art);
+      advertenciasStockPerdido.push((it.nombre||'Artículo')+' ('+(it.talla||'—')+'/'+(it.color||'—')+')');
+    }
+    art.stock+=it.cantidad;
   });
   if(a.totalAbonado>0 && confirm('Este apartado tiene '+fmt(a.totalAbonado)+' abonado. ¿Deseas registrar el reembolso en efectivo al cliente?')){
     registrarMovimientoCaja(-a.totalAbonado, 'Efectivo', 'Reembolso cancelación apartado N.° '+a.numero+' — '+a.cliente, 'esAjusteDevolucion');
@@ -2283,6 +2289,7 @@ function cancelarApartado(){
   renderApartados();
   renderInventario();
   toast('Apartado cancelado');
+  mostrarAdvertenciasStock();
 }
 
 /* ---------------- Editar apartado activo ---------------- */
@@ -2399,7 +2406,14 @@ function guardarEdicionApartado(){
     const nuevo=carritoEditarApartado.find(i=>i.articuloId===articuloId);
     const diff=(nuevo? nuevo.cantidad : 0) - (original? original.cantidad : 0);
     if(diff!==0){
-      const art=DB.articulos.find(x=>x.id===articuloId);
+      let art=DB.articulos.find(x=>x.id===articuloId);
+      if(!art && diff<0){
+        // se está devolviendo stock de una prenda que ya no existe en Inventario: se recrea
+        const ref=original||nuevo;
+        art={ id:uid(), nombre:ref.nombre, talla:ref.talla||'', color:ref.color||'', categoria:'', costo:0, precio:ref.precio||0, stock:0 };
+        DB.articulos.push(art);
+        advertenciasStockPerdido.push((ref.nombre||'Artículo')+' ('+(ref.talla||'—')+'/'+(ref.color||'—')+')');
+      }
       if(art) art.stock=Math.max(0, art.stock-diff);
     }
   });
@@ -2417,6 +2431,7 @@ function guardarEdicionApartado(){
   renderInventario();
   renderCatalogoApartado();
   toast('Apartado N.° '+a.numero+' actualizado');
+  mostrarAdvertenciasStock();
  }catch(err){
   console.error('Error al editar apartado', err);
   toast('⚠ Error al guardar los cambios: '+(err && err.message ? err.message : 'desconocido'));
@@ -2734,6 +2749,7 @@ function procesarDevolucion(){
   ventaDevolucionActual=null;
   renderDevoluciones();
   renderInventario();
+  mostrarAdvertenciasStock();
 }
 function renderDevoluciones(){
   const lista=[...DB.devoluciones].sort((a,b)=>b.creadoEn.localeCompare(a.creadoEn));
@@ -3109,17 +3125,34 @@ function setCantidad(id, val){
 }
 
 /* ---------------- Ajuste de stock (compatible con combos) ---------------- */
+let advertenciasStockPerdido=[];
+function mostrarAdvertenciasStock(){
+  if(advertenciasStockPerdido.length){
+    alert('⚠ Ojo: '+(advertenciasStockPerdido.length>1? 'algunas de estas prendas ya no existían' : 'esta prenda ya no existía')+' en tu Inventario (las habías eliminado), así que se recrearon automáticamente con el stock que se estaba devolviendo:\n\n- '+advertenciasStockPerdido.join('\n- ')+'\n\nRevísalas en Inventario: quedaron con costo $0 y sin categoría, así que actualiza esos datos.');
+    advertenciasStockPerdido=[];
+  }
+}
 function esItemCombo(it){ return typeof it.articuloId==='string' && it.articuloId.indexOf('combo:')===0; }
 function ajustarStockPorItem(it, cantidad, signo){
   if(esItemCombo(it)){
     const combo=DB.combos.find(c=>c.id===it.articuloId.slice(6));
-    if(!combo) return;
+    if(!combo){
+      if(signo>0) advertenciasStockPerdido.push('Combo "'+(it.nombre||it.articuloId)+'" (el combo ya no existe, no se pudo devolver el stock de sus componentes — revísalo manualmente)');
+      return;
+    }
     combo.items.forEach(comp=>{
       const a=DB.articulos.find(x=>x.id===comp.articuloId);
       if(a) a.stock=Math.max(0, a.stock+signo*comp.cantidad*cantidad);
+      else if(signo>0) advertenciasStockPerdido.push('Un componente del combo "'+combo.nombre+'" ya no existe en Inventario — revísalo manualmente');
     });
   } else {
-    const a=DB.articulos.find(x=>x.id===it.articuloId);
+    let a=DB.articulos.find(x=>x.id===it.articuloId);
+    if(!a && signo>0){
+      // La prenda fue eliminada de Inventario después de la venta/apartado: se recrea para no perder el stock que se está devolviendo.
+      a={ id:uid(), nombre:it.nombre, talla:it.talla||'', color:it.color||'', categoria:'', costo:0, precio:it.precio||0, stock:0 };
+      DB.articulos.push(a);
+      advertenciasStockPerdido.push((it.nombre||'Artículo')+' ('+(it.talla||'—')+'/'+(it.color||'—')+')');
+    }
     if(a) a.stock=Math.max(0, a.stock+signo*cantidad);
   }
 }
@@ -3358,6 +3391,7 @@ function eliminarVenta(id){
   renderVentas();
   renderInventario();
   toast('Venta N.° '+v.numero+' eliminada y stock restaurado');
+  mostrarAdvertenciasStock();
 }
 
 let ventaEditando=null;
@@ -3447,6 +3481,7 @@ function guardarEdicionVenta(){
   renderVentas();
   renderInventario();
   toast('Venta N.° '+original.numero+' actualizada');
+  mostrarAdvertenciasStock();
 }
 
 /* ================= COMBOS ================= */
