@@ -1480,7 +1480,16 @@ function cargarDB(){
       gastos:[]       // {id, fecha, categoria, descripcion, valor}
     };
   }
-  // migración: costos fijos para punto de equilibrio
+  return migrarDB(db);
+}
+// Rellena cualquier campo nuevo que falte en la base de datos (sea la que viene de localStorage
+// o la que llega de la nube en cualquier sincronización). Debe llamarse SIEMPRE que DB se reemplace
+// por completo, para que nunca queden arreglos como DB.apartados en 'undefined'.
+function migrarDB(db){
+  if(!db.config) db.config={ nombre:'Mi Almacén de Ropa', nit:'', direccion:'', telefono:'', umbralStock:3, siguienteNumero:1 };
+  if(!db.articulos) db.articulos=[];
+  if(!db.ventas) db.ventas=[];
+  if(!db.gastos) db.gastos=[];
   if(!db.config.costosFijos) db.config.costosFijos={arriendo:0, servicios:0, administracion:0, nomina:0};
   if(db.config.diasLaborales===undefined) db.config.diasLaborales=6;
   if(db.config.margenManual===undefined) db.config.margenManual=null;
@@ -4659,7 +4668,7 @@ async function conectarSincronizacion(firebaseConfigObj, storeCode, esConexionMa
       }
       if(descargar){
         aplicandoSnapshotRemoto=true;
-        DB=snap.data();
+        DB=migrarDB(snap.data());
         localStorage.setItem(DB_KEY, JSON.stringify(DB));
         aplicandoSnapshotRemoto=false;
       } else {
@@ -4670,7 +4679,7 @@ async function conectarSincronizacion(firebaseConfigObj, storeCode, esConexionMa
     }
     firestoreRef.onSnapshot(doc=>{
       if(!doc.exists || aplicandoSnapshotRemoto) return;
-      const nuevo=doc.data();
+      const nuevo=migrarDB(doc.data());
       if((nuevo._updatedAtMs||0) < (DB._updatedAtMs||0)) return; // ignorar eco viejo/atrasado que pisaría cambios más recientes
       aplicandoSnapshotRemoto=true;
       DB=nuevo;
