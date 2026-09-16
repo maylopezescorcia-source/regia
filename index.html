@@ -280,12 +280,13 @@
     <button class="nav-btn" data-view="reportes"><span class="ic">▦</span> Reportes</button>
     <button class="nav-btn" data-view="equilibrio"><span class="ic">⟡</span> Punto de equilibrio</button>
     <button class="nav-btn" data-view="flujo"><span class="ic">💧</span> Flujo de caja</button>
+    <button class="nav-btn" data-view="reserva"><span class="ic">🏦</span> Reserva</button>
     <button class="nav-btn" data-view="config"><span class="ic">⚙</span> Configuración</button>
   </nav>
   <div id="sidebar-foot">
     <div style="margin-bottom:8px;">Sesión: <strong id="rol-actual">—</strong></div>
     <div id="sidebar-sync-badge" style="margin-bottom:8px;font-size:11px;color:#B7C0CB;">📴 Solo este dispositivo</div>
-    <div style="margin-bottom:8px;font-size:10px;color:#8E99A6;">Versión 2026-09-12 20:10</div>
+    <div style="margin-bottom:8px;font-size:10px;color:#8E99A6;">Versión 2026-09-15 12:00</div>
     <button class="btn ghost sm" style="width:100%;color:#EDEFF2;border-color:rgba(255,255,255,.28);" onclick="cerrarSesion()">Cerrar sesión</button>
   </div>
 </div>
@@ -921,7 +922,10 @@
 
   <!-- ================= FLUJO DE CAJA ================= -->
   <div class="view" id="view-flujo">
-    <div class="view-head"><div><h1>Flujo de caja semanal</h1><p>Acumula el dinero de la semana y te obliga a decir en qué se distribuye antes de pasar a la siguiente.</p></div></div>
+    <div class="view-head">
+      <div><h1>Flujo de caja semanal</h1><p>Acumula el dinero de la semana y te obliga a decir en qué se distribuye antes de pasar a la siguiente.</p></div>
+      <button class="btn ghost" onclick="volverSemanaActualFlujo()">Ir a la semana actual</button>
+    </div>
     <hr class="stitch head-stitch">
     <div id="flujo-estado" style="margin-bottom:12px;"></div>
     <p style="margin-bottom:14px;font-size:13.5px;">Semana: <strong id="flujo-semana-rango"></strong></p>
@@ -958,8 +962,34 @@
       </div>
       <div class="card">
         <h3>Historial de semanas</h3>
-        <table><thead><tr><th>Semana</th><th class="right">Ingresos</th><th class="right">Egresos</th><th class="right">Disponible</th><th class="right">Asignado</th><th class="right">Sin asignar</th></tr></thead>
+        <table><thead><tr><th>Semana</th><th class="right">Ingresos</th><th class="right">Egresos</th><th class="right">Disponible</th><th class="right">Asignado</th><th class="right">Sin asignar</th><th></th></tr></thead>
         <tbody id="tbl-flujo-historial"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= RESERVA ================= -->
+  <div class="view" id="view-reserva">
+    <div class="view-head"><div><h1>Reserva</h1><p>Saldo acumulado en tu reserva/ahorro, y en qué se va gastando.</p></div></div>
+    <hr class="stitch head-stitch">
+    <div class="card" style="margin-bottom:18px;max-width:320px;">
+      <h3>Saldo actual de la reserva</h3>
+      <div class="kpi gold" style="font-size:28px;" id="reserva-saldo">$0</div>
+      <p style="font-size:11.5px;color:var(--ink-soft);margin-top:6px;">Se alimenta automáticamente cada vez que asignas dinero a "Ahorro / reserva" en Flujo de caja.</p>
+    </div>
+
+    <div class="grid grid-2">
+      <div class="card">
+        <h3 style="margin-bottom:10px;">Registrar gasto de la reserva</h3>
+        <div class="field"><label>Fecha</label><input type="date" id="reserva-fecha"></div>
+        <div class="field"><label>Concepto</label><input type="text" id="reserva-concepto" placeholder="Ej: Nómina quincenal"></div>
+        <div class="field"><label>Valor</label><input type="number" id="reserva-valor" min="0"></div>
+        <button class="btn gold" style="width:100%;" onclick="registrarSalidaReserva()">Registrar salida</button>
+      </div>
+      <div class="card">
+        <h3>Historial de movimientos</h3>
+        <table><thead><tr><th>Fecha</th><th>Concepto</th><th class="right">Valor</th><th class="right">Saldo</th></tr></thead>
+        <tbody id="tbl-reserva-movimientos"></tbody></table>
       </div>
     </div>
   </div>
@@ -1396,6 +1426,7 @@ function cargarDB(){
   if(!db.activosFijos) db.activosFijos=[]; // {id, nombre, categoria, fechaAdquisicion, valorCompra, vidaUtilAnios, ubicacion, estado, proveedor, placa, notas}
   if(!db.combos) db.combos=[]; // {id, nombre, descripcion, items:[{articuloId,nombre,talla,color,cantidad}], precio, codigoBarras}
   if(!db.apartados) db.apartados=[]; // {id, numero, fecha, cliente, cedula, telefono, items:[...], total, abonos:[{fecha,valor,metodo}], totalAbonado, saldoPendiente, estado, fechaLimite, notas}
+  if(!db.reservaMovimientos) db.reservaMovimientos=[]; // {id, fecha, tipo:'entrada'|'salida', concepto, valor, semanaInicio, automatico}
   if(db.config.siguienteNumeroApartado===undefined) db.config.siguienteNumeroApartado=1;
   if(!db.flujoCaja) db.flujoCaja=[]; // {id, semanaInicio, semanaFin, ingresos, egresos, saldoDisponible, asignaciones:[{concepto,valor}], totalAsignado, saldoSinAsignar}
   if(db.config.vendedores===undefined) db.config.vendedores=[]; // ['Nombre1','Nombre2']
@@ -1598,7 +1629,7 @@ function toast(msg){
 /* ---------------- Sesión y permisos ---------------- */
 const PERMISOS = {
   asesor:['facturar','ventas','cierre','devoluciones','apartados','inventario','clientes','combos','gastos'],
-  gerencia:['dashboard','facturar','ventas','cierre','devoluciones','apartados','inventario','combos','clientes','proveedores','activos','gastos','reportes','equilibrio','flujo','config']
+  gerencia:['dashboard','facturar','ventas','cierre','devoluciones','apartados','inventario','combos','clientes','proveedores','activos','gastos','reportes','equilibrio','flujo','reserva','config']
 };
 let currentRole = null;
 
@@ -1654,6 +1685,7 @@ function goTo(view){
   if(view==='reportes') renderReportes();
   if(view==='equilibrio') renderEquilibrio();
   if(view==='flujo') renderFlujoCaja();
+  if(view==='reserva') renderReserva();
   if(view==='config') cargarConfigForm();
 }
 document.querySelectorAll('.nav-btn').forEach(b=>b.addEventListener('click',()=>goTo(b.dataset.view)));
@@ -3911,22 +3943,35 @@ function saldoAcumuladoPrevioFlujo(lunesStr){
   return DB.flujoCaja.filter(f=>f.semanaInicio<lunesStr).reduce((s,f)=>s+(f.saldoSinAsignar||0),0);
 }
 let semanaFlujoActual=null;
+let semanaFlujoManual=null;
 let asignacionesFlujoActual=[];
 function renderFlujoCaja(){
   const pendiente=semanaFlujoPendiente();
-  semanaFlujoActual=pendiente||semanaActualLunesStr();
+  semanaFlujoActual=semanaFlujoManual||pendiente||semanaActualLunesStr();
   const domingoStr=domingoDeLunes(semanaFlujoActual);
   document.getElementById('flujo-semana-rango').textContent=semanaFlujoActual+' a '+domingoStr;
 
   const estado=document.getElementById('flujo-estado');
-  estado.innerHTML = pendiente
-    ? `<span class="badge danger">⚠ Tienes una semana pendiente por distribuir: ${pendiente} a ${domingoDeLunes(pendiente)}. Complétala para poder avanzar.</span>`
-    : '<span class="badge indigo">Semana actual (en curso).</span>';
+  if(semanaFlujoManual && semanaFlujoManual!==pendiente){
+    estado.innerHTML='<span class="badge gold">📖 Viendo/editando una semana pasada. Los cambios se guardan igual que siempre.</span>';
+  } else {
+    estado.innerHTML = pendiente
+      ? `<span class="badge danger">⚠ Tienes una semana pendiente por distribuir: ${pendiente} a ${domingoDeLunes(pendiente)}. Complétala para poder avanzar.</span>`
+      : '<span class="badge indigo">Semana actual (en curso).</span>';
+  }
 
   const registro=DB.flujoCaja.find(f=>f.semanaInicio===semanaFlujoActual);
   asignacionesFlujoActual=registro? registro.asignaciones.map(a=>({...a})) : [];
   renderAsignacionesFlujo();
   renderHistorialFlujo();
+}
+function cargarSemanaFlujo(semanaInicio){
+  semanaFlujoManual=semanaInicio;
+  renderFlujoCaja();
+}
+function volverSemanaActualFlujo(){
+  semanaFlujoManual=null;
+  renderFlujoCaja();
 }
 function agregarAsignacionFlujo(){
   const concepto=document.getElementById('flujo-concepto').value;
@@ -3985,6 +4030,8 @@ function guardarFlujoCaja(){
   };
   const idx=DB.flujoCaja.findIndex(f=>f.semanaInicio===semanaFlujoActual);
   if(idx!==-1) DB.flujoCaja[idx]=registro; else DB.flujoCaja.push(registro);
+  const montoReserva=asignacionesFlujoActual.filter(a=>a.concepto==='Ahorro / reserva').reduce((s,a)=>s+a.valor,0);
+  sincronizarEntradaReserva(semanaFlujoActual, montoReserva);
   guardarDB();
   toast('Distribución de la semana guardada');
   renderFlujoCaja();
@@ -3992,11 +4039,60 @@ function guardarFlujoCaja(){
 function renderHistorialFlujo(){
   const lista=[...DB.flujoCaja].sort((a,b)=>b.semanaInicio.localeCompare(a.semanaInicio));
   const tbody=document.getElementById('tbl-flujo-historial');
-  if(!lista.length){ tbody.innerHTML='<tr><td colspan="6"><div class="empty">Aún no has guardado ninguna semana.</div></td></tr>'; return; }
+  if(!lista.length){ tbody.innerHTML='<tr><td colspan="7"><div class="empty">Aún no has guardado ninguna semana.</div></td></tr>'; return; }
   tbody.innerHTML=lista.map(f=>`
     <tr><td>${f.semanaInicio} a ${f.semanaFin}</td><td class="right num">${fmt(f.ingresos)}</td><td class="right num">${fmt(f.egresos)}</td>
     <td class="right num">${fmt(f.saldoDisponible)}</td><td class="right num">${fmt(f.totalAsignado)}</td>
-    <td class="right num" style="color:${Math.round(f.saldoSinAsignar)===0?'var(--success)':'var(--danger)'};">${fmt(f.saldoSinAsignar)}</td></tr>`).join('');
+    <td class="right num" style="color:${Math.round(f.saldoSinAsignar)===0?'var(--success)':'var(--danger)'};">${fmt(f.saldoSinAsignar)}</td>
+    <td class="right"><button class="btn ghost sm" onclick="cargarSemanaFlujo('${f.semanaInicio}')">Ver/Editar</button></td></tr>`).join('');
+}
+
+/* ================= RESERVA ================= */
+function sincronizarEntradaReserva(semanaInicio, montoAhorro){
+  let mov=DB.reservaMovimientos.find(m=>m.semanaInicio===semanaInicio && m.tipo==='entrada' && m.automatico);
+  if(montoAhorro<=0){
+    if(mov) DB.reservaMovimientos=DB.reservaMovimientos.filter(m=>m!==mov);
+    return;
+  }
+  if(mov){
+    mov.valor=montoAhorro;
+  } else {
+    DB.reservaMovimientos.push({id:uid(), fecha:hoyISO(), tipo:'entrada', concepto:'Ahorro/reserva — semana '+semanaInicio, valor:montoAhorro, semanaInicio, automatico:true, creadoEn:new Date().toISOString()});
+  }
+}
+function calcularSaldoReserva(){
+  return DB.reservaMovimientos.reduce((s,m)=> s + (m.tipo==='entrada'? m.valor : -m.valor), 0);
+}
+function registrarSalidaReserva(){
+  const fecha=document.getElementById('reserva-fecha').value||hoyISO();
+  const concepto=document.getElementById('reserva-concepto').value.trim();
+  const valor=parseFloat(document.getElementById('reserva-valor').value)||0;
+  if(!concepto){ toast('Escribe en qué se gastó'); return; }
+  if(valor<=0){ toast('Ingresa un valor válido'); return; }
+  const saldoActual=calcularSaldoReserva();
+  if(valor>saldoActual && !confirm('Este gasto ('+fmt(valor)+') es mayor que el saldo actual de la reserva ('+fmt(saldoActual)+'). ¿Registrarlo de todas formas?')) return;
+  DB.reservaMovimientos.push({id:uid(), fecha, tipo:'salida', concepto, valor, automatico:false, creadoEn:new Date().toISOString()});
+  guardarDB();
+  document.getElementById('reserva-concepto').value='';
+  document.getElementById('reserva-valor').value='';
+  renderReserva();
+  toast('Salida registrada');
+}
+function renderReserva(){
+  document.getElementById('reserva-fecha').value=hoyISO();
+  document.getElementById('reserva-saldo').textContent=fmt(calcularSaldoReserva());
+  const lista=[...DB.reservaMovimientos].sort((a,b)=>a.creadoEn.localeCompare(b.creadoEn));
+  let saldoCorrido=0;
+  const filas=lista.map(m=>{
+    saldoCorrido += m.tipo==='entrada'? m.valor : -m.valor;
+    return {...m, saldoCorrido};
+  }).reverse();
+  const tbody=document.getElementById('tbl-reserva-movimientos');
+  if(!filas.length){ tbody.innerHTML='<tr><td colspan="4"><div class="empty">Aún no hay movimientos de reserva.</div></td></tr>'; return; }
+  tbody.innerHTML=filas.map(m=>`
+    <tr><td>${m.fecha}</td><td>${m.concepto}</td>
+    <td class="right num" style="color:${m.tipo==='entrada'?'var(--success)':'var(--danger)'};">${m.tipo==='entrada'?'+':'−'}${fmt(m.valor)}</td>
+    <td class="right num">${fmt(m.saldoCorrido)}</td></tr>`).join('');
 }
 
 /* ================= PUNTO DE EQUILIBRIO ================= */
