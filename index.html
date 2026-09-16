@@ -984,11 +984,14 @@
         <div class="field"><label>Fecha</label><input type="date" id="reserva-fecha"></div>
         <div class="field"><label>Concepto</label><input type="text" id="reserva-concepto" placeholder="Ej: Nómina quincenal"></div>
         <div class="field"><label>Valor</label><input type="number" id="reserva-valor" min="0"></div>
+        <div class="field"><label>Método de pago</label>
+          <select id="reserva-metodo"><option>Efectivo</option><option>Transferencia</option></select>
+        </div>
         <button class="btn gold" style="width:100%;" onclick="registrarSalidaReserva()">Registrar salida</button>
       </div>
       <div class="card">
         <h3>Historial de movimientos</h3>
-        <table><thead><tr><th>Fecha</th><th>Concepto</th><th class="right">Valor</th><th class="right">Saldo</th></tr></thead>
+        <table><thead><tr><th>Fecha</th><th>Concepto</th><th>Método</th><th class="right">Valor</th><th class="right">Saldo</th></tr></thead>
         <tbody id="tbl-reserva-movimientos"></tbody></table>
       </div>
     </div>
@@ -1355,8 +1358,37 @@
     <div id="da-notas" style="margin-top:8px;font-size:13px;"></div>
     <div class="modal-actions">
       <button class="btn danger" onclick="cancelarApartado()">Cancelar apartado</button>
+      <button class="btn ghost" onclick="editarDesdeDetalleApartado()">Editar</button>
       <button class="btn ghost" onclick="cerrarModal('modal-detalle-apartado')">Cerrar</button>
       <button class="btn gold" onclick="marcarApartadoEntregado()">Marcar entregado</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal: editar apartado activo ===== -->
+<div class="modal-bg" id="modal-editar-apartado">
+  <div class="modal" style="width:680px;">
+    <h3>Editar apartado N.° <span id="ea-numero"></span></h3>
+    <div class="grid grid-2">
+      <div>
+        <h3 style="margin-bottom:10px;">Agregar artículos</h3>
+        <div class="field search-box"><input type="text" id="ea-buscar-articulo" placeholder="Buscar artículo, talla o color…" oninput="renderCatalogoEditarApartado()"></div>
+        <div id="ea-catalogo-list" style="max-height:260px;overflow:auto;"></div>
+      </div>
+      <div>
+        <h3 style="margin-bottom:10px;">Artículos del apartado</h3>
+        <div id="ea-carrito-items"><div class="empty">Sin artículos.</div></div>
+        <div class="tot-line big"><span>Nuevo total</span><span class="num" id="ea-total">$0</span></div>
+        <div class="tot-line"><span>Ya abonado</span><span class="num" id="ea-abonado">$0</span></div>
+        <div class="tot-line"><span>Nuevo saldo pendiente</span><span class="num" id="ea-saldo">$0</span></div>
+        <div class="field" style="margin-top:10px;"><label>Fecha límite</label><input type="date" id="ea-fecha-limite"></div>
+        <div class="field"><label>Notas</label><input type="text" id="ea-notas"></div>
+      </div>
+    </div>
+    <p style="font-size:11px;color:var(--ink-soft);margin-top:4px;">Los abonos ya registrados no cambian. Si quitas artículos, vuelven al inventario disponible; si agregas, se descuentan del inventario. Si al quitar artículos el cliente queda a favor, el sistema te ofrecerá registrar el reembolso automáticamente.</p>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="cerrarModal('modal-editar-apartado')">Cancelar</button>
+      <button class="btn gold" onclick="guardarEdicionApartado()">Guardar cambios</button>
     </div>
   </div>
 </div>
@@ -2123,6 +2155,7 @@ function renderApartados(){
           ${a.saldoPendiente>0? `<button class="btn gold sm" onclick="abrirModalAbono('${a.id}')">Abonar</button>
           <button class="btn ghost sm" onclick="abrirModalAbono('${a.id}', true)">Pagar saldo</button>` : ''}
           <button class="btn ghost sm" onclick="verDetalleApartado('${a.id}')">Ver</button>
+          <button class="btn ghost sm" onclick="abrirModalEditarApartado('${a.id}')">Editar</button>
         </td>
       </tr>`;
     }).join('');
@@ -2174,7 +2207,8 @@ function verDetalleApartado(id){
     : '<div class="empty">Sin abonos registrados.</div>';
   document.getElementById('da-abonado').textContent=fmt(a.totalAbonado);
   document.getElementById('da-saldo').textContent=fmt(a.saldoPendiente);
-  document.getElementById('da-notas').innerHTML = a.notas? ('<strong>Notas:</strong> '+a.notas) : '';
+  document.getElementById('da-notas').innerHTML = (a.notas? ('<strong>Notas:</strong> '+a.notas) : '')
+    + (a.editadoEn? '<br><span style="color:var(--ink-soft);font-size:11px;">Última edición: '+new Date(a.editadoEn).toLocaleString('es-CO')+'</span>' : '');
   abrirModal('modal-detalle-apartado');
 }
 function marcarApartadoEntregado(){
@@ -2202,6 +2236,144 @@ function cancelarApartado(){
   renderApartados();
   renderInventario();
   toast('Apartado cancelado');
+}
+
+/* ---------------- Editar apartado activo ---------------- */
+let apartadoEditandoId=null;
+let apartadoOriginalItems=[];
+let carritoEditarApartado=[];
+function editarDesdeDetalleApartado(){
+  const a=apartadoDetalleActual; if(!a) return;
+  cerrarModal('modal-detalle-apartado');
+  abrirModalEditarApartado(a.id);
+}
+function abrirModalEditarApartado(id){
+  const a=DB.apartados.find(x=>x.id===id); if(!a) return;
+  if(a.estado!=='activo'){ toast('Solo se pueden editar apartados activos'); return; }
+  apartadoEditandoId=id;
+  apartadoOriginalItems=a.items.map(it=>({...it}));
+  carritoEditarApartado=a.items.map(it=>({...it}));
+  document.getElementById('ea-numero').textContent=a.numero;
+  document.getElementById('ea-buscar-articulo').value='';
+  document.getElementById('ea-fecha-limite').value=a.fechaLimite||'';
+  document.getElementById('ea-notas').value=a.notas||'';
+  renderCatalogoEditarApartado();
+  renderCarritoEditarApartado();
+  abrirModal('modal-editar-apartado');
+}
+function poolDisponibleArticuloEdicion(articuloId){
+  const art=DB.articulos.find(x=>x.id===articuloId);
+  const stockLibre=art? art.stock : 0;
+  const original=apartadoOriginalItems.find(o=>o.articuloId===articuloId);
+  return stockLibre + (original? original.cantidad : 0);
+}
+function renderCatalogoEditarApartado(){
+  const q=(document.getElementById('ea-buscar-articulo')?.value||'').toLowerCase();
+  const cont=document.getElementById('ea-catalogo-list');
+  const lista=DB.articulos.filter(a=>poolDisponibleArticuloEdicion(a.id)>0 && (a.nombre+a.talla+a.color).toLowerCase().includes(q)).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  if(!lista.length){ cont.innerHTML='<div class="empty">Sin artículos disponibles.</div>'; return; }
+  cont.innerHTML=lista.map(a=>`
+    <div class="cat-item" onclick="agregarAlCarritoEditarApartado('${a.id}')">
+      <div><div class="nm">${a.nombre}</div><div class="meta">${a.talla} · ${a.color} · disponible ${poolDisponibleArticuloEdicion(a.id)}</div></div>
+      <div class="pr">${fmt(a.precio)}</div>
+    </div>`).join('');
+}
+function agregarAlCarritoEditarApartado(articuloId){
+  const art=DB.articulos.find(x=>x.id===articuloId); if(!art) return;
+  const pool=poolDisponibleArticuloEdicion(articuloId);
+  const existente=carritoEditarApartado.find(c=>c.articuloId===articuloId);
+  if(existente){
+    if(existente.cantidad<pool) existente.cantidad++;
+    else toast('No hay más stock disponible de este artículo');
+  } else {
+    if(pool<=0){ toast('Sin stock disponible de este artículo'); return; }
+    carritoEditarApartado.push({articuloId:art.id, nombre:art.nombre, talla:art.talla, color:art.color, cantidad:1, precio:art.precio});
+  }
+  renderCarritoEditarApartado();
+  renderCatalogoEditarApartado();
+}
+function cambiarCantidadEditarApartado(articuloId, delta){
+  const it=carritoEditarApartado.find(c=>c.articuloId===articuloId); if(!it) return;
+  const pool=poolDisponibleArticuloEdicion(articuloId);
+  it.cantidad+=delta;
+  if(it.cantidad<=0) carritoEditarApartado=carritoEditarApartado.filter(c=>c.articuloId!==articuloId);
+  else if(it.cantidad>pool){ it.cantidad=pool; toast('Stock máximo disponible alcanzado'); }
+  renderCarritoEditarApartado();
+  renderCatalogoEditarApartado();
+}
+function quitarDelCarritoEditarApartado(articuloId){
+  carritoEditarApartado=carritoEditarApartado.filter(c=>c.articuloId!==articuloId);
+  renderCarritoEditarApartado();
+  renderCatalogoEditarApartado();
+}
+function renderCarritoEditarApartado(){
+  const cont=document.getElementById('ea-carrito-items');
+  if(!carritoEditarApartado.length){ cont.innerHTML='<div class="empty">Sin artículos. Agrega al menos uno.</div>'; }
+  else{
+    cont.innerHTML=carritoEditarApartado.map(it=>`
+      <div class="carr-row">
+        <div class="nm">${it.nombre}<br><span style="color:var(--ink-soft);font-size:11.5px;">${it.talla} · ${it.color}</span></div>
+        <button class="btn ghost sm" onclick="cambiarCantidadEditarApartado('${it.articuloId}',-1)">−</button>
+        <span style="width:24px;text-align:center;">${it.cantidad}</span>
+        <button class="btn ghost sm" onclick="cambiarCantidadEditarApartado('${it.articuloId}',1)">+</button>
+        <div class="num" style="width:70px;text-align:right;">${fmt(it.precio*it.cantidad)}</div>
+        <button class="btn danger sm" onclick="quitarDelCarritoEditarApartado('${it.articuloId}')">×</button>
+      </div>`).join('');
+  }
+  const a=DB.apartados.find(x=>x.id===apartadoEditandoId);
+  const totalAbonado=a? a.totalAbonado : 0;
+  const nuevoTotal=carritoEditarApartado.reduce((s,it)=>s+it.precio*it.cantidad,0);
+  document.getElementById('ea-total').textContent=fmt(nuevoTotal);
+  document.getElementById('ea-abonado').textContent=fmt(totalAbonado);
+  const saldo=nuevoTotal-totalAbonado;
+  const elSaldo=document.getElementById('ea-saldo');
+  elSaldo.textContent=fmt(saldo);
+  elSaldo.style.color = saldo<0 ? 'var(--danger)' : '';
+}
+function guardarEdicionApartado(){
+ try{
+  const a=DB.apartados.find(x=>x.id===apartadoEditandoId); if(!a) return;
+  if(!carritoEditarApartado.length){ toast('El apartado debe tener al menos un artículo'); return; }
+  const nuevoTotal=carritoEditarApartado.reduce((s,it)=>s+it.precio*it.cantidad,0);
+
+  if(nuevoTotal<a.totalAbonado){
+    const diferencia=a.totalAbonado-nuevoTotal;
+    const continuar=confirm('Al quitar estas prendas, el cliente queda a favor por '+fmt(diferencia)+' (ya abonado de más). ¿Registrar el reembolso en efectivo ahora y guardar los cambios?');
+    if(!continuar) return;
+    registrarMovimientoCaja(-diferencia, 'Efectivo', 'Reembolso edición apartado N.° '+a.numero+' — '+a.cliente, 'esAjusteDevolucion');
+    a.abonos.push({fecha:hoyISO(), valor:-diferencia, metodo:'Reembolso (edición)', creadoEn:new Date().toISOString()});
+    a.totalAbonado=nuevoTotal;
+  }
+
+  // ajustar el inventario según la diferencia entre lo reservado antes y lo reservado ahora
+  const idsInvolucrados=new Set([...apartadoOriginalItems.map(i=>i.articuloId), ...carritoEditarApartado.map(i=>i.articuloId)]);
+  idsInvolucrados.forEach(articuloId=>{
+    const original=apartadoOriginalItems.find(i=>i.articuloId===articuloId);
+    const nuevo=carritoEditarApartado.find(i=>i.articuloId===articuloId);
+    const diff=(nuevo? nuevo.cantidad : 0) - (original? original.cantidad : 0);
+    if(diff!==0){
+      const art=DB.articulos.find(x=>x.id===articuloId);
+      if(art) art.stock=Math.max(0, art.stock-diff);
+    }
+  });
+
+  a.items=carritoEditarApartado.map(it=>({...it}));
+  a.total=nuevoTotal;
+  a.saldoPendiente=Math.max(0, nuevoTotal-a.totalAbonado);
+  a.fechaLimite=document.getElementById('ea-fecha-limite').value;
+  a.notas=document.getElementById('ea-notas').value.trim();
+  a.editadoEn=new Date().toISOString();
+
+  guardarDB();
+  cerrarModal('modal-editar-apartado');
+  renderApartados();
+  renderInventario();
+  renderCatalogoApartado();
+  toast('Apartado N.° '+a.numero+' actualizado');
+ }catch(err){
+  console.error('Error al editar apartado', err);
+  toast('⚠ Error al guardar los cambios: '+(err && err.message ? err.message : 'desconocido'));
+ }
 }
 
 /* ================= DEVOLUCIONES Y CAMBIOS ================= */
@@ -4067,11 +4239,12 @@ function registrarSalidaReserva(){
   const fecha=document.getElementById('reserva-fecha').value||hoyISO();
   const concepto=document.getElementById('reserva-concepto').value.trim();
   const valor=parseFloat(document.getElementById('reserva-valor').value)||0;
+  const metodo=document.getElementById('reserva-metodo').value;
   if(!concepto){ toast('Escribe en qué se gastó'); return; }
   if(valor<=0){ toast('Ingresa un valor válido'); return; }
   const saldoActual=calcularSaldoReserva();
   if(valor>saldoActual && !confirm('Este gasto ('+fmt(valor)+') es mayor que el saldo actual de la reserva ('+fmt(saldoActual)+'). ¿Registrarlo de todas formas?')) return;
-  DB.reservaMovimientos.push({id:uid(), fecha, tipo:'salida', concepto, valor, automatico:false, creadoEn:new Date().toISOString()});
+  DB.reservaMovimientos.push({id:uid(), fecha, tipo:'salida', concepto, valor, metodo, automatico:false, creadoEn:new Date().toISOString()});
   guardarDB();
   document.getElementById('reserva-concepto').value='';
   document.getElementById('reserva-valor').value='';
@@ -4088,9 +4261,9 @@ function renderReserva(){
     return {...m, saldoCorrido};
   }).reverse();
   const tbody=document.getElementById('tbl-reserva-movimientos');
-  if(!filas.length){ tbody.innerHTML='<tr><td colspan="4"><div class="empty">Aún no hay movimientos de reserva.</div></td></tr>'; return; }
+  if(!filas.length){ tbody.innerHTML='<tr><td colspan="5"><div class="empty">Aún no hay movimientos de reserva.</div></td></tr>'; return; }
   tbody.innerHTML=filas.map(m=>`
-    <tr><td>${m.fecha}</td><td>${m.concepto}</td>
+    <tr><td>${m.fecha}</td><td>${m.concepto}</td><td>${m.tipo==='entrada'? '—' : (m.metodo||'—')}</td>
     <td class="right num" style="color:${m.tipo==='entrada'?'var(--success)':'var(--danger)'};">${m.tipo==='entrada'?'+':'−'}${fmt(m.valor)}</td>
     <td class="right num">${fmt(m.saldoCorrido)}</td></tr>`).join('');
 }
