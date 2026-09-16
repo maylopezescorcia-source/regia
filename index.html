@@ -972,7 +972,9 @@
 
   <!-- ================= RESERVA ================= -->
   <div class="view" id="view-reserva">
-    <div class="view-head"><div><h1>Reserva</h1><p>Saldo acumulado en tu reserva/ahorro, y en qué se va gastando.</p></div></div>
+    <div class="view-head"><div><h1>Reserva</h1><p>Saldo acumulado en tu reserva/ahorro, y en qué se va gastando.</p></div>
+      <button class="btn ghost" onclick="sincronizarReservaConFlujo()">Sincronizar con Flujo de caja</button>
+    </div>
     <hr class="stitch head-stitch">
     <div class="card" style="margin-bottom:18px;max-width:320px;">
       <h3>Saldo actual de la reserva</h3>
@@ -4433,6 +4435,16 @@ function renderHistorialFlujo(){
 }
 
 /* ================= RESERVA ================= */
+function sincronizarReservaConFlujo(){
+  if(!DB.flujoCaja.length){ toast('Aún no hay semanas guardadas en Flujo de caja'); return; }
+  DB.flujoCaja.forEach(f=>{
+    const montoReserva=(f.asignaciones||[]).filter(a=>a.concepto==='Ahorro / reserva').reduce((s,a)=>s+a.valor,0);
+    sincronizarEntradaReserva(f.semanaInicio, montoReserva);
+  });
+  guardarDB();
+  renderReserva();
+  toast('Reserva sincronizada con el historial de Flujo de caja');
+}
 function sincronizarEntradaReserva(semanaInicio, montoAhorro){
   let mov=DB.reservaMovimientos.find(m=>m.semanaInicio===semanaInicio && m.tipo==='entrada' && m.automatico);
   if(montoAhorro<=0){
