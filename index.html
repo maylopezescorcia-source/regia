@@ -400,9 +400,17 @@
         </div>
         <div class="field">
           <label>Método de pago</label>
-          <select id="fac-metodo">
+          <select id="fac-metodo" onchange="toggleMixtoFacturar()">
             <option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Mixto</option>
           </select>
+        </div>
+        <div class="field" id="fac-mixto-split" style="display:none;background:var(--surface-2);padding:10px;border-radius:8px;">
+          <label>Desglose del pago mixto</label>
+          <div class="row">
+            <div class="field" style="margin-bottom:0;"><label style="font-weight:400;">Efectivo</label><input type="number" id="fac-mixto-efectivo" min="0" oninput="renderMixtoFacturar()"></div>
+            <div class="field" style="margin-bottom:0;"><label style="font-weight:400;">Transferencia</label><input type="number" id="fac-mixto-transferencia" min="0" oninput="renderMixtoFacturar()"></div>
+          </div>
+          <div style="font-size:12px;margin-top:6px;" id="fac-mixto-estado"></div>
         </div>
         <div class="field" id="fac-vendedor-field" style="display:none;">
           <label>Vendedor</label>
@@ -433,7 +441,7 @@
       <button class="btn ghost" onclick="renderVentas()">Filtrar</button>
     </div>
     <div class="card">
-      <table><thead><tr><th>#</th><th>Fecha</th><th>Cliente</th><th class="right solo-gerencia">Costo</th><th class="right">Total</th><th class="right solo-gerencia">Utilidad</th><th></th></tr></thead>
+      <table><thead><tr><th>#</th><th>Fecha</th><th>Cliente</th><th>Método</th><th class="right solo-gerencia">Costo</th><th class="right">Total</th><th class="right solo-gerencia">Utilidad</th><th></th></tr></thead>
       <tbody id="tbl-ventas"></tbody></table>
     </div>
   </div>
@@ -449,10 +457,10 @@
     <div id="cc-estado" style="margin-bottom:12px;"></div>
 
     <div class="grid grid-4" style="margin-bottom:14px;">
-      <div class="card"><h3>Efectivo</h3><div class="kpi indigo" style="font-size:19px;" id="cc-efectivo">$0</div></div>
-      <div class="card"><h3>Transferencia</h3><div class="kpi indigo" style="font-size:19px;" id="cc-transferencia">$0</div></div>
+      <div class="card"><h3>Efectivo</h3><div class="kpi indigo" style="font-size:19px;" id="cc-efectivo">$0</div><div class="kpi-sub" id="cc-efectivo-nota"></div></div>
+      <div class="card"><h3>Transferencia</h3><div class="kpi indigo" style="font-size:19px;" id="cc-transferencia">$0</div><div class="kpi-sub" id="cc-transferencia-nota"></div></div>
       <div class="card"><h3>Tarjeta</h3><div class="kpi indigo" style="font-size:19px;" id="cc-tarjeta">$0</div></div>
-      <div class="card"><h3>Mixto</h3><div class="kpi indigo" style="font-size:19px;" id="cc-mixto">$0</div></div>
+      <div class="card"><h3>Mixto (total)</h3><div class="kpi indigo" style="font-size:19px;" id="cc-mixto">$0</div></div>
     </div>
     <div class="card" style="margin-bottom:18px;">
       <h3>Ventas totales del día</h3>
@@ -1053,8 +1061,17 @@
           <li>Entra a <strong>console.firebase.google.com</strong> y crea un proyecto gratuito.</li>
           <li>Ve a "Compilación" → "Firestore Database" → "Crear base de datos" → modo de prueba.</li>
           <li>Ve a Configuración del proyecto (⚙) → pestaña "General" → "Tus apps" → agrega una app Web (ícono &lt;/&gt;).</li>
-          <li>Copia el objeto <code>firebaseConfig</code> que te muestra y pégalo arriba, tal cual.</li>
-          <li>En Firestore → pestaña "Reglas", pega la regla que Claude te indicó en el chat y publica.</li>
+          <li>Copia el bloque <code>const firebaseConfig = {...}</code> que te muestra y pégalo arriba, tal cual (no hace falta editarlo).</li>
+          <li>En Firestore → pestaña "Reglas", borra lo que haya y pega exactamente esto, luego dale "Publicar":
+            <pre style="background:var(--surface-2);padding:8px 10px;border-radius:6px;margin:6px 0;white-space:pre-wrap;font-family:'IBM Plex Mono',monospace;font-size:11px;">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /stores/{storeCode} {
+      allow read, write: if true;
+    }
+  }
+}</pre>
+          </li>
           <li>Inventa un "código de tienda" (una palabra o frase única) y úsalo en todos tus dispositivos.</li>
         </ol>
       </details>
@@ -1211,7 +1228,15 @@
       <div class="field"><label>Dirección</label><input type="text" id="ev-direccion"></div>
     </div>
     <div class="field"><label>Método de pago</label>
-      <select id="ev-metodo"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Mixto</option></select>
+      <select id="ev-metodo" onchange="toggleMixtoEdicion()"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Mixto</option></select>
+    </div>
+    <div class="field" id="ev-mixto-split" style="display:none;background:var(--surface-2);padding:10px;border-radius:8px;">
+      <label>Desglose del pago mixto</label>
+      <div class="row">
+        <div class="field" style="margin-bottom:0;"><label style="font-weight:400;">Efectivo</label><input type="number" id="ev-mixto-efectivo" min="0" oninput="renderMixtoEdicion()"></div>
+        <div class="field" style="margin-bottom:0;"><label style="font-weight:400;">Transferencia</label><input type="number" id="ev-mixto-transferencia" min="0" oninput="renderMixtoEdicion()"></div>
+      </div>
+      <div style="font-size:12px;margin-top:6px;" id="ev-mixto-estado"></div>
     </div>
     <label style="margin-top:6px;">Artículos</label>
     <div id="ev-items" style="margin-bottom:10px;"></div>
@@ -1311,6 +1336,7 @@
     <div class="tot-line"><span>Ventas por transferencia</span><span class="num" id="dc-transferencia">$0</span></div>
     <div class="tot-line"><span>Ventas con tarjeta</span><span class="num" id="dc-tarjeta">$0</span></div>
     <div class="tot-line"><span>Ventas mixtas</span><span class="num" id="dc-mixto">$0</span></div>
+    <div class="kpi-sub" id="dc-mixto-detalle" style="text-align:right;"></div>
     <div class="tot-line big"><span>Total ventas</span><span class="num" id="dc-total-ventas">$0</span></div>
     <hr class="stitch" style="margin:12px 0;">
     <div class="tot-line"><span>Base de caja</span><span class="num" id="dc-base">$0</span></div>
@@ -1607,8 +1633,8 @@ function datosVentas(){
   let lista=[...DB.ventas].sort((a,b)=>a.numero-b.numero);
   if(desde) lista=lista.filter(v=>v.fecha>=desde);
   if(hasta) lista=lista.filter(v=>v.fecha<=hasta);
-  const headers=['N°','Fecha','Cliente','Método','Subtotal','Descuento','Total','Costo','Utilidad'];
-  const rows=lista.map(v=>[v.numero, v.fecha, v.cliente, v.metodo, fmt(v.subtotal), fmt(v.descuento), fmt(v.total), fmt(v.costoTotal), fmt(v.total-v.costoTotal)]);
+  const headers=['N°','Fecha','Cliente','Método','Efvo. (si mixto)','Transf. (si mixto)','Subtotal','Descuento','Total','Costo','Utilidad'];
+  const rows=lista.map(v=>[v.numero, v.fecha, v.cliente, v.metodo, v.metodo==='Mixto'?fmt(v.montoEfectivo||0):'', v.metodo==='Mixto'?fmt(v.montoTransferencia||0):'', fmt(v.subtotal), fmt(v.descuento), fmt(v.total), fmt(v.costoTotal), fmt(v.total-v.costoTotal)]);
   const totalVentas=lista.reduce((s,v)=>s+v.total,0), totalUtilidad=lista.reduce((s,v)=>s+(v.total-v.costoTotal),0);
   return {headers, rows, desde, hasta, totalVentas, totalUtilidad, n:lista.length};
 }
@@ -1789,12 +1815,20 @@ function calcularCierreCaja(fecha){
   const ventasDia=DB.ventas.filter(v=>v.fecha===fecha);
   const porMetodo={Efectivo:0, Transferencia:0, Tarjeta:0, Mixto:0};
   ventasDia.forEach(v=>{ porMetodo[v.metodo]=(porMetodo[v.metodo]||0)+v.total; });
+  // la parte en efectivo/transferencia de los pagos mixtos también debe contarse en el efectivo real de caja
+  let efectivoDeMixtos=0, transferenciaDeMixtos=0;
+  ventasDia.forEach(v=>{
+    if(v.metodo==='Mixto'){ efectivoDeMixtos+=v.montoEfectivo||0; transferenciaDeMixtos+=v.montoTransferencia||0; }
+  });
+  const efectivoTotalReal=(porMetodo.Efectivo||0)+efectivoDeMixtos;
+  const transferenciaTotalReal=(porMetodo.Transferencia||0)+transferenciaDeMixtos;
   const totalVentas=ventasDia.reduce((s,v)=>s+v.total,0);
   const gastosDia=DB.gastos.filter(g=>g.fecha===fecha).reduce((s,g)=>s+g.valor,0);
   const ventasMercancia=ventasDia.filter(v=>!v.esAbonoApartado && !v.esAjusteDevolucion).reduce((s,v)=>s+v.total,0);
   const abonosApartados=ventasDia.filter(v=>v.esAbonoApartado).reduce((s,v)=>s+v.total,0);
   const ajustesDevolucion=ventasDia.filter(v=>v.esAjusteDevolucion).reduce((s,v)=>s+v.total,0);
-  return {porMetodo, totalVentas, gastosDia, numFacturas:ventasDia.length, ventasMercancia, abonosApartados, ajustesDevolucion};
+  return {porMetodo, totalVentas, gastosDia, numFacturas:ventasDia.length, ventasMercancia, abonosApartados, ajustesDevolucion,
+    efectivoDeMixtos, transferenciaDeMixtos, efectivoTotalReal, transferenciaTotalReal};
 }
 function renderProductosVendidosDia(fecha, contenedorId){
   const cont=document.getElementById(contenedorId);
@@ -1817,8 +1851,10 @@ function renderCierre(){
   fechaCierreActual=pendiente||hoyISO();
   document.getElementById('cc-fecha').textContent=fechaCierreActual;
   const r=calcularCierreCaja(fechaCierreActual);
-  document.getElementById('cc-efectivo').textContent=fmt(r.porMetodo.Efectivo||0);
-  document.getElementById('cc-transferencia').textContent=fmt(r.porMetodo.Transferencia||0);
+  document.getElementById('cc-efectivo').textContent=fmt(r.efectivoTotalReal||0);
+  document.getElementById('cc-efectivo-nota').textContent = r.efectivoDeMixtos>0 ? 'incluye '+fmt(r.efectivoDeMixtos)+' de pagos mixtos' : '';
+  document.getElementById('cc-transferencia').textContent=fmt(r.transferenciaTotalReal||0);
+  document.getElementById('cc-transferencia-nota').textContent = r.transferenciaDeMixtos>0 ? 'incluye '+fmt(r.transferenciaDeMixtos)+' de pagos mixtos' : '';
   document.getElementById('cc-tarjeta').textContent=fmt(r.porMetodo.Tarjeta||0);
   document.getElementById('cc-mixto').textContent=fmt(r.porMetodo.Mixto||0);
   document.getElementById('cc-total-ventas').textContent=fmt(r.totalVentas);
@@ -1855,7 +1891,7 @@ function calcularDiferenciaCaja(){
   const r=calcularCierreCaja(fechaCierreActual);
   const base=parseFloat(document.getElementById('cc-base').value)||0;
   const salidas=parseFloat(document.getElementById('cc-gastos-efectivo').value)||0;
-  const esperado=base+(r.porMetodo.Efectivo||0)-salidas;
+  const esperado=base+(r.efectivoTotalReal||0)-salidas;
   const contado=parseFloat(document.getElementById('cc-contado').value)||0;
   const diferencia=contado-esperado;
   document.getElementById('cc-esperado').textContent=fmt(esperado);
@@ -1869,7 +1905,7 @@ function imprimirCierre(){
   const salidas=parseFloat(document.getElementById('cc-gastos-efectivo').value)||0;
   const contado=parseFloat(document.getElementById('cc-contado').value)||0;
   const r=calcularCierreCaja(fecha);
-  const esperado=base+(r.porMetodo.Efectivo||0)-salidas;
+  const esperado=base+(r.efectivoTotalReal||0)-salidas;
   const diferencia=contado-esperado;
   const notas=document.getElementById('cc-notas').value.trim();
   const linea=(a,b)=>`<div class="ti-row"><span>${a}</span><span>${b}</span></div>`;
@@ -1878,10 +1914,14 @@ function imprimirCierre(){
   html+=linea('Ventas por transferencia', fmt(r.porMetodo.Transferencia||0));
   html+=linea('Ventas con tarjeta', fmt(r.porMetodo.Tarjeta||0));
   html+=linea('Ventas mixtas', fmt(r.porMetodo.Mixto||0));
+  if(r.porMetodo.Mixto>0){
+    html+=linea('  · de la cual, en efectivo', fmt(r.efectivoDeMixtos||0));
+    html+=linea('  · de la cual, en transferencia', fmt(r.transferenciaDeMixtos||0));
+  }
   html+=`<div class="ti-row ti-bold"><span>Total ventas</span><span>${fmt(r.totalVentas)}</span></div>`;
   html+='<div class="ti-dash"></div>';
   html+=linea('Base de caja', fmt(base));
-  html+=linea('+ Ventas en efectivo', fmt(r.porMetodo.Efectivo||0));
+  html+=linea('+ Ventas en efectivo (incl. pagos mixtos)', fmt(r.efectivoTotalReal||0));
   html+=linea('− Salidas en efectivo', fmt(salidas));
   html+=`<div class="ti-row ti-bold"><span>Efectivo esperado</span><span>${fmt(esperado)}</span></div>`;
   html+=linea('Efectivo contado', fmt(contado));
@@ -1897,7 +1937,7 @@ function exportarCierrePDF(){
   const salidas=parseFloat(document.getElementById('cc-gastos-efectivo').value)||0;
   const contado=parseFloat(document.getElementById('cc-contado').value)||0;
   const r=calcularCierreCaja(fecha);
-  const esperado=base+(r.porMetodo.Efectivo||0)-salidas;
+  const esperado=base+(r.efectivoTotalReal||0)-salidas;
   const diferencia=contado-esperado;
   const notas=document.getElementById('cc-notas').value.trim();
   const headers=['Concepto','Valor'];
@@ -1906,9 +1946,11 @@ function exportarCierrePDF(){
     ['Ventas por transferencia', fmt(r.porMetodo.Transferencia||0)],
     ['Ventas con tarjeta', fmt(r.porMetodo.Tarjeta||0)],
     ['Ventas mixtas', fmt(r.porMetodo.Mixto||0)],
+    ['  · de la cual, en efectivo', fmt(r.efectivoDeMixtos||0)],
+    ['  · de la cual, en transferencia', fmt(r.transferenciaDeMixtos||0)],
     ['Total ventas', fmt(r.totalVentas)],
     ['Base de caja', fmt(base)],
-    ['+ Ventas en efectivo', fmt(r.porMetodo.Efectivo||0)],
+    ['+ Ventas en efectivo (incl. pagos mixtos)', fmt(r.efectivoTotalReal||0)],
     ['− Salidas en efectivo', fmt(salidas)],
     ['Efectivo esperado', fmt(esperado)],
     ['Efectivo contado', fmt(contado)],
@@ -1922,12 +1964,13 @@ function guardarCierreCaja(){
   const r=calcularCierreCaja(fecha);
   const base=parseFloat(document.getElementById('cc-base').value)||0;
   const salidas=parseFloat(document.getElementById('cc-gastos-efectivo').value)||0;
-  const esperado=base+(r.porMetodo.Efectivo||0)-salidas;
+  const esperado=base+(r.efectivoTotalReal||0)-salidas;
   const contado=parseFloat(document.getElementById('cc-contado').value)||0;
   const registro={
     id:uid(), fecha, baseCaja:base,
-    ventasEfectivo:r.porMetodo.Efectivo||0, ventasTransferencia:r.porMetodo.Transferencia||0,
+    ventasEfectivo:r.efectivoTotalReal||0, ventasTransferencia:r.transferenciaTotalReal||0,
     ventasTarjeta:r.porMetodo.Tarjeta||0, ventasMixto:r.porMetodo.Mixto||0,
+    ventasMixtoEfectivo:r.efectivoDeMixtos||0, ventasMixtoTransferencia:r.transferenciaDeMixtos||0,
     totalVentas:r.totalVentas, salidasEfectivo:salidas,
     efectivoEsperado:esperado, efectivoContado:contado, diferencia:contado-esperado,
     notas:document.getElementById('cc-notas').value.trim(),
@@ -1963,6 +2006,7 @@ function verDetalleCierre(id){
   document.getElementById('dc-transferencia').textContent=fmt(c.ventasTransferencia||0);
   document.getElementById('dc-tarjeta').textContent=fmt(c.ventasTarjeta||0);
   document.getElementById('dc-mixto').textContent=fmt(c.ventasMixto||0);
+  document.getElementById('dc-mixto-detalle').textContent = c.ventasMixto>0 ? ('Efvo '+fmt(c.ventasMixtoEfectivo||0)+' · Transf '+fmt(c.ventasMixtoTransferencia||0)) : '';
   document.getElementById('dc-total-ventas').textContent=fmt(c.totalVentas||0);
   document.getElementById('dc-base').textContent=fmt(c.baseCaja||0);
   document.getElementById('dc-salidas').textContent=fmt(c.salidasEfectivo||0);
@@ -1984,6 +2028,8 @@ function exportarCierrePDFHistorico(){
     ['Ventas por transferencia', fmt(c.ventasTransferencia||0)],
     ['Ventas con tarjeta', fmt(c.ventasTarjeta||0)],
     ['Ventas mixtas', fmt(c.ventasMixto||0)],
+    ['  · de la cual, en efectivo', fmt(c.ventasMixtoEfectivo||0)],
+    ['  · de la cual, en transferencia', fmt(c.ventasMixtoTransferencia||0)],
     ['Total ventas', fmt(c.totalVentas||0)],
     ['Base de caja', fmt(c.baseCaja||0)],
     ['Salidas de efectivo', fmt(c.salidasEfectivo||0)],
@@ -3116,6 +3162,24 @@ function renderCarrito(){
   document.getElementById('fac-subtotal').textContent=fmt(subtotal);
   document.getElementById('fac-desc-mostrar').textContent=fmt(descuento)+(pct>0? ' ('+pct+'%)':'');
   document.getElementById('fac-total').textContent=fmt(total);
+  if(document.getElementById('fac-metodo').value==='Mixto') renderMixtoFacturar();
+}
+function toggleMixtoFacturar(){
+  const esMixto=document.getElementById('fac-metodo').value==='Mixto';
+  document.getElementById('fac-mixto-split').style.display = esMixto? 'block':'none';
+  if(esMixto) renderMixtoFacturar();
+}
+function renderMixtoFacturar(){
+  const subtotal=carrito.reduce((s,it)=>s+it.precio*it.cantidad,0);
+  const pct=Math.min(100, Math.max(0, parseFloat(document.getElementById('fac-descuento').value)||0));
+  const total=Math.max(0, subtotal-(subtotal*pct/100));
+  const efectivo=Math.max(0, parseFloat(document.getElementById('fac-mixto-efectivo').value)||0);
+  const transferencia=Math.max(0, parseFloat(document.getElementById('fac-mixto-transferencia').value)||0);
+  const diferencia=Math.round((total-(efectivo+transferencia))*100)/100;
+  const el=document.getElementById('fac-mixto-estado');
+  if(diferencia===0) el.innerHTML='<span style="color:var(--success);">✓ Cuadra con el total ('+fmt(total)+')</span>';
+  else if(diferencia>0) el.innerHTML='<span style="color:var(--danger);">Falta asignar '+fmt(diferencia)+'</span>';
+  else el.innerHTML='<span style="color:var(--danger);">Te pasaste por '+fmt(Math.abs(diferencia))+'</span>';
 }
 function setCantidad(id, val){
   const it=carrito.find(c=>c.articuloId===id); if(!it) return;
@@ -3224,12 +3288,23 @@ function guardarVenta(){
   const vendedor=document.getElementById('fac-vendedor-field').style.display!=='none' ? document.getElementById('fac-vendedor').value : '';
   const numero=DB.config.siguienteNumero||1;
 
+  let montoEfectivo=0, montoTransferencia=0;
+  if(metodo==='Mixto'){
+    montoEfectivo=Math.max(0, parseFloat(document.getElementById('fac-mixto-efectivo').value)||0);
+    montoTransferencia=Math.max(0, parseFloat(document.getElementById('fac-mixto-transferencia').value)||0);
+    if(Math.round((montoEfectivo+montoTransferencia)*100)!==Math.round(total*100)){
+      toast('El desglose de efectivo y transferencia debe sumar el total ('+fmt(total)+')');
+      return;
+    }
+  }
+
   // descontar stock (compatible con combos)
   carrito.forEach(it=>ajustarStockPorItem(it, it.cantidad, -1));
 
   const venta={
     id:uid(), numero, fecha:hoyISO(), hora:new Date().toISOString(),
     cliente:cliente||'Cliente mostrador', cedula, telefonoCliente, correo, direccion, metodo, vendedor,
+    montoEfectivo:metodo==='Mixto'? montoEfectivo:0, montoTransferencia:metodo==='Mixto'? montoTransferencia:0,
     items:carrito.map(it=>({...it})), subtotal, descuento, total, costoTotal
   };
   DB.ventas.push(venta);
@@ -3258,6 +3333,10 @@ function guardarVenta(){
   ['fac-cliente','fac-cedula','fac-telefono-cliente','fac-correo','fac-direccion'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('fac-cliente-estado').innerHTML='';
   document.getElementById('fac-descuento').value=0;
+  document.getElementById('fac-metodo').value='Efectivo';
+  document.getElementById('fac-mixto-efectivo').value='';
+  document.getElementById('fac-mixto-transferencia').value='';
+  toggleMixtoFacturar();
   renderCarrito();
   renderCatalogo();
   toast('Venta N.° '+numero+' guardada');
@@ -3333,6 +3412,10 @@ function imprimirVenta(venta){
   html+=linea('Comprobante N.°', venta.numero);
   html+=linea('Fecha', new Date(venta.hora).toLocaleString('es-CO'));
   html+=linea('Pago', venta.metodo);
+  if(venta.metodo==='Mixto'){
+    html+=linea('  · Efectivo', fmt(venta.montoEfectivo||0));
+    html+=linea('  · Transferencia', fmt(venta.montoTransferencia||0));
+  }
   html+='<div class="ti-dash"></div>';
   html+=`<div>Cliente: ${venta.cliente}</div>`;
   if(venta.cedula) html+=`<div>Cédula: ${venta.cedula}</div>`;
@@ -3365,10 +3448,11 @@ function renderVentas(){
   if(desde) lista=lista.filter(v=>v.fecha>=desde);
   if(hasta) lista=lista.filter(v=>v.fecha<=hasta);
   const tbody=document.getElementById('tbl-ventas');
-  if(!lista.length){ tbody.innerHTML='<tr><td colspan="7"><div class="empty">No hay ventas en este rango.</div></td></tr>'; return; }
+  if(!lista.length){ tbody.innerHTML='<tr><td colspan="8"><div class="empty">No hay ventas en este rango.</div></td></tr>'; return; }
   tbody.innerHTML=lista.map(v=>`
     <tr>
       <td>${v.numero}</td><td>${v.fecha}</td><td>${v.cliente}${v.editada?' <span class="badge gold">editada</span>':''}${v.esAjusteDevolucion?' <span class="badge indigo">ajuste</span>':''}${v.esAbonoApartado?' <span class="badge gold">abono</span>':''}</td>
+      <td style="font-size:12px;">${v.metodo}${v.metodo==='Mixto'? '<br><span style="color:var(--ink-soft);">Efvo '+fmt(v.montoEfectivo||0)+' · Transf '+fmt(v.montoTransferencia||0)+'</span>' : ''}</td>
       <td class="right num solo-gerencia">${fmt(v.costoTotal)}</td>
       <td class="right num">${fmt(v.total)}</td>
       <td class="right num solo-gerencia">${fmt(v.total-v.costoTotal)}</td>
@@ -3408,7 +3492,10 @@ function editarVenta(id){
   document.getElementById('ev-correo').value=v.correo||'';
   document.getElementById('ev-direccion').value=v.direccion||'';
   document.getElementById('ev-metodo').value=v.metodo||'Efectivo';
+  document.getElementById('ev-mixto-efectivo').value=v.montoEfectivo||'';
+  document.getElementById('ev-mixto-transferencia').value=v.montoTransferencia||'';
   document.getElementById('ev-descuento').value=v.descuento||0;
+  toggleMixtoEdicion();
   renderItemsEdicion();
   abrirModal('modal-editar-venta');
 }
@@ -3447,6 +3534,25 @@ function renderTotalesEdicion(){
   const descuento=Math.min(parseFloat(document.getElementById('ev-descuento').value)||0, subtotal);
   document.getElementById('ev-subtotal').textContent=fmt(subtotal);
   document.getElementById('ev-total').textContent=fmt(subtotal-descuento);
+  if(document.getElementById('ev-metodo').value==='Mixto') renderMixtoEdicion();
+}
+function toggleMixtoEdicion(){
+  const esMixto=document.getElementById('ev-metodo').value==='Mixto';
+  document.getElementById('ev-mixto-split').style.display = esMixto? 'block':'none';
+  if(esMixto) renderMixtoEdicion();
+}
+function renderMixtoEdicion(){
+  if(!ventaEditando) return;
+  const subtotal=ventaEditando.items.reduce((s,it)=>s+it.precio*it.cantidad,0);
+  const descuento=Math.min(parseFloat(document.getElementById('ev-descuento').value)||0, subtotal);
+  const total=subtotal-descuento;
+  const efectivo=Math.max(0, parseFloat(document.getElementById('ev-mixto-efectivo').value)||0);
+  const transferencia=Math.max(0, parseFloat(document.getElementById('ev-mixto-transferencia').value)||0);
+  const diferencia=Math.round((total-(efectivo+transferencia))*100)/100;
+  const el=document.getElementById('ev-mixto-estado');
+  if(diferencia===0) el.innerHTML='<span style="color:var(--success);">✓ Cuadra con el total ('+fmt(total)+')</span>';
+  else if(diferencia>0) el.innerHTML='<span style="color:var(--danger);">Falta asignar '+fmt(diferencia)+'</span>';
+  else el.innerHTML='<span style="color:var(--danger);">Te pasaste por '+fmt(Math.abs(diferencia))+'</span>';
 }
 function guardarEdicionVenta(){
   if(!ventaEditando) return;
@@ -3455,15 +3561,26 @@ function guardarEdicionVenta(){
   if(!ventaEditando.items.length){ toast('La venta debe tener al menos un artículo. Usa Eliminar si quieres anularla.'); return; }
   const original=DB.ventas[idx];
 
-  // revertir el stock que había reservado la venta original
-  original.items.forEach(it=>ajustarStockPorItem(it, it.cantidad, +1));
-  // aplicar el stock según las cantidades editadas
-  ventaEditando.items.forEach(it=>ajustarStockPorItem(it, it.cantidad, -1));
-
   const subtotal=ventaEditando.items.reduce((s,it)=>s+it.precio*it.cantidad,0);
   const descuento=Math.min(parseFloat(document.getElementById('ev-descuento').value)||0, subtotal);
   const total=subtotal-descuento;
   const costoTotal=ventaEditando.items.reduce((s,it)=>s+it.costo*it.cantidad,0);
+  const metodo=document.getElementById('ev-metodo').value;
+
+  let montoEfectivo=0, montoTransferencia=0;
+  if(metodo==='Mixto'){
+    montoEfectivo=Math.max(0, parseFloat(document.getElementById('ev-mixto-efectivo').value)||0);
+    montoTransferencia=Math.max(0, parseFloat(document.getElementById('ev-mixto-transferencia').value)||0);
+    if(Math.round((montoEfectivo+montoTransferencia)*100)!==Math.round(total*100)){
+      toast('El desglose de efectivo y transferencia debe sumar el total ('+fmt(total)+')');
+      return;
+    }
+  }
+
+  // revertir el stock que había reservado la venta original
+  original.items.forEach(it=>ajustarStockPorItem(it, it.cantidad, +1));
+  // aplicar el stock según las cantidades editadas
+  ventaEditando.items.forEach(it=>ajustarStockPorItem(it, it.cantidad, -1));
 
   DB.ventas[idx]={
     ...original,
@@ -3472,7 +3589,8 @@ function guardarEdicionVenta(){
     telefonoCliente:document.getElementById('ev-telefono').value.trim(),
     correo:document.getElementById('ev-correo').value.trim(),
     direccion:document.getElementById('ev-direccion').value.trim(),
-    metodo:document.getElementById('ev-metodo').value,
+    metodo,
+    montoEfectivo:metodo==='Mixto'? montoEfectivo:0, montoTransferencia:metodo==='Mixto'? montoTransferencia:0,
     items:ventaEditando.items,
     subtotal, descuento, total, costoTotal,
     editada:true, fechaEdicion:new Date().toISOString()
@@ -4694,12 +4812,22 @@ function cargarConfigSync(){
   try{ return JSON.parse(localStorage.getItem('almacenropa_sync')||'null'); }catch(e){ return null; }
 }
 function guardarConfigSyncLocal(cfg){ localStorage.setItem('almacenropa_sync', JSON.stringify(cfg)); }
+function parsearFirebaseConfig(raw){
+  let texto=raw.trim();
+  texto=texto.replace(/^\s*(const|let|var)\s+firebaseConfig\s*=\s*/,'');
+  texto=texto.replace(/;\s*$/,'');
+  try{ return JSON.parse(texto); }catch(e){}
+  try{
+    const conComillas=texto.replace(/'/g,'"').replace(/([{,]\s*)([A-Za-z0-9_$]+)\s*:/g, '$1"$2":').replace(/,(\s*[}\]])/g,'$1');
+    return JSON.parse(conComillas);
+  }catch(e){ return null; }
+}
 function activarSincronizacionDesdeForm(){
   const raw=document.getElementById('sync-firebase-config').value.trim();
   const storeCode=document.getElementById('sync-store-code').value.trim();
   if(!raw || !storeCode){ toast('Pega la configuración de Firebase y define un código de tienda'); return; }
-  let cfg;
-  try{ cfg=JSON.parse(raw); }catch(e){ toast('La configuración de Firebase no es un JSON válido'); return; }
+  const cfg=parsearFirebaseConfig(raw);
+  if(!cfg || !cfg.apiKey || !cfg.projectId){ toast('No se pudo leer la configuración de Firebase. Verifica que pegaste el objeto completo (con apiKey, projectId, etc.)'); return; }
   conectarSincronizacion(cfg, storeCode, true);
 }
 async function conectarSincronizacion(firebaseConfigObj, storeCode, esConexionManual){
@@ -4746,7 +4874,16 @@ async function conectarSincronizacion(firebaseConfigObj, storeCode, esConexionMa
     if(esConexionManual) toast('Sincronización activada correctamente');
   }catch(err){
     console.error(err);
-    toast('No se pudo conectar. Revisa la configuración de Firebase y el código de tienda.');
+    let motivo='Revisa la configuración de Firebase y el código de tienda.';
+    if(err && err.code==='permission-denied'){
+      motivo='Firestore rechazó el acceso (permission-denied).\n\nVe a Firebase → Firestore Database → pestaña "Reglas" y pega esto, luego dale "Publicar":\n\nrules_version = \'2\';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /stores/{storeCode} {\n      allow read, write: if true;\n    }\n  }\n}\n\nDespués vuelve aquí e intenta conectar de nuevo.';
+    } else if(err && (err.code==='not-found' || /Firestore.*NOT_FOUND|database.*does not exist|resource-exhausted/i.test(err.message||''))){
+      motivo='No se encontró una base de datos de Firestore en ese proyecto (o no está creada todavía).\n\nVe a Firebase → "Compilación" → "Firestore Database" → "Crear base de datos" (elige modo de producción o de prueba, cualquiera sirve) y luego vuelve aquí e intenta de nuevo.';
+    } else if(err && err.message){
+      motivo='Detalle técnico: '+err.message;
+    }
+    alert('⚠ No se pudo conectar a la sincronización en la nube.\n\n'+motivo);
+    toast('⚠ No se pudo conectar — revisa el mensaje que apareció');
   }
 }
 function desconectarSincronizacion(){
