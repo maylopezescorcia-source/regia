@@ -273,6 +273,7 @@
     <button class="nav-btn" data-view="inventario"><span class="ic">▤</span> Inventario</button>
     <button class="nav-btn" data-view="combos"><span class="ic">🎁</span> Combos</button>
     <button class="nav-btn" data-view="apartados"><span class="ic">📌</span> Apartados</button>
+    <button class="nav-btn" data-view="creditos"><span class="ic">💳</span> Créditos</button>
     <button class="nav-btn" data-view="clientes"><span class="ic">☺</span> Clientes</button>
     <button class="nav-btn" data-view="proveedores"><span class="ic">🚚</span> Proveedores</button>
     <button class="nav-btn" data-view="activos"><span class="ic">🏢</span> Activos Fijos</button>
@@ -286,7 +287,7 @@
   <div id="sidebar-foot">
     <div style="margin-bottom:8px;">Sesión: <strong id="rol-actual">—</strong></div>
     <div id="sidebar-sync-badge" style="margin-bottom:8px;font-size:11px;color:#B7C0CB;">📴 Solo este dispositivo</div>
-    <div style="margin-bottom:8px;font-size:10px;color:#8E99A6;">Versión 2026-09-15 12:00</div>
+    <div style="margin-bottom:8px;font-size:10px;color:#8E99A6;">Versión 2026-10-04 · créditos</div>
     <button class="btn ghost sm" style="width:100%;color:#EDEFF2;border-color:rgba(255,255,255,.28);" onclick="cerrarSesion()">Cerrar sesión</button>
   </div>
 </div>
@@ -400,8 +401,8 @@
         </div>
         <div class="field">
           <label>Método de pago</label>
-          <select id="fac-metodo" onchange="toggleMixtoFacturar()">
-            <option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Mixto</option>
+          <select id="fac-metodo" onchange="cambioMetodoFacturar()">
+            <option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Mixto</option><option>Sistecrédito</option><option>Addi</option>
           </select>
         </div>
         <div class="field" id="fac-mixto-split" style="display:none;background:var(--surface-2);padding:10px;border-radius:8px;">
@@ -412,12 +413,18 @@
           </div>
           <div style="font-size:12px;margin-top:6px;" id="fac-mixto-estado"></div>
         </div>
+        <div class="field" id="fac-credito-box" style="display:none;background:var(--surface-2);padding:10px;border-radius:8px;">
+          <label>Comisión de <span id="fac-credito-nombre">la financiera</span> (%)</label>
+          <input type="number" id="fac-comision-pct" min="0" max="100" step="0.01" oninput="renderCarrito()">
+          <div style="font-size:11.5px;color:var(--ink-soft);margin-top:4px;">Se suma al valor de la compra. Puedes cambiarla solo para esta venta. Queda registrado el crédito para cobrarle a la financiera.</div>
+        </div>
         <div class="field" id="fac-vendedor-field" style="display:none;">
           <label>Vendedor</label>
           <select id="fac-vendedor"></select>
         </div>
         <div class="tot-line"><span>Subtotal</span><span class="num" id="fac-subtotal">$0</span></div>
         <div class="tot-line"><span>Descuento</span><span class="num" id="fac-desc-mostrar">$0</span></div>
+        <div class="tot-line" id="fac-comision-linea" style="display:none;"><span id="fac-comision-label">Comisión</span><span class="num" id="fac-comision-valor">$0</span></div>
         <div class="tot-line big"><span>Total</span><span class="num" id="fac-total">$0</span></div>
         <button class="btn gold" style="width:100%;margin-top:12px;" onclick="guardarVenta()">Guardar y generar comprobante</button>
         <button class="btn ghost" id="btn-whatsapp-venta" style="width:100%;margin-top:8px;display:none;" onclick="enviarWhatsAppUltimaVenta()">📲 Enviar comprobante por WhatsApp</button>
@@ -462,6 +469,10 @@
       <div class="card"><h3>Tarjeta</h3><div class="kpi indigo" style="font-size:19px;" id="cc-tarjeta">$0</div></div>
       <div class="card"><h3>Mixto (total)</h3><div class="kpi indigo" style="font-size:19px;" id="cc-mixto">$0</div></div>
     </div>
+    <div class="grid grid-2" style="margin-bottom:14px;">
+      <div class="card"><h3>Sistecrédito</h3><div class="kpi indigo" style="font-size:19px;" id="cc-sistecredito">$0</div><div class="kpi-sub">No es efectivo: queda por cobrar a la financiera</div></div>
+      <div class="card"><h3>Addi</h3><div class="kpi indigo" style="font-size:19px;" id="cc-addi">$0</div><div class="kpi-sub">No es efectivo: queda por cobrar a la financiera</div></div>
+    </div>
     <div class="card" style="margin-bottom:18px;">
       <h3>Ventas totales del día</h3>
       <div class="kpi gold" style="font-size:24px;" id="cc-total-ventas">$0</div>
@@ -470,6 +481,7 @@
       <div class="tot-line"><span>Ventas de mercancía</span><span class="num" id="cc-ventas-mercancia">$0</span></div>
       <div class="tot-line"><span>Abonos de apartados</span><span class="num" id="cc-abonos-apartados">$0</span></div>
       <div class="tot-line"><span>Ajustes de devoluciones/cambios</span><span class="num" id="cc-ajustes-devolucion">$0</span></div>
+      <div class="tot-line"><span>Cobros de créditos recibidos hoy (no suman a ventas)</span><span class="num" id="cc-cobros-credito">$0</span></div>
     </div>
 
     <div class="card" style="margin-bottom:18px;">
@@ -550,7 +562,7 @@
         <div class="field" id="dev-metodo-diferencia-field" style="display:none;margin-top:10px;">
           <label id="dev-metodo-diferencia-label">Método de pago de la diferencia</label>
           <select id="dev-metodo-diferencia">
-            <option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Mixto</option>
+            <option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option>
           </select>
         </div>
         <button class="btn gold" style="width:100%;margin-top:12px;" onclick="procesarDevolucion()">Procesar</button>
@@ -561,6 +573,40 @@
       <h3>Historial de devoluciones y cambios</h3>
       <table><thead><tr><th>Fecha</th><th>N.° venta</th><th>Tipo</th><th class="right">Valor devuelto</th><th class="right">Diferencia</th><th>Motivo</th><th></th></tr></thead>
       <tbody id="tbl-devoluciones"></tbody></table>
+    </div>
+  </div>
+
+  <!-- ================= CRÉDITOS (Sistecrédito / Addi) ================= -->
+  <div class="view" id="view-creditos">
+    <div class="view-head">
+      <div><h1>Créditos — Sistecrédito y Addi</h1><p>Ventas financiadas, días transcurridos y lo que cada financiera te debe.</p></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn ghost" onclick="exportarCreditosExcel()">Excel</button>
+        <button class="btn ghost" onclick="exportarCreditosPDF()">PDF</button>
+      </div>
+    </div>
+    <hr class="stitch head-stitch">
+    <div class="grid grid-4" style="margin-bottom:18px;">
+      <div class="card"><h3>Sistecrédito te debe</h3><div class="kpi indigo" style="font-size:20px;" id="cr-debe-sistecredito">$0</div><div class="kpi-sub" id="cr-n-sistecredito"></div></div>
+      <div class="card"><h3>Addi te debe</h3><div class="kpi indigo" style="font-size:20px;" id="cr-debe-addi">$0</div><div class="kpi-sub" id="cr-n-addi"></div></div>
+      <div class="card"><h3>Total por cobrar</h3><div class="kpi gold" style="font-size:20px;" id="cr-debe-total">$0</div><div class="kpi-sub">neto: lo facturado menos la comisión de la financiera</div></div>
+      <div class="card"><h3>Crédito más antiguo</h3><div class="kpi danger" style="font-size:20px;" id="cr-mas-antiguo">—</div><div class="kpi-sub">días sin cobrar</div></div>
+    </div>
+    <div class="toolbar">
+      <div class="field"><label>Financiera</label>
+        <select id="cr-filtro-fin" onchange="renderCreditos()"><option value="">Todas</option><option>Sistecrédito</option><option>Addi</option></select>
+      </div>
+      <div class="field"><label>Estado</label>
+        <select id="cr-filtro-estado" onchange="renderCreditos()"><option value="pendiente">Pendientes de cobro</option><option value="pagado">Cobrados</option><option value="">Todos</option></select>
+      </div>
+      <div class="field search-box"><label>Buscar cliente</label><input type="text" id="cr-buscar" oninput="renderCreditos()" placeholder="Nombre o cédula…"></div>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>Venta</th><th>Fecha</th><th>Cliente</th><th>Financiera</th><th class="right">Facturado</th><th class="right">Comisión</th><th class="right">Neto a recibir</th><th class="center">Días</th><th>Estado</th><th></th></tr></thead>
+        <tbody id="tbl-creditos"></tbody>
+      </table>
+      <p style="font-size:11.5px;color:var(--ink-soft);margin-top:10px;">Días: verde hasta 15, amarillo de 16 a 30, rojo más de 30 días sin cobrar. En créditos ya cobrados, los días son lo que tardó el pago.</p>
     </div>
   </div>
 
@@ -595,7 +641,7 @@
         <div class="row">
           <div class="field"><label>Abono inicial</label><input type="number" id="apt-abono-inicial" min="0" value="0" oninput="renderTotalesApartado()"></div>
           <div class="field"><label>Método de pago</label>
-            <select id="apt-metodo-abono"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Mixto</option></select>
+            <select id="apt-metodo-abono"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option></select>
           </div>
         </div>
         <div class="tot-line"><span>Saldo pendiente</span><span class="num" id="apt-saldo">$0</span></div>
@@ -1032,6 +1078,10 @@
       <h3 style="margin-bottom:10px;">Vendedores y comisión</h3>
       <div class="field"><label>Nombres de vendedores (separados por coma)</label><input type="text" id="cfg-vendedores" placeholder="Ej: Laura, Carlos, Pedro"></div>
       <div class="field"><label>% de comisión por venta</label><input type="number" id="cfg-comision" min="0" max="100" placeholder="Ej: 5"></div>
+      <div class="row">
+        <div class="field"><label>Comisión que cobra Sistecrédito (%)</label><input type="number" id="cfg-fin-sistecredito" min="0" max="100" step="0.01" placeholder="Ej: 5"></div>
+        <div class="field"><label>Comisión que cobra Addi (%)</label><input type="number" id="cfg-fin-addi" min="0" max="100" step="0.01" placeholder="Ej: 6"></div>
+      </div>
       <button class="btn gold" onclick="guardarConfig()">Guardar</button>
     </div>
 
@@ -1228,7 +1278,7 @@ service cloud.firestore {
       <div class="field"><label>Dirección</label><input type="text" id="ev-direccion"></div>
     </div>
     <div class="field"><label>Método de pago</label>
-      <select id="ev-metodo" onchange="toggleMixtoEdicion()"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Mixto</option></select>
+      <select id="ev-metodo" onchange="cambioMetodoEdicion()"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Mixto</option><option>Sistecrédito</option><option>Addi</option></select>
     </div>
     <div class="field" id="ev-mixto-split" style="display:none;background:var(--surface-2);padding:10px;border-radius:8px;">
       <label>Desglose del pago mixto</label>
@@ -1238,10 +1288,15 @@ service cloud.firestore {
       </div>
       <div style="font-size:12px;margin-top:6px;" id="ev-mixto-estado"></div>
     </div>
+    <div class="field" id="ev-credito-box" style="display:none;background:var(--surface-2);padding:10px;border-radius:8px;">
+      <label>Comisión de <span id="ev-credito-nombre">la financiera</span> (%)</label>
+      <input type="number" id="ev-comision-pct" min="0" max="100" step="0.01" oninput="renderTotalesEdicion()">
+    </div>
     <label style="margin-top:6px;">Artículos</label>
     <div id="ev-items" style="margin-bottom:10px;"></div>
     <div class="field"><label>Descuento ($)</label><input type="number" id="ev-descuento" min="0" oninput="renderTotalesEdicion()"></div>
     <div class="tot-line"><span>Subtotal</span><span class="num" id="ev-subtotal">$0</span></div>
+    <div class="tot-line" id="ev-comision-linea" style="display:none;"><span>Comisión</span><span class="num" id="ev-comision-valor">$0</span></div>
     <div class="tot-line big"><span>Total</span><span class="num" id="ev-total">$0</span></div>
     <p style="font-size:11px;color:var(--ink-soft);margin-top:6px;">Al guardar, el stock se ajusta automáticamente según los cambios de cantidad.</p>
     <div class="modal-actions">
@@ -1337,6 +1392,8 @@ service cloud.firestore {
     <div class="tot-line"><span>Ventas con tarjeta</span><span class="num" id="dc-tarjeta">$0</span></div>
     <div class="tot-line"><span>Ventas mixtas</span><span class="num" id="dc-mixto">$0</span></div>
     <div class="kpi-sub" id="dc-mixto-detalle" style="text-align:right;"></div>
+    <div class="tot-line"><span>Ventas con Sistecrédito (por cobrar)</span><span class="num" id="dc-sistecredito">$0</span></div>
+    <div class="tot-line"><span>Ventas con Addi (por cobrar)</span><span class="num" id="dc-addi">$0</span></div>
     <div class="tot-line big"><span>Total ventas</span><span class="num" id="dc-total-ventas">$0</span></div>
     <hr class="stitch" style="margin:12px 0;">
     <div class="tot-line"><span>Base de caja</span><span class="num" id="dc-base">$0</span></div>
@@ -1356,6 +1413,36 @@ service cloud.firestore {
   </div>
 </div>
 
+<!-- ===== Modal: cobro de crédito ===== -->
+<div class="modal-bg" id="modal-cobro-credito">
+  <div class="modal">
+    <h3>Registrar cobro — Venta N.° <span id="cob-numero"></span></h3>
+    <input type="hidden" id="cob-venta-id">
+    <p id="cob-resumen" style="font-size:12.5px;color:var(--ink-soft);margin-top:-6px;"></p>
+    <div class="tot-line"><span>Facturado al cliente</span><span class="num" id="cob-total">$0</span></div>
+    <div class="tot-line"><span>Comisión de la financiera</span><span class="num" id="cob-comision">$0</span></div>
+    <div class="tot-line big"><span>Neto a recibir</span><span class="num" id="cob-neto">$0</span></div>
+    <div class="field" style="margin-top:12px;"><label>¿Quién pagó?</label>
+      <select id="cob-pagador" onchange="cambioPagadorCobro()">
+        <option value="financiera">Pagó la financiera (Sistecrédito / Addi)</option>
+        <option value="cliente">Pagó el cliente directamente</option>
+      </select>
+    </div>
+    <div class="row">
+      <div class="field"><label>Fecha del pago</label><input type="date" id="cob-fecha"></div>
+      <div class="field"><label>Se recibió por</label>
+        <select id="cob-metodo"><option>Transferencia</option><option>Efectivo</option><option>Tarjeta</option></select>
+      </div>
+    </div>
+    <div class="field"><label>Valor recibido</label><input type="number" id="cob-monto" min="0"></div>
+    <div id="cob-aviso" style="font-size:12px;color:var(--ink-soft);"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="cerrarModal('modal-cobro-credito')">Cancelar</button>
+      <button class="btn gold" onclick="guardarCobroCredito()">Registrar cobro</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== Modal: abono a apartado ===== -->
 <div class="modal-bg" id="modal-abono">
   <div class="modal">
@@ -1364,7 +1451,7 @@ service cloud.firestore {
     <div class="tot-line"><span>Saldo pendiente actual</span><span class="num" id="abono-saldo-actual">$0</span></div>
     <div class="field"><label>Valor del abono</label><input type="number" id="abono-valor" min="0"></div>
     <div class="field"><label>Método de pago</label>
-      <select id="abono-metodo"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Mixto</option></select>
+      <select id="abono-metodo"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option></select>
     </div>
     <div class="modal-actions">
       <button class="btn ghost" onclick="cerrarModal('modal-abono')">Cancelar</button>
@@ -1538,6 +1625,8 @@ function migrarDB(db){
   if(!db.flujoCaja) db.flujoCaja=[]; // {id, semanaInicio, semanaFin, ingresos, egresos, saldoDisponible, asignaciones:[{concepto,valor}], totalAsignado, saldoSinAsignar}
   if(db.config.vendedores===undefined) db.config.vendedores=[]; // ['Nombre1','Nombre2']
   if(db.config.comisionPct===undefined) db.config.comisionPct=0;
+  if(db.config.finComisionSistecredito===undefined) db.config.finComisionSistecredito=0; // % que cobra Sistecrédito (número, ej. 5 = 5%)
+  if(db.config.finComisionAddi===undefined) db.config.finComisionAddi=0; // % que cobra Addi
   return db;
 }
 function guardarDB(){
@@ -1725,6 +1814,20 @@ function fechaISOLocal(d){
   return `${y}-${m}-${dia}`;
 }
 function hoyISO(){ return fechaISOLocal(new Date()); }
+/* ---- Créditos con financieras (Sistecrédito / Addi) ---- */
+const FINANCIERAS=['Sistecrédito','Addi'];
+function esMetodoCredito(m){ return FINANCIERAS.indexOf(m)!==-1; }
+function comisionDefaultPct(metodo){
+  if(metodo==='Sistecrédito') return Number(DB.config.finComisionSistecredito)||0;
+  if(metodo==='Addi') return Number(DB.config.finComisionAddi)||0;
+  return 0;
+}
+function calcularComisionFin(base, pct){ return Math.round(Math.max(0,base)*(Math.max(0,pct)/100)); }
+function netoCredito(v){ return Math.max(0,(v.total||0)-(v.comisionValor||0)); } // lo que la financiera debe pagarte (total menos su comisión)
+function diasEntreFechas(desdeISO, hastaISO){
+  const a=fechaLocalDesdeISO(desdeISO), b=fechaLocalDesdeISO(hastaISO);
+  return Math.round((b-a)/86400000);
+}
 function fmt(n){ return '$'+Math.round(n).toLocaleString('es-CO'); }
 function toast(msg){
   const t=document.getElementById('toast');
@@ -1735,8 +1838,8 @@ function toast(msg){
 
 /* ---------------- Sesión y permisos ---------------- */
 const PERMISOS = {
-  asesor:['facturar','ventas','cierre','devoluciones','apartados','inventario','clientes','combos','gastos'],
-  gerencia:['dashboard','facturar','ventas','cierre','devoluciones','apartados','inventario','combos','clientes','proveedores','activos','gastos','reportes','equilibrio','flujo','reserva','config']
+  asesor:['facturar','ventas','cierre','devoluciones','apartados','creditos','inventario','clientes','combos','gastos'],
+  gerencia:['dashboard','facturar','ventas','cierre','devoluciones','apartados','creditos','inventario','combos','clientes','proveedores','activos','gastos','reportes','equilibrio','flujo','reserva','config']
 };
 let currentRole = null;
 
@@ -1783,6 +1886,7 @@ function goTo(view){
   if(view==='cierre') renderCierre();
   if(view==='devoluciones') renderDevoluciones();
   if(view==='apartados') renderApartados();
+  if(view==='creditos') renderCreditos();
   if(view==='inventario') renderInventario();
   if(view==='combos') renderCombos();
   if(view==='clientes') renderClientes();
@@ -1813,14 +1917,18 @@ function diaCierrePendiente(){
 function calcularCierreCaja(fecha){
   fecha=fecha||hoyISO();
   const ventasDia=DB.ventas.filter(v=>v.fecha===fecha);
-  const porMetodo={Efectivo:0, Transferencia:0, Tarjeta:0, Mixto:0};
+  const porMetodo={Efectivo:0, Transferencia:0, Tarjeta:0, Mixto:0, 'Sistecrédito':0, Addi:0};
   ventasDia.forEach(v=>{ porMetodo[v.metodo]=(porMetodo[v.metodo]||0)+v.total; });
   // la parte en efectivo/transferencia de los pagos mixtos también debe contarse en el efectivo real de caja
   let efectivoDeMixtos=0, transferenciaDeMixtos=0;
   ventasDia.forEach(v=>{
     if(v.metodo==='Mixto'){ efectivoDeMixtos+=v.montoEfectivo||0; transferenciaDeMixtos+=v.montoTransferencia||0; }
   });
-  const efectivoTotalReal=(porMetodo.Efectivo||0)+efectivoDeMixtos;
+  // cobros de créditos (Sistecrédito/Addi) recibidos ese día: lo que entró en efectivo sí está en la caja
+  const cobrosDia=DB.ventas.filter(v=>v.credito && v.credito.estado==='pagado' && v.credito.fechaPago===fecha);
+  const cobrosCreditoTotal=cobrosDia.reduce((s,v)=>s+(v.credito.montoRecibido||0),0);
+  const cobrosCreditoEfectivo=cobrosDia.filter(v=>v.credito.metodoCobro==='Efectivo').reduce((s,v)=>s+(v.credito.montoRecibido||0),0);
+  const efectivoTotalReal=(porMetodo.Efectivo||0)+efectivoDeMixtos+cobrosCreditoEfectivo;
   const transferenciaTotalReal=(porMetodo.Transferencia||0)+transferenciaDeMixtos;
   const totalVentas=ventasDia.reduce((s,v)=>s+v.total,0);
   const gastosDia=DB.gastos.filter(g=>g.fecha===fecha).reduce((s,g)=>s+g.valor,0);
@@ -1828,7 +1936,8 @@ function calcularCierreCaja(fecha){
   const abonosApartados=ventasDia.filter(v=>v.esAbonoApartado).reduce((s,v)=>s+v.total,0);
   const ajustesDevolucion=ventasDia.filter(v=>v.esAjusteDevolucion).reduce((s,v)=>s+v.total,0);
   return {porMetodo, totalVentas, gastosDia, numFacturas:ventasDia.length, ventasMercancia, abonosApartados, ajustesDevolucion,
-    efectivoDeMixtos, transferenciaDeMixtos, efectivoTotalReal, transferenciaTotalReal};
+    efectivoDeMixtos, transferenciaDeMixtos, efectivoTotalReal, transferenciaTotalReal,
+    cobrosCreditoTotal, cobrosCreditoEfectivo};
 }
 function renderProductosVendidosDia(fecha, contenedorId){
   const cont=document.getElementById(contenedorId);
@@ -1862,6 +1971,9 @@ function renderCierre(){
   document.getElementById('cc-ventas-mercancia').textContent=fmt(r.ventasMercancia);
   document.getElementById('cc-abonos-apartados').textContent=fmt(r.abonosApartados);
   document.getElementById('cc-ajustes-devolucion').textContent=fmt(r.ajustesDevolucion);
+  document.getElementById('cc-sistecredito').textContent=fmt(r.porMetodo['Sistecrédito']||0);
+  document.getElementById('cc-addi').textContent=fmt(r.porMetodo.Addi||0);
+  document.getElementById('cc-cobros-credito').textContent=fmt(r.cobrosCreditoTotal||0)+(r.cobrosCreditoEfectivo>0? ' (efectivo: '+fmt(r.cobrosCreditoEfectivo)+')':'');
   renderProductosVendidosDia(fechaCierreActual, 'cc-productos-vendidos');
 
   const cierres=[...DB.cierres].sort((a,b)=>b.fecha.localeCompare(a.fecha));
@@ -1918,6 +2030,9 @@ function imprimirCierre(){
     html+=linea('  · de la cual, en efectivo', fmt(r.efectivoDeMixtos||0));
     html+=linea('  · de la cual, en transferencia', fmt(r.transferenciaDeMixtos||0));
   }
+  html+=linea('Ventas con Sistecrédito (por cobrar)', fmt(r.porMetodo['Sistecrédito']||0));
+  html+=linea('Ventas con Addi (por cobrar)', fmt(r.porMetodo.Addi||0));
+  if(r.cobrosCreditoEfectivo>0) html+=linea('Cobros de crédito recibidos en efectivo', fmt(r.cobrosCreditoEfectivo));
   html+=`<div class="ti-row ti-bold"><span>Total ventas</span><span>${fmt(r.totalVentas)}</span></div>`;
   html+='<div class="ti-dash"></div>';
   html+=linea('Base de caja', fmt(base));
@@ -1948,6 +2063,9 @@ function exportarCierrePDF(){
     ['Ventas mixtas', fmt(r.porMetodo.Mixto||0)],
     ['  · de la cual, en efectivo', fmt(r.efectivoDeMixtos||0)],
     ['  · de la cual, en transferencia', fmt(r.transferenciaDeMixtos||0)],
+    ['Ventas con Sistecrédito (por cobrar)', fmt(r.porMetodo['Sistecrédito']||0)],
+    ['Ventas con Addi (por cobrar)', fmt(r.porMetodo.Addi||0)],
+    ['Cobros de crédito recibidos en efectivo', fmt(r.cobrosCreditoEfectivo||0)],
     ['Total ventas', fmt(r.totalVentas)],
     ['Base de caja', fmt(base)],
     ['+ Ventas en efectivo (incl. pagos mixtos)', fmt(r.efectivoTotalReal||0)],
@@ -1971,6 +2089,7 @@ function guardarCierreCaja(){
     ventasEfectivo:r.efectivoTotalReal||0, ventasTransferencia:r.transferenciaTotalReal||0,
     ventasTarjeta:r.porMetodo.Tarjeta||0, ventasMixto:r.porMetodo.Mixto||0,
     ventasMixtoEfectivo:r.efectivoDeMixtos||0, ventasMixtoTransferencia:r.transferenciaDeMixtos||0,
+    ventasSistecredito:r.porMetodo['Sistecrédito']||0, ventasAddi:r.porMetodo.Addi||0, cobrosCreditoEfectivo:r.cobrosCreditoEfectivo||0,
     totalVentas:r.totalVentas, salidasEfectivo:salidas,
     efectivoEsperado:esperado, efectivoContado:contado, diferencia:contado-esperado,
     notas:document.getElementById('cc-notas').value.trim(),
@@ -2007,6 +2126,8 @@ function verDetalleCierre(id){
   document.getElementById('dc-tarjeta').textContent=fmt(c.ventasTarjeta||0);
   document.getElementById('dc-mixto').textContent=fmt(c.ventasMixto||0);
   document.getElementById('dc-mixto-detalle').textContent = c.ventasMixto>0 ? ('Efvo '+fmt(c.ventasMixtoEfectivo||0)+' · Transf '+fmt(c.ventasMixtoTransferencia||0)) : '';
+  document.getElementById('dc-sistecredito').textContent=fmt(c.ventasSistecredito||0);
+  document.getElementById('dc-addi').textContent=fmt(c.ventasAddi||0);
   document.getElementById('dc-total-ventas').textContent=fmt(c.totalVentas||0);
   document.getElementById('dc-base').textContent=fmt(c.baseCaja||0);
   document.getElementById('dc-salidas').textContent=fmt(c.salidasEfectivo||0);
@@ -2030,6 +2151,9 @@ function exportarCierrePDFHistorico(){
     ['Ventas mixtas', fmt(c.ventasMixto||0)],
     ['  · de la cual, en efectivo', fmt(c.ventasMixtoEfectivo||0)],
     ['  · de la cual, en transferencia', fmt(c.ventasMixtoTransferencia||0)],
+    ['Ventas con Sistecrédito (por cobrar)', fmt(c.ventasSistecredito||0)],
+    ['Ventas con Addi (por cobrar)', fmt(c.ventasAddi||0)],
+    ['Cobros de crédito recibidos en efectivo', fmt(c.cobrosCreditoEfectivo||0)],
     ['Total ventas', fmt(c.totalVentas||0)],
     ['Base de caja', fmt(c.baseCaja||0)],
     ['Salidas de efectivo', fmt(c.salidasEfectivo||0)],
@@ -2617,6 +2741,126 @@ function guardarApartadoRecuperado(){
  }
 }
 
+/* ================= CRÉDITOS (Sistecrédito / Addi) ================= */
+function creditosFiltrados(){
+  const fin=document.getElementById('cr-filtro-fin')?.value||'';
+  const estado=document.getElementById('cr-filtro-estado')?.value ?? 'pendiente';
+  const q=(document.getElementById('cr-buscar')?.value||'').trim().toLowerCase();
+  let lista=DB.ventas.filter(v=>v.credito);
+  if(fin) lista=lista.filter(v=>v.credito.financiera===fin);
+  if(estado) lista=lista.filter(v=>v.credito.estado===estado);
+  if(q) lista=lista.filter(v=>((v.cliente||'')+' '+(v.cedula||'')).toLowerCase().includes(q));
+  return lista;
+}
+function diasCredito(v){
+  return v.credito.estado==='pagado' && v.credito.fechaPago
+    ? diasEntreFechas(v.fecha, v.credito.fechaPago)
+    : diasEntreFechas(v.fecha, hoyISO());
+}
+function renderCreditos(){
+  const pend=DB.ventas.filter(v=>v.credito && v.credito.estado==='pendiente');
+  const suma=(arr)=>arr.reduce((s,v)=>s+netoCredito(v),0);
+  const pSis=pend.filter(v=>v.credito.financiera==='Sistecrédito'), pAddi=pend.filter(v=>v.credito.financiera==='Addi');
+  document.getElementById('cr-debe-sistecredito').textContent=fmt(suma(pSis));
+  document.getElementById('cr-n-sistecredito').textContent=pSis.length+' crédito(s) pendiente(s)';
+  document.getElementById('cr-debe-addi').textContent=fmt(suma(pAddi));
+  document.getElementById('cr-n-addi').textContent=pAddi.length+' crédito(s) pendiente(s)';
+  document.getElementById('cr-debe-total').textContent=fmt(suma(pend));
+  document.getElementById('cr-mas-antiguo').textContent = pend.length? Math.max(...pend.map(diasCredito))+' días' : '—';
+
+  const lista=creditosFiltrados().sort((a,b)=>{
+    if(a.credito.estado!==b.credito.estado) return a.credito.estado==='pendiente'? -1 : 1;
+    return a.credito.estado==='pendiente' ? diasCredito(b)-diasCredito(a) : (b.credito.fechaPago||'').localeCompare(a.credito.fechaPago||'');
+  });
+  const tbody=document.getElementById('tbl-creditos');
+  if(!lista.length){ tbody.innerHTML='<tr><td colspan="10"><div class="empty">No hay créditos con esos filtros. Los créditos se crean al facturar con Sistecrédito o Addi.</div></td></tr>'; return; }
+  tbody.innerHTML=lista.map(v=>{
+    const dias=diasCredito(v);
+    const pagado=v.credito.estado==='pagado';
+    const colorDias=pagado? 'indigo' : (dias<=15? 'success' : (dias<=30? 'gold' : 'danger'));
+    const estadoTxt=pagado
+      ? '<span class="badge success">Cobrado</span><div style="font-size:11px;color:var(--ink-soft);">'+(v.credito.pagadoPor==='cliente'?'Pagó el cliente':'Pagó la financiera')+' · '+v.credito.fechaPago+'</div>'
+      : '<span class="badge danger">Pendiente</span>';
+    return `<tr>
+      <td>${v.numero}</td><td>${v.fecha}</td><td>${v.cliente}${v.cedula? '<div style="font-size:11px;color:var(--ink-soft);">CC '+v.cedula+'</div>':''}</td>
+      <td>${v.credito.financiera}</td>
+      <td class="right num">${fmt(v.total)}</td>
+      <td class="right num">${fmt(v.comisionValor||0)}</td>
+      <td class="right num">${fmt(netoCredito(v))}</td>
+      <td class="center"><span class="badge ${colorDias}">${dias}</span></td>
+      <td>${estadoTxt}</td>
+      <td class="right">${pagado
+        ? `<button class="btn ghost sm" onclick="deshacerCobroCredito('${v.id}')">Deshacer</button>`
+        : `<button class="btn gold sm" onclick="abrirModalCobroCredito('${v.id}')">Registrar cobro</button>`}</td>
+    </tr>`;
+  }).join('');
+}
+function abrirModalCobroCredito(id){
+  const v=DB.ventas.find(x=>x.id===id); if(!v || !v.credito) return;
+  document.getElementById('cob-venta-id').value=v.id;
+  document.getElementById('cob-numero').textContent=v.numero;
+  document.getElementById('cob-resumen').textContent=v.cliente+' · '+v.credito.financiera+' · venta del '+v.fecha+' ('+diasCredito(v)+' días)';
+  document.getElementById('cob-total').textContent=fmt(v.total);
+  document.getElementById('cob-comision').textContent=fmt(v.comisionValor||0);
+  document.getElementById('cob-neto').textContent=fmt(netoCredito(v));
+  document.getElementById('cob-pagador').value='financiera';
+  document.getElementById('cob-fecha').value=hoyISO();
+  cambioPagadorCobro();
+  abrirModal('modal-cobro-credito');
+}
+function cambioPagadorCobro(){
+  const v=DB.ventas.find(x=>x.id===document.getElementById('cob-venta-id').value); if(!v) return;
+  const porCliente=document.getElementById('cob-pagador').value==='cliente';
+  document.getElementById('cob-metodo').value = porCliente? 'Efectivo' : 'Transferencia';
+  document.getElementById('cob-monto').value = porCliente? v.total : netoCredito(v);
+  document.getElementById('cob-aviso').textContent = porCliente
+    ? 'El cliente paga directo: por defecto se registra el total facturado. Edítalo si le perdonas la comisión.'
+    : 'La financiera te paga el neto (lo facturado menos su comisión). Edítalo si te consignó un valor distinto.';
+}
+function guardarCobroCredito(){
+  const v=DB.ventas.find(x=>x.id===document.getElementById('cob-venta-id').value); if(!v || !v.credito) return;
+  const monto=parseFloat(document.getElementById('cob-monto').value)||0;
+  const fecha=document.getElementById('cob-fecha').value||hoyISO();
+  if(monto<=0){ toast('Escribe el valor recibido'); return; }
+  if(fecha<v.fecha){ toast('La fecha del pago no puede ser anterior a la fecha de la venta ('+v.fecha+')'); return; }
+  v.credito.estado='pagado';
+  v.credito.fechaPago=fecha;
+  v.credito.pagadoPor=document.getElementById('cob-pagador').value;
+  v.credito.metodoCobro=document.getElementById('cob-metodo').value;
+  v.credito.montoRecibido=monto;
+  guardarDB();
+  cerrarModal('modal-cobro-credito');
+  renderCreditos();
+  toast('Cobro registrado — crédito de '+v.cliente+' cerrado');
+}
+function deshacerCobroCredito(id){
+  const v=DB.ventas.find(x=>x.id===id); if(!v || !v.credito) return;
+  if(!confirm('¿Volver este crédito a "Pendiente"? Se borra el registro del cobro.')) return;
+  v.credito.estado='pendiente'; v.credito.fechaPago=''; v.credito.pagadoPor=''; v.credito.metodoCobro=''; v.credito.montoRecibido=0;
+  guardarDB();
+  renderCreditos();
+  toast('Crédito devuelto a pendiente');
+}
+function datosCreditos(){
+  const lista=creditosFiltrados().sort((a,b)=>a.numero-b.numero);
+  const headers=['Venta','Fecha','Cliente','Cédula','Financiera','Facturado','Comisión','Neto a recibir','Días','Estado','Fecha de cobro','Quién pagó','Recibido'];
+  const rows=lista.map(v=>[v.numero, v.fecha, v.cliente, v.cedula||'', v.credito.financiera, fmt(v.total), fmt(v.comisionValor||0), fmt(netoCredito(v)), diasCredito(v),
+    v.credito.estado==='pagado'? 'Cobrado':'Pendiente', v.credito.fechaPago||'', v.credito.pagadoPor==='cliente'? 'Cliente' : (v.credito.pagadoPor==='financiera'? 'Financiera':''), v.credito.estado==='pagado'? fmt(v.credito.montoRecibido||0):'']);
+  const porCobrar=lista.filter(v=>v.credito.estado==='pendiente').reduce((s,v)=>s+netoCredito(v),0);
+  return {headers, rows, porCobrar, n:lista.length};
+}
+function exportarCreditosExcel(){
+  const d=datosCreditos();
+  descargarCSV('creditos-'+hoyISO()+'.csv', d.headers, d.rows);
+}
+function exportarCreditosPDF(){
+  const d=datosCreditos();
+  const idx=[0,1,2,4,5,6,7,8,9];
+  generarPDF('creditos-'+hoyISO()+'.pdf', 'Créditos Sistecrédito y Addi', d.n+' crédito(s) — '+hoyISO(),
+    idx.map(i=>d.headers[i]), d.rows.map(r=>idx.map(i=>r[i])),
+    [{texto:'Pendiente por cobrar (neto): '+fmt(d.porCobrar), bold:true}]);
+}
+
 /* ================= DEVOLUCIONES Y CAMBIOS ================= */
 let ventaDevolucionActual=null;
 let itemsDevolver=[];
@@ -2640,6 +2884,7 @@ function buscarVentaDevolucion(){
   document.getElementById('dev-descuento-original').textContent = descuentoRatio>0
     ? `Esta venta tuvo un descuento del ${(descuentoRatio*100).toFixed(1)}% — el valor a devolver ya lo tiene en cuenta.`
     : 'Esta venta no tuvo descuento.';
+  if(v.credito) document.getElementById('dev-descuento-original').textContent += ' ⚠ Fue a crédito con '+v.credito.financiera+': el sistema no modifica el crédito, coordina el ajuste con la financiera.';
   document.getElementById('dev-tipo-select').value='devolucion';
   document.getElementById('dev-descuento-adicional').value=0;
   document.getElementById('dev-motivo-input').value='';
@@ -3158,11 +3403,34 @@ function renderCarrito(){
   const subtotal=carrito.reduce((s,it)=>s+it.precio*it.cantidad,0);
   const pct=Math.min(100, Math.max(0, parseFloat(document.getElementById('fac-descuento').value)||0));
   const descuento=subtotal*pct/100;
-  const total=Math.max(0, subtotal-descuento);
+  const metodoSel=document.getElementById('fac-metodo').value;
+  const base=Math.max(0, subtotal-descuento);
+  let comision=0;
+  if(esMetodoCredito(metodoSel)){
+    const pctCom=Math.max(0, parseFloat(document.getElementById('fac-comision-pct').value)||0);
+    comision=calcularComisionFin(base, pctCom);
+    document.getElementById('fac-comision-label').textContent='Comisión '+metodoSel+' ('+pctCom+'%)';
+  }
+  document.getElementById('fac-comision-linea').style.display = comision>0 ? 'flex' : 'none';
+  document.getElementById('fac-comision-valor').textContent=fmt(comision);
+  const total=base+comision;
   document.getElementById('fac-subtotal').textContent=fmt(subtotal);
   document.getElementById('fac-desc-mostrar').textContent=fmt(descuento)+(pct>0? ' ('+pct+'%)':'');
   document.getElementById('fac-total').textContent=fmt(total);
-  if(document.getElementById('fac-metodo').value==='Mixto') renderMixtoFacturar();
+  if(metodoSel==='Mixto') renderMixtoFacturar();
+}
+function cambioMetodoFacturar(){
+  const m=document.getElementById('fac-metodo').value;
+  toggleMixtoFacturar();
+  const box=document.getElementById('fac-credito-box');
+  if(esMetodoCredito(m)){
+    box.style.display='block';
+    document.getElementById('fac-credito-nombre').textContent=m;
+    document.getElementById('fac-comision-pct').value=comisionDefaultPct(m);
+  } else {
+    box.style.display='none';
+  }
+  renderCarrito();
 }
 function toggleMixtoFacturar(){
   const esMixto=document.getElementById('fac-metodo').value==='Mixto';
@@ -3278,7 +3546,11 @@ function guardarVenta(){
   const costoTotal=carrito.reduce((s,it)=>s+it.costo*it.cantidad,0);
   const pctDescuento=Math.min(100, Math.max(0, parseFloat(document.getElementById('fac-descuento').value)||0));
   const descuento=subtotal*pctDescuento/100;
-  const total=subtotal-descuento;
+  const metodoSel=document.getElementById('fac-metodo').value;
+  const esCredito=esMetodoCredito(metodoSel);
+  const comisionPct=esCredito? Math.max(0, parseFloat(document.getElementById('fac-comision-pct').value)||0) : 0;
+  const comisionValor=esCredito? calcularComisionFin(subtotal-descuento, comisionPct) : 0;
+  const total=subtotal-descuento+comisionValor;
   const cliente=document.getElementById('fac-cliente').value.trim();
   const cedula=document.getElementById('fac-cedula').value.trim();
   const telefonoCliente=document.getElementById('fac-telefono-cliente').value.trim();
@@ -3287,6 +3559,7 @@ function guardarVenta(){
   const metodo=document.getElementById('fac-metodo').value;
   const vendedor=document.getElementById('fac-vendedor-field').style.display!=='none' ? document.getElementById('fac-vendedor').value : '';
   const numero=DB.config.siguienteNumero||1;
+  if(esCredito && !cliente){ toast('Para una venta con '+metodoSel+' escribe el nombre del cliente (así queda el crédito identificado).'); return; }
 
   let montoEfectivo=0, montoTransferencia=0;
   if(metodo==='Mixto'){
@@ -3305,7 +3578,9 @@ function guardarVenta(){
     id:uid(), numero, fecha:hoyISO(), hora:new Date().toISOString(),
     cliente:cliente||'Cliente mostrador', cedula, telefonoCliente, correo, direccion, metodo, vendedor,
     montoEfectivo:metodo==='Mixto'? montoEfectivo:0, montoTransferencia:metodo==='Mixto'? montoTransferencia:0,
-    items:carrito.map(it=>({...it})), subtotal, descuento, total, costoTotal
+    items:carrito.map(it=>({...it})), subtotal, descuento, total, costoTotal,
+    comisionPct, comisionValor,
+    ...(esCredito? {credito:{estado:'pendiente', financiera:metodo, fechaPago:'', pagadoPor:'', metodoCobro:'', montoRecibido:0}} : {})
   };
   DB.ventas.push(venta);
   DB.config.siguienteNumero=numero+1;
@@ -3336,10 +3611,9 @@ function guardarVenta(){
   document.getElementById('fac-metodo').value='Efectivo';
   document.getElementById('fac-mixto-efectivo').value='';
   document.getElementById('fac-mixto-transferencia').value='';
-  toggleMixtoFacturar();
-  renderCarrito();
+  cambioMetodoFacturar();
   renderCatalogo();
-  toast('Venta N.° '+numero+' guardada');
+  toast('Venta N.° '+numero+(esCredito? ' guardada — crédito '+metodoSel+' pendiente de cobro' : ' guardada'));
 }
 
 /* ---------------- Envío por WhatsApp ---------------- */
@@ -3357,6 +3631,7 @@ function armarMensajeWhatsApp(venta){
   });
   msg+=`\n💵 Subtotal: ${fmt(venta.subtotal)}\n`;
   if(venta.descuento>0) msg+=`🏷️ Descuento: ${fmt(venta.descuento)}\n`;
+  if(venta.comisionValor>0) msg+=`💳 Comisión ${venta.metodo} (${venta.comisionPct}%): ${fmt(venta.comisionValor)}\n`;
   msg+=`💰 *TOTAL: ${fmt(venta.total)}*\n\n`;
   msg+=`🙏 ¡Gracias por tu compra! Vuelve pronto 💫`;
   return msg;
@@ -3430,6 +3705,7 @@ function imprimirVenta(venta){
   html+='<div class="ti-dash"></div>';
   html+=linea('Subtotal', fmt(venta.subtotal));
   html+=linea('Descuento', fmt(venta.descuento));
+  if(venta.comisionValor>0) html+=linea('Comisión '+venta.metodo+' ('+venta.comisionPct+'%)', fmt(venta.comisionValor));
   html+=`<div class="ti-row ti-bold ti-lg"><span>TOTAL</span><span>${fmt(venta.total)}</span></div>`;
   html+='<div class="ti-dash"></div>';
   html+='<div class="ti-center">Comprobante de venta interno.</div>';
@@ -3451,7 +3727,7 @@ function renderVentas(){
   if(!lista.length){ tbody.innerHTML='<tr><td colspan="8"><div class="empty">No hay ventas en este rango.</div></td></tr>'; return; }
   tbody.innerHTML=lista.map(v=>`
     <tr>
-      <td>${v.numero}</td><td>${v.fecha}</td><td>${v.cliente}${v.editada?' <span class="badge gold">editada</span>':''}${v.esAjusteDevolucion?' <span class="badge indigo">ajuste</span>':''}${v.esAbonoApartado?' <span class="badge gold">abono</span>':''}</td>
+      <td>${v.numero}</td><td>${v.fecha}</td><td>${v.cliente}${v.editada?' <span class="badge gold">editada</span>':''}${v.esAjusteDevolucion?' <span class="badge indigo">ajuste</span>':''}${v.esAbonoApartado?' <span class="badge gold">abono</span>':''}${v.credito?' <span class="badge indigo">'+v.credito.financiera+(v.credito.estado==='pagado'?' ✓':'')+'</span>':''}</td>
       <td style="font-size:12px;">${v.metodo}${v.metodo==='Mixto'? '<br><span style="color:var(--ink-soft);">Efvo '+fmt(v.montoEfectivo||0)+' · Transf '+fmt(v.montoTransferencia||0)+'</span>' : ''}</td>
       <td class="right num solo-gerencia">${fmt(v.costoTotal)}</td>
       <td class="right num">${fmt(v.total)}</td>
@@ -3495,7 +3771,8 @@ function editarVenta(id){
   document.getElementById('ev-mixto-efectivo').value=v.montoEfectivo||'';
   document.getElementById('ev-mixto-transferencia').value=v.montoTransferencia||'';
   document.getElementById('ev-descuento').value=v.descuento||0;
-  toggleMixtoEdicion();
+  document.getElementById('ev-comision-pct').value = esMetodoCredito(v.metodo)? (v.comisionPct||0) : '';
+  cambioMetodoEdicion(true);
   renderItemsEdicion();
   abrirModal('modal-editar-venta');
 }
@@ -3532,9 +3809,28 @@ function renderTotalesEdicion(){
   if(!ventaEditando) return;
   const subtotal=ventaEditando.items.reduce((s,it)=>s+it.precio*it.cantidad,0);
   const descuento=Math.min(parseFloat(document.getElementById('ev-descuento').value)||0, subtotal);
+  const metodoEv=document.getElementById('ev-metodo').value;
+  const baseEv=subtotal-descuento;
+  let comisionEv=0;
+  if(esMetodoCredito(metodoEv)) comisionEv=calcularComisionFin(baseEv, parseFloat(document.getElementById('ev-comision-pct').value)||0);
+  document.getElementById('ev-comision-linea').style.display = comisionEv>0 ? 'flex' : 'none';
+  document.getElementById('ev-comision-valor').textContent=fmt(comisionEv);
   document.getElementById('ev-subtotal').textContent=fmt(subtotal);
-  document.getElementById('ev-total').textContent=fmt(subtotal-descuento);
-  if(document.getElementById('ev-metodo').value==='Mixto') renderMixtoEdicion();
+  document.getElementById('ev-total').textContent=fmt(baseEv+comisionEv);
+  if(metodoEv==='Mixto') renderMixtoEdicion();
+}
+function cambioMetodoEdicion(esCarga){
+  const m=document.getElementById('ev-metodo').value;
+  toggleMixtoEdicion();
+  const box=document.getElementById('ev-credito-box');
+  if(esMetodoCredito(m)){
+    box.style.display='block';
+    document.getElementById('ev-credito-nombre').textContent=m;
+    if(!esCarga) document.getElementById('ev-comision-pct').value=comisionDefaultPct(m);
+  } else {
+    box.style.display='none';
+  }
+  renderTotalesEdicion();
 }
 function toggleMixtoEdicion(){
   const esMixto=document.getElementById('ev-metodo').value==='Mixto';
@@ -3563,9 +3859,14 @@ function guardarEdicionVenta(){
 
   const subtotal=ventaEditando.items.reduce((s,it)=>s+it.precio*it.cantidad,0);
   const descuento=Math.min(parseFloat(document.getElementById('ev-descuento').value)||0, subtotal);
-  const total=subtotal-descuento;
+  const totalBase=subtotal-descuento;
   const costoTotal=ventaEditando.items.reduce((s,it)=>s+it.costo*it.cantidad,0);
   const metodo=document.getElementById('ev-metodo').value;
+  const esCredito=esMetodoCredito(metodo);
+  const comisionPct=esCredito? Math.max(0, parseFloat(document.getElementById('ev-comision-pct').value)||0) : 0;
+  const comisionValor=esCredito? calcularComisionFin(totalBase, comisionPct) : 0;
+  const total=totalBase+comisionValor;
+  if(esCredito && !(document.getElementById('ev-cliente').value.trim())){ toast('Para una venta con '+metodo+' escribe el nombre del cliente.'); return; }
 
   let montoEfectivo=0, montoTransferencia=0;
   if(metodo==='Mixto'){
@@ -3577,6 +3878,9 @@ function guardarEdicionVenta(){
     }
   }
 
+  if(original.credito && original.credito.estado==='pagado' && (Math.round(total)!==Math.round(original.total) || !esCredito || original.credito.financiera!==metodo)){
+    if(!confirm('Este crédito ya fue marcado como COBRADO. Si cambias el total o el método, revisa el cobro en el módulo Créditos. ¿Continuar de todas formas?')) return;
+  }
   // revertir el stock que había reservado la venta original
   original.items.forEach(it=>ajustarStockPorItem(it, it.cantidad, +1));
   // aplicar el stock según las cantidades editadas
@@ -3593,8 +3897,16 @@ function guardarEdicionVenta(){
     montoEfectivo:metodo==='Mixto'? montoEfectivo:0, montoTransferencia:metodo==='Mixto'? montoTransferencia:0,
     items:ventaEditando.items,
     subtotal, descuento, total, costoTotal,
+    comisionPct, comisionValor,
     editada:true, fechaEdicion:new Date().toISOString()
   };
+  if(esCredito){
+    DB.ventas[idx].credito = original.credito
+      ? {...original.credito, financiera:metodo}
+      : {estado:'pendiente', financiera:metodo, fechaPago:'', pagadoPor:'', metodoCobro:'', montoRecibido:0};
+  } else {
+    delete DB.ventas[idx].credito;
+  }
   guardarDB();
   cerrarModal('modal-editar-venta');
   ventaEditando=null;
@@ -4414,7 +4726,7 @@ function renderComisiones(ventasFiltradas){
     const nombre=v.vendedor||'Sin asignar';
     mapa[nombre]=mapa[nombre]||{n:0,total:0};
     mapa[nombre].n++;
-    mapa[nombre].total+=v.total;
+    mapa[nombre].total+=v.total-(v.comisionValor||0);
   });
   const lista=Object.entries(mapa).sort((a,b)=>b[1].total-a[1].total);
   if(!lista.length){ tbody.innerHTML='<tr><td colspan="4"><div class="empty">Sin ventas en este periodo.</div></td></tr>'; return; }
@@ -4440,7 +4752,10 @@ function semanaFlujoPendiente(){
 }
 function calcularFlujoSemana(lunesStr){
   const domingoStr=domingoDeLunes(lunesStr);
-  const ingresos=DB.ventas.filter(v=>v.fecha>=lunesStr && v.fecha<=domingoStr).reduce((s,v)=>s+v.total,0);
+  // las ventas a crédito (Sistecrédito/Addi) solo son ingreso cuando la financiera (o el cliente) las paga
+  const ingresosVentas=DB.ventas.filter(v=>v.fecha>=lunesStr && v.fecha<=domingoStr && !esMetodoCredito(v.metodo)).reduce((s,v)=>s+v.total,0);
+  const cobrosCreditos=DB.ventas.filter(v=>v.credito && v.credito.estado==='pagado' && v.credito.fechaPago>=lunesStr && v.credito.fechaPago<=domingoStr).reduce((s,v)=>s+(v.credito.montoRecibido||0),0);
+  const ingresos=ingresosVentas+cobrosCreditos;
   const egresos=DB.gastos.filter(g=>g.fecha>=lunesStr && g.fecha<=domingoStr).reduce((s,g)=>s+g.valor,0);
   return {ingresos, egresos, saldoDisponible:ingresos-egresos};
 }
@@ -4754,6 +5069,8 @@ function cargarConfigForm(){
   document.getElementById('cfg-pin-gerencia').value=DB.config.pinGerencia||'0000';
   document.getElementById('cfg-vendedores').value=(DB.config.vendedores||[]).join(', ');
   document.getElementById('cfg-comision').value=(DB.config.comisionPct||0)*100;
+  document.getElementById('cfg-fin-sistecredito').value=DB.config.finComisionSistecredito||0;
+  document.getElementById('cfg-fin-addi').value=DB.config.finComisionAddi||0;
   if(syncStoreCode) document.getElementById('sync-store-code').value=syncStoreCode;
   actualizarEstadoSync();
 }
@@ -4767,6 +5084,8 @@ function guardarConfig(){
   DB.config.pinGerencia=document.getElementById('cfg-pin-gerencia').value.trim()||'0000';
   DB.config.vendedores=document.getElementById('cfg-vendedores').value.split(',').map(s=>s.trim()).filter(Boolean);
   DB.config.comisionPct=(parseFloat(document.getElementById('cfg-comision').value)||0)/100;
+  DB.config.finComisionSistecredito=Math.max(0, parseFloat(document.getElementById('cfg-fin-sistecredito').value)||0);
+  DB.config.finComisionAddi=Math.max(0, parseFloat(document.getElementById('cfg-fin-addi').value)||0);
   guardarDB();
   document.getElementById('brand-name').textContent=DB.config.nombre;
   toast('Configuración guardada');
