@@ -8,219 +8,285 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Estudio Tributario · Sistema de Almacén de Ropa</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>try{var __a=localStorage.getItem("almacenropa_acento");if(__a)document.documentElement.setAttribute("data-acento",__a);}catch(e){}</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/JsBarcode/3.11.5/JsBarcode.all.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
+  /* =========================================================
+     Regia by cm — sistema visual
+     Base clara y silenciosa; un solo acento (cambiable en Configuración).
+     Tipografía: Jost (títulos y cifras) + Inter (interfaz y tablas).
+     ========================================================= */
   :root{
-    --bg:#F7F5F1;
+    --bg:#F4F3F7;
     --surface:#FFFFFF;
-    --surface-2:#F0ECE3;
-    --ink:#21262B;
-    --ink-soft:#6B7178;
-    --border:#E2DDD1;
-    --gold:#B08D3E;
-    --gold-soft:#EFE4C8;
-    --indigo:#2F4157;
-    --indigo-soft:#DCE3EA;
-    --success:#3C7A5C;
-    --success-soft:#DFEEE6;
-    --danger:#B3453C;
-    --danger-soft:#F5DEDC;
-    --radius:10px;
+    --surface-2:#F7F6FA;
+    --ink:#1B1A21;
+    --ink-soft:#6E6A78;
+    --border:#E8E5EE;
+    --line-soft:#F0EEF4;
+    /* acento (el nombre --gold se conserva porque el código lo usa en muchos sitios) */
+    --gold:#6B3FA0;
+    --accent-soft:#F0E9F8;
+    --accent-ring:rgba(107,63,160,.22);
+    /* ámbar: solo avisos y resaltes */
+    --gold-soft:#FAF1DE;
+    --amber-ink:#8A5A12;
+    --indigo:#2E2C38;
+    --indigo-soft:#ECEBF1;
+    --success:#2B8A62;
+    --success-soft:#E3F4EC;
+    --danger:#C23D3A;
+    --danger-soft:#FCE8E6;
+    --radius:14px;
+    --radius-sm:10px;
+    --ease:cubic-bezier(.2,.7,.2,1);
+    --shadow-pop:0 24px 60px rgba(27,26,33,.22);
   }
+  :root[data-acento="rosa"]{--gold:#B4326A;--accent-soft:#FBE9F1;--accent-ring:rgba(180,50,106,.22);}
+  :root[data-acento="dorado"]{--gold:#9A6B13;--accent-soft:#F8EFD9;--accent-ring:rgba(154,107,19,.24);}
+  :root[data-acento="turquesa"]{--gold:#16757A;--accent-soft:#E2F2F2;--accent-ring:rgba(22,117,122,.24);}
+  :root[data-acento="negro"]{--gold:#1B1A21;--accent-soft:#EEEDF1;--accent-ring:rgba(27,26,33,.20);}
+
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
-    font-family:'Inter',sans-serif;
-    background:var(--bg);
-    color:var(--ink);
-    min-height:100vh;
-    display:flex;
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+    font-size:14px;line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+    background:var(--bg);color:var(--ink);
+    min-height:100vh;display:flex;
   }
-  .num{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;}
-  h1,h2,h3,.brand{font-family:'Fraunces',serif;}
+  h1,h2,h3{font-family:'Jost','Inter',sans-serif;font-weight:500;}
+  .num{font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;font-weight:500;}
+  :focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
 
-  /* stitch signature: dashed textile-stitch rule */
-  .stitch{
-    height:1px;
-    background-image:repeating-linear-gradient(90deg, var(--gold) 0 6px, transparent 6px 12px);
-    border:none;
-    opacity:.7;
-  }
-  .stitch-v{
-    width:1px;
-    background-image:repeating-linear-gradient(180deg, var(--border) 0 5px, transparent 5px 10px);
-  }
+  .stitch{height:1px;border:0;background:var(--border);margin:0;}
+  .stitch-v{width:1px;background:var(--border);}
 
-  /* ---------- Sidebar ---------- */
+  /* ---------- Barra lateral ---------- */
   #sidebar{
-    width:230px;
-    flex-shrink:0;
-    background:var(--indigo);
-    color:#EDEFF2;
-    display:flex;
-    flex-direction:column;
-    padding:22px 16px;
-    position:sticky;
-    top:0;
-    height:100vh;
+    width:248px;flex-shrink:0;
+    background:var(--surface);border-right:1px solid var(--border);
+    display:flex;flex-direction:column;
+    padding:22px 14px 14px;
+    position:sticky;top:0;height:100vh;
   }
-  .brand{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    margin-bottom:6px;
+  .brand-logo-badge{display:flex;justify-content:center;padding:0 8px;margin:0 0 2px;}
+  .brand-logo-img{width:100%;max-width:112px;height:auto;display:block;}
+  .brand{display:none;}
+  .brand-sub{font-size:11.5px;color:var(--ink-soft);text-align:center;margin:2px 0 6px;}
+  #sidebar nav{
+    flex:1;min-height:0;overflow-y:auto;
+    display:flex;flex-direction:column;gap:1px;
+    margin:8px -6px 6px;padding:0 6px;
+    /* sombras que solo aparecen cuando hay más menú arriba o abajo */
+    background:
+      linear-gradient(var(--surface) 30%,rgba(255,255,255,0)) center top,
+      linear-gradient(rgba(255,255,255,0),var(--surface) 70%) center bottom,
+      radial-gradient(farthest-side at 50% 0,rgba(27,26,33,.14),rgba(27,26,33,0)) center top,
+      radial-gradient(farthest-side at 50% 100%,rgba(27,26,33,.14),rgba(27,26,33,0)) center bottom;
+    background-repeat:no-repeat;background-color:var(--surface);
+    background-size:100% 34px,100% 34px,100% 12px,100% 12px;
+    background-attachment:local,local,scroll,scroll;
   }
-  .brand-mark{
-    width:34px;height:34px;border-radius:50%;
-    border:1.5px dashed var(--gold);
-    display:flex;align-items:center;justify-content:center;
-    font-family:'Fraunces',serif;font-weight:700;color:var(--gold);
-    font-size:15px;
-  }
-  .brand-logo-badge{
-    background:#fff;border-radius:12px;padding:10px 14px;
-    display:flex;align-items:center;justify-content:center;
-    margin-bottom:8px;
-  }
-  .brand-logo-img{width:100%;max-width:150px;height:auto;display:block;}
-  .brand-text{font-size:17px;font-weight:600;letter-spacing:.2px;}
-  .brand-sub{font-size:11px;color:#B7C0CB;margin:2px 0 18px 4px;letter-spacing:.3px;}
-  nav{display:flex;flex-direction:column;gap:3px;margin-top:8px;}
+  .nav-sec{font-size:11.5px;color:var(--ink-soft);font-weight:500;margin:14px 12px 4px;}
   .nav-btn{
-    display:flex;align-items:center;gap:10px;
-    background:transparent;border:none;color:#D8DEE6;
-    padding:10px 12px;border-radius:8px;font-size:14px;
-    font-family:'Inter',sans-serif;cursor:pointer;text-align:left;
-    transition:background .15s ease, color .15s ease;
+    position:relative;width:100%;
+    display:flex;align-items:center;gap:12px;
+    background:transparent;border:0;color:#4A4755;
+    padding:8px 12px;border-radius:var(--radius-sm);
+    font-family:'Inter',sans-serif;font-size:13.5px;font-weight:500;text-align:left;cursor:pointer;
+    transition:background .18s var(--ease),color .18s var(--ease),transform .12s var(--ease);
   }
-  .nav-btn .ic{font-size:15px;width:18px;text-align:center;}
-  .nav-btn:hover{background:rgba(255,255,255,.06);color:#fff;}
-  .nav-btn.active{background:var(--gold);color:#2A2107;font-weight:600;}
-  #sidebar-foot{margin-top:auto;font-size:11px;color:#8E99A6;padding-top:14px;border-top:1px solid rgba(255,255,255,.12);}
+  .nav-btn svg{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;opacity:.75;transition:opacity .18s,transform .25s var(--ease),color .18s;}
+  .nav-btn:hover{background:var(--surface-2);color:var(--ink);}
+  .nav-btn:hover svg{opacity:1;transform:scale(1.08);}
+  .nav-btn:active{transform:scale(.98);}
+  .nav-btn::before{
+    content:'';position:absolute;left:3px;top:9px;bottom:9px;width:3px;border-radius:3px;
+    background:var(--gold);transform:scaleY(0);transition:transform .28s var(--ease);
+  }
+  .nav-btn.active{background:var(--accent-soft);color:var(--ink);font-weight:600;}
+  .nav-btn.active svg{color:var(--gold);opacity:1;}
+  .nav-btn.active::before{transform:scaleY(1);}
+  #sidebar-foot{padding-top:12px;border-top:1px solid var(--border);font-size:11.5px;color:var(--ink-soft);display:flex;flex-direction:column;gap:6px;}
+  #sidebar-foot .foot-ver{font-size:10.5px;opacity:.75;}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#C9C5D2;margin-right:7px;vertical-align:1px;}
+  .dot.on{background:var(--success);box-shadow:0 0 0 3px var(--success-soft);}
+  #sidebar-foot .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:4px;}
+  #sidebar-foot .btn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 
-  /* ---------- Main ---------- */
-  #main{flex:1;padding:28px 34px;max-width:1180px;}
+  /* ---------- Contenido ---------- */
+  #main{flex:1;min-width:0;max-width:1280px;margin:0 auto;padding:34px 44px 64px;}
   .view{display:none;}
-  .view.active{display:block;animation:fade .18s ease;}
-  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+  .view.active{display:block;animation:viewIn .32s var(--ease) both;}
+  @keyframes viewIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+  body.unlocked #sidebar{animation:sideIn .5s var(--ease) both;}
+  @keyframes sideIn{from{opacity:0;transform:translateX(-14px);}to{opacity:1;transform:none;}}
 
-  .view-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:4px;}
-  .view-head h1{font-size:26px;margin:0 0 2px 0;font-weight:600;}
-  .view-head p{margin:0;color:var(--ink-soft);font-size:13.5px;}
-  hr.head-stitch{margin:14px 0 22px 0;}
+  .view-head{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;margin-bottom:6px;}
+  .view-head > :first-child{margin-right:auto;}
+  .view-head h1{font-size:30px;line-height:1.15;letter-spacing:-.012em;margin:0 0 4px 0;}
+  .view-head p{margin:0;color:var(--ink-soft);font-size:14px;max-width:64ch;}
+  hr.head-stitch{margin:18px 0 26px 0;}
 
   .grid{display:grid;gap:16px;}
   .grid-4{grid-template-columns:repeat(4,1fr);}
   .grid-3{grid-template-columns:repeat(3,1fr);}
   .grid-2{grid-template-columns:1.3fr .9fr;}
   @media(max-width:1000px){.grid-4{grid-template-columns:repeat(2,1fr);} .grid-2{grid-template-columns:1fr;}}
+  @media(max-width:560px){.grid-4,.grid-3{grid-template-columns:1fr;} .grid-4 > .card{grid-column:auto !important;}}
 
   .card{
-    background:var(--surface);
-    border:1px solid var(--border);
-    border-radius:var(--radius);
-    padding:18px 20px;
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius);padding:20px 22px;
+    overflow-x:auto;
   }
-  .card h3{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink-soft);margin:0 0 6px 0;font-weight:600;}
-  .kpi{font-size:26px;font-weight:600;font-family:'IBM Plex Mono',monospace;}
+  .card h3{font-size:16px;color:var(--ink);margin:0 0 12px 0;}
+  /* tarjetas de cifras: etiqueta pequeña y número protagonista */
+  .grid-4 > .card,.grid-3 > .card{border-color:transparent;}
+  .grid-4 > .card > h3,.grid-3 > .card > h3{font-family:'Inter',sans-serif;font-size:12.5px;font-weight:500;color:var(--ink-soft);margin:0 0 8px 0;}
+  .kpi{font-family:'Jost','Inter',sans-serif;font-weight:500;font-size:28px;line-height:1.15;letter-spacing:-.01em;}
   .kpi.gold{color:var(--gold);}
   .kpi.indigo{color:var(--indigo);}
   .kpi.success{color:var(--success);}
   .kpi.danger{color:var(--danger);}
-  .kpi-sub{font-size:12px;color:var(--ink-soft);margin-top:3px;}
+  .kpi-sub{font-size:12px;color:var(--ink-soft);margin-top:4px;}
 
-  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums;}
   th{
-    text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;
-    color:var(--ink-soft);padding:8px 10px;border-bottom:1.5px solid var(--border);font-weight:600;
+    text-align:left;font-size:12px;font-weight:500;color:var(--ink-soft);
+    padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap;
   }
-  td{padding:9px 10px;border-bottom:1px solid var(--border);}
+  td{padding:12px;border-bottom:1px solid var(--line-soft);vertical-align:middle;}
   tr:last-child td{border-bottom:none;}
-  tr:hover td{background:var(--surface-2);}
+  tbody tr{transition:background .15s;}
+  tbody tr:hover td{background:var(--surface-2);}
   .right{text-align:right;}
   .center{text-align:center;}
 
+  /* ---------- Botones ---------- */
   button{cursor:pointer;font-family:'Inter',sans-serif;}
   .btn{
-    background:var(--indigo);color:#fff;border:none;border-radius:7px;
-    padding:9px 16px;font-size:13.5px;font-weight:600;
+    background:var(--ink);color:#fff;border:1px solid transparent;border-radius:var(--radius-sm);
+    padding:10px 18px;font-size:13.5px;font-weight:600;line-height:1.2;
+    transition:background .18s var(--ease),transform .12s var(--ease),box-shadow .18s var(--ease),border-color .18s;
   }
-  .btn:hover{background:#25344A;}
-  .btn.gold{background:var(--gold);color:#2A2107;}
-  .btn.gold:hover{background:#997C36;}
-  .btn.ghost{background:transparent;border:1px solid var(--border);color:var(--ink);}
-  .btn.ghost:hover{background:var(--surface-2);}
+  .btn:hover{background:var(--gold);box-shadow:0 6px 16px -6px var(--accent-ring);}
+  .btn:active{transform:scale(.97);}
+  .btn.gold{background:var(--ink);color:#fff;}
+  .btn.gold:hover{background:var(--gold);}
+  .btn.ghost{background:transparent;border-color:var(--border);color:var(--ink);}
+  .btn.ghost:hover{background:var(--surface-2);border-color:#D8D4E0;box-shadow:none;}
   .btn.danger{background:var(--danger-soft);color:var(--danger);}
-  .btn.danger:hover{background:#EFC9C5;}
-  .btn.sm{padding:5px 10px;font-size:12px;border-radius:6px;}
+  .btn.danger:hover{background:#F8D5D2;box-shadow:none;}
+  .btn.sm{padding:6px 12px;font-size:12px;border-radius:8px;}
   .btn:disabled{opacity:.45;cursor:not-allowed;}
+  td .btn.sm:not(.ghost):not(.danger){background:var(--accent-soft);color:var(--gold);}
+  td .btn.sm:not(.ghost):not(.danger):hover{background:var(--gold);color:#fff;}
 
-  input,select{
-    font-family:'Inter',sans-serif;font-size:13.5px;
-    padding:8px 10px;border:1px solid var(--border);border-radius:7px;
+  /* ---------- Formularios ---------- */
+  input,select,textarea{
+    font-family:'Inter',sans-serif;font-size:14px;
+    padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);
     background:#fff;color:var(--ink);width:100%;
+    transition:border-color .18s,box-shadow .18s;
   }
-  input:focus,select:focus{outline:2px solid var(--gold);outline-offset:1px;}
-  label{font-size:12px;color:var(--ink-soft);font-weight:600;display:block;margin-bottom:4px;}
-  .field{margin-bottom:12px;}
-  .row{display:flex;gap:10px;}
+  input::placeholder,textarea::placeholder{color:#A9A5B3;}
+  input:hover,select:hover,textarea:hover{border-color:#D5D1DE;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px var(--accent-ring);}
+  input[type=checkbox],input[type=radio]{width:auto;accent-color:var(--gold);}
+  input[type=file]{padding:8px;}
+  select{
+    appearance:none;-webkit-appearance:none;padding-right:34px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236E6A78' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 12px center;
+  }
+  label{font-size:12.5px;color:var(--ink-soft);font-weight:500;display:block;margin-bottom:6px;}
+  .field{margin-bottom:14px;}
+  .row{display:flex;gap:12px;}
   .row > *{flex:1;}
 
-  .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;}
+  .badge{display:inline-block;font-size:11.5px;padding:3px 10px;border-radius:999px;font-weight:600;line-height:1.3;}
   .badge.success{background:var(--success-soft);color:var(--success);}
   .badge.danger{background:var(--danger-soft);color:var(--danger);}
-  .badge.gold{background:var(--gold-soft);color:#8A6D26;}
+  .badge.gold{background:var(--gold-soft);color:var(--amber-ink);}
   .badge.indigo{background:var(--indigo-soft);color:var(--indigo);}
 
-  .empty{color:var(--ink-soft);font-size:13px;padding:22px 0;text-align:center;}
+  .empty{color:var(--ink-soft);font-size:13px;padding:28px 0;text-align:center;}
 
-  /* Facturar */
-  #catalogo-list{max-height:420px;overflow:auto;}
+  /* ---------- Facturar y listas ---------- */
+  #catalogo-list{max-height:440px;overflow:auto;}
   .cat-item{
-    display:flex;justify-content:space-between;align-items:center;
-    padding:9px 6px;border-bottom:1px solid var(--border);cursor:pointer;
+    display:flex;justify-content:space-between;align-items:center;gap:12px;
+    padding:11px 10px;border-bottom:1px solid var(--line-soft);cursor:pointer;border-radius:8px;
+    transition:background .15s,transform .1s;
   }
-  .cat-item:hover{background:var(--surface-2);}
+  .cat-item:hover{background:var(--accent-soft);}
+  .cat-item:active{transform:scale(.99);}
   .cat-item .nm{font-size:13.5px;font-weight:500;}
-  .cat-item .meta{font-size:11.5px;color:var(--ink-soft);}
-  .cat-item .pr{font-family:'IBM Plex Mono',monospace;font-size:13px;}
+  .cat-item .meta{font-size:12px;color:var(--ink-soft);}
+  .cat-item .pr{font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-weight:600;font-size:13.5px;}
   #carrito-items{margin-bottom:10px;}
-  .carr-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed var(--border);}
+  .carr-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line-soft);}
   .carr-row .nm{flex:1;font-size:13px;}
-  .carr-row input[type=number]{width:56px;padding:5px;text-align:center;}
-  .tot-line{display:flex;justify-content:space-between;padding:4px 0;font-size:13.5px;}
-  .tot-line.big{font-size:18px;font-weight:700;border-top:1.5px solid var(--ink);margin-top:8px;padding-top:10px;}
+  .carr-row input[type=number]{width:58px;padding:6px;text-align:center;}
+  .tot-line{display:flex;justify-content:space-between;padding:5px 0;font-size:13.5px;}
+  .tot-line.big{font-family:'Jost','Inter',sans-serif;font-size:21px;font-weight:500;border-top:1px solid var(--border);margin-top:10px;padding-top:12px;}
 
-  /* modal */
+  /* ---------- Ventanas y avisos ---------- */
   .modal-bg{
-    display:none;position:fixed;inset:0;background:rgba(33,38,43,.45);
-    align-items:center;justify-content:center;z-index:50;
+    display:none;position:fixed;inset:0;
+    background:rgba(27,26,33,.38);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+    align-items:center;justify-content:center;z-index:50;padding:16px;
   }
-  .modal-bg.active{display:flex;}
+  .modal-bg.active{display:flex;animation:bgIn .2s ease both;}
+  @keyframes bgIn{from{opacity:0;}to{opacity:1;}}
   .modal{
-    background:#fff;border-radius:12px;padding:24px 26px;width:420px;max-width:92vw;
-    max-height:88vh;overflow:auto;
+    background:#fff;border-radius:20px;padding:28px 30px;width:440px;max-width:100%;
+    max-height:90vh;overflow:auto;box-shadow:var(--shadow-pop);
+    animation:modalIn .28s var(--ease) both;
   }
-  .modal h3{margin:0 0 14px 0;font-family:'Fraunces',serif;font-size:19px;}
-  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+  @keyframes modalIn{from{opacity:0;transform:translateY(14px) scale(.97);}to{opacity:1;transform:none;}}
+  .modal h3{margin:0 0 16px 0;font-size:21px;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;flex-wrap:wrap;}
 
   .toast{
-    position:fixed;bottom:22px;right:22px;background:var(--ink);color:#fff;
-    padding:12px 18px;border-radius:8px;font-size:13.5px;z-index:99;
-    opacity:0;transform:translateY(8px);transition:all .2s ease;pointer-events:none;
+    position:fixed;bottom:24px;right:24px;background:var(--ink);color:#fff;
+    padding:13px 20px;border-radius:12px;font-size:13.5px;z-index:99;max-width:min(440px,calc(100vw - 32px));
+    box-shadow:0 14px 34px -10px rgba(27,26,33,.5);
+    opacity:0;transform:translateY(14px) scale(.98);transition:opacity .25s var(--ease),transform .25s var(--ease);pointer-events:none;
   }
-  .toast.show{opacity:1;transform:translateY(0);}
+  .toast.show{opacity:1;transform:none;}
 
-  .toolbar{display:flex;gap:10px;margin-bottom:14px;align-items:flex-end;flex-wrap:wrap;}
+  .toolbar{display:flex;gap:12px;margin-bottom:16px;align-items:flex-end;flex-wrap:wrap;}
   .toolbar .field{margin-bottom:0;min-width:150px;}
-  .search-box{max-width:260px;}
+  .search-box{max-width:280px;}
 
-  /* Print system: dos áreas — tirilla (comprobantes) y hoja normal (reportes/inventario) */
+  /* ---------- Acceso ---------- */
+  #login-screen{background:var(--bg);-webkit-backdrop-filter:none;backdrop-filter:none;z-index:200;}
+  #login-screen .modal{width:380px;padding:36px 32px 30px;text-align:center;border:1px solid var(--border);box-shadow:0 30px 80px -20px rgba(27,26,33,.16);}
+  .login-logo{width:150px;max-width:60%;height:auto;display:block;margin:0 auto 6px;}
+  #login-brand-nombre{display:none;}
+  .login-sub{font-size:13.5px;color:var(--ink-soft);margin:0 0 22px;}
+  #login-screen .field{text-align:left;}
+
+  /* ---------- Apariencia ---------- */
+  .swatches{display:flex;gap:12px;flex-wrap:wrap;}
+  .swatch{
+    width:36px;height:36px;border-radius:50%;background:var(--c);border:3px solid #fff;
+    box-shadow:0 0 0 1px var(--border);cursor:pointer;
+    transition:transform .2s var(--ease),box-shadow .2s var(--ease);
+  }
+  .swatch:hover{transform:scale(1.1);}
+  .swatch[aria-pressed="true"]{box-shadow:0 0 0 2px var(--c);}
+
+  /* ---------- Impresión: dos áreas — tirilla (comprobantes) y hoja normal (reportes/inventario) ---------- */
   #print-area{display:none;}
   #print-report-area{display:none;}
   .ti-row{display:flex;justify-content:space-between;gap:6px;}
@@ -229,66 +295,94 @@
   .ti-lg{font-size:13.5px;}
   .ti-dash{border-top:1px dashed #000;margin:5px 0;}
   @media print{
+    body{background:#fff;}
     body *{visibility:hidden;}
+    /* en papel las líneas de las tablas deben verse con claridad */
+    #print-report-area table{width:100%;border-collapse:collapse;font-size:11.5px;}
+    #print-report-area th{color:#000;font-weight:600;border-bottom:1.5px solid #000;padding:5px 6px;}
+    #print-report-area td{border-bottom:1px solid #BDBBC4;padding:5px 6px;}
+    #print-report-area h1,#print-report-area h2,#print-report-area h3{color:#000;}
   }
 
   body:not(.unlocked) #sidebar, body:not(.unlocked) #main{display:none;}
   body.rol-asesor .solo-gerencia{display:none !important;}
 
-  ::-webkit-scrollbar{width:9px;height:9px;}
-  ::-webkit-scrollbar-thumb{background:#D6D0C2;border-radius:6px;}
+  ::-webkit-scrollbar{width:8px;height:8px;}
+  ::-webkit-scrollbar-thumb{background:#D9D5E1;border-radius:8px;}
+  ::-webkit-scrollbar-thumb:hover{background:#C6C1D1;}
+
+  /* ---------- Pantallas medianas y tablet vertical: la barra pasa a columna de íconos ---------- */
+  @media(max-width:1100px){
+    #sidebar{width:76px;padding:16px 10px 12px;align-items:stretch;}
+    .brand-logo-img{max-width:56px;}
+    .brand-sub,#sidebar-foot .foot-line,.nav-btn .lbl,#sidebar-foot .btn .lbl{display:none;}
+    #sidebar nav{margin:10px -4px 8px;padding:0 4px;}
+    .nav-btn{justify-content:center;padding:11px 0;}
+    .nav-sec{height:1px;margin:10px 14px;background:var(--border);font-size:0;color:transparent;}
+    #main{padding:24px 22px 48px;}
+  }
+  @media(max-width:560px){
+    #main{padding:18px 14px 40px;}
+    .view-head h1{font-size:25px;}
+    .row{flex-wrap:wrap;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation:none !important;transition:none !important;}
+  }
 </style>
 </head>
 <body>
 
-<div class="modal-bg active" id="login-screen" style="z-index:200;">
-  <div class="modal" style="text-align:center;">
-    <div class="brand-logo-badge" style="margin:0 auto 12px auto;"><img src="" id="login-logo-img" class="brand-logo-img" style="max-width:190px;" alt="Logo"></div>
-    <h3 style="margin-bottom:4px;" id="login-brand-nombre">Almacén</h3>
-    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:18px;">Selecciona tu usuario para continuar</p>
-    <div class="field" style="text-align:left;"><label>Usuario</label>
+<div class="modal-bg active" id="login-screen">
+  <div class="modal">
+    <img src="" id="login-logo-img" class="login-logo" alt="Regia by cm">
+    <h3 id="login-brand-nombre">Almacén</h3>
+    <p class="login-sub">Ingresa con tu usuario y tu PIN</p>
+    <div class="field"><label>Usuario</label>
       <select id="login-rol">
         <option value="asesor">Asesor — ventas e inventario</option>
         <option value="gerencia">Gerencia — acceso completo</option>
       </select>
     </div>
-    <div class="field" style="text-align:left;"><label>PIN</label><input type="password" id="login-pin" placeholder="••••" onkeydown="if(event.key==='Enter')iniciarSesion()"></div>
-    <div id="login-error" style="color:var(--danger);font-size:12px;margin-bottom:8px;display:none;">PIN incorrecto, intenta de nuevo.</div>
+    <div class="field"><label>PIN</label><input type="password" id="login-pin" placeholder="••••" onkeydown="if(event.key==='Enter')iniciarSesion()"></div>
+    <div id="login-error" style="color:var(--danger);font-size:12.5px;margin-bottom:10px;display:none;">PIN incorrecto, intenta de nuevo.</div>
     <button class="btn gold" style="width:100%;" onclick="iniciarSesion()">Entrar</button>
   </div>
 </div>
 
 <div id="sidebar">
-  <div class="brand-logo-badge"><img src="" id="sidebar-logo-img" class="brand-logo-img" alt="Logo"></div>
-  <div class="brand">
-    <div class="brand-text" id="brand-name">Almacén</div>
-  </div>
+  <div class="brand-logo-badge"><img src="" id="sidebar-logo-img" class="brand-logo-img" alt="Regia by cm"></div>
+  <div class="brand"><div class="brand-text" id="brand-name">Almacén</div></div>
   <div class="brand-sub" id="brand-sub">gestión &amp; facturación</div>
   <nav>
-    <button class="nav-btn active" data-view="dashboard"><span class="ic">◆</span> Panel general</button>
-    <button class="nav-btn" data-view="facturar"><span class="ic">✎</span> Facturar</button>
-    <button class="nav-btn" data-view="ventas"><span class="ic">≡</span> Ventas</button>
-    <button class="nav-btn" data-view="cierre"><span class="ic">▣</span> Cierre de caja</button>
-    <button class="nav-btn" data-view="devoluciones"><span class="ic">↺</span> Devoluciones/Cambios</button>
-    <button class="nav-btn" data-view="inventario"><span class="ic">▤</span> Inventario</button>
-    <button class="nav-btn" data-view="combos"><span class="ic">🎁</span> Combos</button>
-    <button class="nav-btn" data-view="apartados"><span class="ic">📌</span> Apartados</button>
-    <button class="nav-btn" data-view="creditos"><span class="ic">💳</span> Créditos</button>
-    <button class="nav-btn" data-view="clientes"><span class="ic">☺</span> Clientes</button>
-    <button class="nav-btn" data-view="proveedores"><span class="ic">🚚</span> Proveedores</button>
-    <button class="nav-btn" data-view="activos"><span class="ic">🏢</span> Activos Fijos</button>
-    <button class="nav-btn" data-view="gastos"><span class="ic">–</span> Gastos diarios</button>
-    <button class="nav-btn" data-view="reportes"><span class="ic">▦</span> Reportes</button>
-    <button class="nav-btn" data-view="equilibrio"><span class="ic">⟡</span> Punto de equilibrio</button>
-    <button class="nav-btn" data-view="flujo"><span class="ic">💧</span> Flujo de caja</button>
-    <button class="nav-btn" data-view="reserva"><span class="ic">🏦</span> Reserva</button>
-    <button class="nav-btn" data-view="config"><span class="ic">⚙</span> Configuración</button>
+    <button class="nav-btn active" data-view="dashboard" title="Panel general" aria-label="Panel general"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span class="lbl">Panel general</span></button>
+    <div class="nav-sec">Vender</div>
+    <button class="nav-btn" data-view="facturar" title="Facturar" aria-label="Facturar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg><span class="lbl">Facturar</span></button>
+    <button class="nav-btn" data-view="ventas" title="Ventas" aria-label="Ventas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg><span class="lbl">Ventas</span></button>
+    <button class="nav-btn" data-view="apartados" title="Apartados" aria-label="Apartados"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v18l-5-4-5 4z"/></svg><span class="lbl">Apartados</span></button>
+    <button class="nav-btn" data-view="creditos" title="Créditos" aria-label="Créditos"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18M7 15h4"/></svg><span class="lbl">Créditos</span></button>
+    <button class="nav-btn" data-view="devoluciones" title="Devoluciones/Cambios" aria-label="Devoluciones/Cambios"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span class="lbl">Devoluciones/Cambios</span></button>
+    <button class="nav-btn" data-view="cierre" title="Cierre de caja" aria-label="Cierre de caja"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8"/><path d="M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01" stroke-width="2.4"/></svg><span class="lbl">Cierre de caja</span></button>
+    <div class="nav-sec">Catálogo</div>
+    <button class="nav-btn" data-view="inventario" title="Inventario" aria-label="Inventario"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg><span class="lbl">Inventario</span></button>
+    <button class="nav-btn" data-view="combos" title="Combos" aria-label="Combos"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v8h14v-8M12 8v12"/><path d="M12 8H7.5a2.5 2.5 0 1 1 0-5C10 3 12 8 12 8zM12 8h4.5a2.5 2.5 0 1 0 0-5C14 3 12 8 12 8z"/></svg><span class="lbl">Combos</span></button>
+    <button class="nav-btn" data-view="clientes" title="Clientes" aria-label="Clientes"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14a4.5 4.5 0 0 1 4.5 4.5"/></svg><span class="lbl">Clientes</span></button>
+    <button class="nav-btn" data-view="proveedores" title="Proveedores" aria-label="Proveedores"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="7" width="12" height="9" rx="1"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/></svg><span class="lbl">Proveedores</span></button>
+    <div class="nav-sec">Finanzas</div>
+    <button class="nav-btn" data-view="gastos" title="Gastos diarios" aria-label="Gastos diarios"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l6 6 4-4 8 8"/><path d="M15 17h6v-6"/></svg><span class="lbl">Gastos diarios</span></button>
+    <button class="nav-btn" data-view="flujo" title="Flujo de caja" aria-label="Flujo de caja"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span class="lbl">Flujo de caja</span></button>
+    <button class="nav-btn" data-view="reserva" title="Reserva" aria-label="Reserva"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9.5 12 4l9 5.5H3z"/><path d="M5 12v6M9.5 12v6M14.5 12v6M19 12v6M3 20h18"/></svg><span class="lbl">Reserva</span></button>
+    <button class="nav-btn" data-view="reportes" title="Reportes" aria-label="Reportes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 20v-6M12 20V5M18 20v-9M3 20h18"/></svg><span class="lbl">Reportes</span></button>
+    <button class="nav-btn" data-view="equilibrio" title="Punto de equilibrio" aria-label="Punto de equilibrio"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8" fill="currentColor"/></svg><span class="lbl">Punto de equilibrio</span></button>
+    <button class="nav-btn" data-view="activos" title="Activos fijos" aria-label="Activos fijos"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 8h.01M15 8h.01M9 12h.01M15 12h.01" stroke-width="2.4"/><path d="M10 21v-4h4v4"/></svg><span class="lbl">Activos fijos</span></button>
+    <div class="nav-sec">Sistema</div>
+    <button class="nav-btn" data-view="config" title="Configuración" aria-label="Configuración"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg><span class="lbl">Configuración</span></button>
   </nav>
   <div id="sidebar-foot">
-    <div style="margin-bottom:8px;">Sesión: <strong id="rol-actual">—</strong></div>
-    <div id="sidebar-sync-badge" style="margin-bottom:8px;font-size:11px;color:#B7C0CB;">📴 Solo este dispositivo</div>
-    <div style="margin-bottom:8px;font-size:10px;color:#8E99A6;">Versión 2026-10-04 · créditos</div>
-    <button class="btn ghost sm" style="width:100%;color:#EDEFF2;border-color:rgba(255,255,255,.28);" onclick="cerrarSesion()">Cerrar sesión</button>
+    <div class="foot-line">Sesión: <strong id="rol-actual">—</strong></div>
+    <div class="foot-line" id="sidebar-sync-badge"><span class="dot"></span>Solo este dispositivo</div>
+    <div class="foot-line foot-ver">Versión 2026-10-04 · rediseño</div>
+    <button class="btn ghost sm" onclick="cerrarSesion()" aria-label="Cerrar sesión" title="Cerrar sesión"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span class="lbl">Cerrar sesión</span></button>
   </div>
 </div>
 
@@ -469,9 +563,9 @@
       <div class="card"><h3>Tarjeta</h3><div class="kpi indigo" style="font-size:19px;" id="cc-tarjeta">$0</div></div>
       <div class="card"><h3>Mixto (total)</h3><div class="kpi indigo" style="font-size:19px;" id="cc-mixto">$0</div></div>
     </div>
-    <div class="grid grid-2" style="margin-bottom:14px;">
-      <div class="card"><h3>Sistecrédito</h3><div class="kpi indigo" style="font-size:19px;" id="cc-sistecredito">$0</div><div class="kpi-sub">No es efectivo: queda por cobrar a la financiera</div></div>
-      <div class="card"><h3>Addi</h3><div class="kpi indigo" style="font-size:19px;" id="cc-addi">$0</div><div class="kpi-sub">No es efectivo: queda por cobrar a la financiera</div></div>
+    <div class="grid grid-4" style="margin-bottom:14px;">
+      <div class="card" style="grid-column:span 2;"><h3>Sistecrédito</h3><div class="kpi indigo" style="font-size:19px;" id="cc-sistecredito">$0</div><div class="kpi-sub">No es efectivo: queda por cobrar a la financiera</div></div>
+      <div class="card" style="grid-column:span 2;"><h3>Addi</h3><div class="kpi indigo" style="font-size:19px;" id="cc-addi">$0</div><div class="kpi-sub">No es efectivo: queda por cobrar a la financiera</div></div>
     </div>
     <div class="card" style="margin-bottom:18px;">
       <h3>Ventas totales del día</h3>
@@ -878,8 +972,8 @@
         <div class="card" style="background:var(--surface-2);"><h3>Gastos registrados hoy</h3><div class="kpi danger" style="font-size:18px;" id="cierre-gastos-reg">$0</div></div>
       </div>
       <div class="grid grid-3" style="gap:12px;margin-top:12px;">
-        <div class="card" style="background:var(--gold-soft);"><h3>Gastos fijos del día (prorrateados)</h3><div class="kpi" style="font-size:18px;color:#8A6D26;" id="cierre-gastos-fijos">$0</div></div>
-        <div class="card" style="background:var(--gold-soft);"><h3>% de gastos fijos s/ventas</h3><div class="kpi" style="font-size:18px;color:#8A6D26;" id="cierre-pct-gastos">0%</div></div>
+        <div class="card" style="background:var(--gold-soft);"><h3>Gastos fijos del día (prorrateados)</h3><div class="kpi" style="font-size:18px;color:var(--amber-ink);" id="cierre-gastos-fijos">$0</div></div>
+        <div class="card" style="background:var(--gold-soft);"><h3>% de gastos fijos s/ventas</h3><div class="kpi" style="font-size:18px;color:var(--amber-ink);" id="cierre-pct-gastos">0%</div></div>
         <div class="card" style="background:var(--surface-2);"><h3>Utilidad neta del día</h3><div class="kpi gold" style="font-size:22px;" id="cierre-utilidad-neta">$0</div></div>
       </div>
       <p style="font-size:11.5px;color:var(--ink-soft);margin-top:10px;">Los gastos fijos del día se reparten desde arriendo, servicios, administración y nómina (configurados en Punto de equilibrio) ÷ días de operación — así sabes cuánto de la venta de hoy cubre esos costos, así no los hayas pagado hoy mismo.</p>
@@ -1079,10 +1173,22 @@
       <div class="field"><label>Nombres de vendedores (separados por coma)</label><input type="text" id="cfg-vendedores" placeholder="Ej: Laura, Carlos, Pedro"></div>
       <div class="field"><label>% de comisión por venta</label><input type="number" id="cfg-comision" min="0" max="100" placeholder="Ej: 5"></div>
       <div class="row">
-        <div class="field"><label>Comisión que cobra Sistecrédito (%)</label><input type="number" id="cfg-fin-sistecredito" min="0" max="100" step="0.01" placeholder="Ej: 5"></div>
-        <div class="field"><label>Comisión que cobra Addi (%)</label><input type="number" id="cfg-fin-addi" min="0" max="100" step="0.01" placeholder="Ej: 6"></div>
+        <div class="field"><label>Comisión Sistecrédito (%)</label><input type="number" id="cfg-fin-sistecredito" min="0" max="100" step="0.01" placeholder="Ej: 5"></div>
+        <div class="field"><label>Comisión Addi (%)</label><input type="number" id="cfg-fin-addi" min="0" max="100" step="0.01" placeholder="Ej: 6"></div>
       </div>
       <button class="btn gold" onclick="guardarConfig()">Guardar</button>
+    </div>
+
+    <div class="card" style="max-width:480px;margin-top:18px;">
+      <h3 style="margin-bottom:6px;">Apariencia</h3>
+      <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 14px 0;">Elige el color de acento del sistema. Se guarda en este dispositivo.</p>
+      <div class="swatches" id="swatches-acento">
+        <button class="swatch" data-acento="violeta" style="--c:#6B3FA0" onclick="elegirAcento('violeta')" aria-label="Violeta" title="Violeta"></button>
+        <button class="swatch" data-acento="rosa" style="--c:#B4326A" onclick="elegirAcento('rosa')" aria-label="Rosa" title="Rosa"></button>
+        <button class="swatch" data-acento="dorado" style="--c:#9A6B13" onclick="elegirAcento('dorado')" aria-label="Dorado" title="Dorado"></button>
+        <button class="swatch" data-acento="turquesa" style="--c:#16757A" onclick="elegirAcento('turquesa')" aria-label="Turquesa" title="Turquesa"></button>
+        <button class="swatch" data-acento="negro" style="--c:#1B1A21" onclick="elegirAcento('negro')" aria-label="Negro" title="Negro"></button>
+      </div>
     </div>
 
     <div class="card" style="max-width:480px;margin-top:18px;">
@@ -1867,6 +1973,12 @@ function aplicarPermisos(){
   const permitido=PERMISOS[currentRole]||[];
   document.querySelectorAll('.nav-btn').forEach(b=>{
     b.style.display = permitido.includes(b.dataset.view) ? '' : 'none';
+  });
+  // oculta el título de una sección del menú si ninguno de sus botones está permitido
+  document.querySelectorAll('#sidebar nav .nav-sec').forEach(sec=>{
+    let visible=false, el=sec.nextElementSibling;
+    while(el && !el.classList.contains('nav-sec')){ if(el.classList.contains('nav-btn') && el.style.display!=='none') visible=true; el=el.nextElementSibling; }
+    sec.style.display = visible ? '' : 'none';
   });
   document.body.classList.remove('rol-asesor','rol-gerencia');
   document.body.classList.add('rol-'+currentRole);
@@ -5072,6 +5184,7 @@ function cargarConfigForm(){
   document.getElementById('cfg-fin-sistecredito').value=DB.config.finComisionSistecredito||0;
   document.getElementById('cfg-fin-addi').value=DB.config.finComisionAddi||0;
   if(syncStoreCode) document.getElementById('sync-store-code').value=syncStoreCode;
+  marcarAcentoActivo();
   actualizarEstadoSync();
 }
 function guardarConfig(){
@@ -5212,6 +5325,16 @@ function desconectarSincronizacion(){
   actualizarEstadoSync();
   toast('Sincronización desactivada — ahora solo se guarda en este dispositivo');
 }
+/* ---------------- Apariencia: color de acento (por dispositivo) ---------------- */
+function elegirAcento(nombre){
+  document.documentElement.setAttribute('data-acento', nombre);
+  try{ localStorage.setItem('almacenropa_acento', nombre); }catch(e){}
+  marcarAcentoActivo();
+}
+function marcarAcentoActivo(){
+  const actual=document.documentElement.getAttribute('data-acento')||'violeta';
+  document.querySelectorAll('.swatch').forEach(b=>b.setAttribute('aria-pressed', b.dataset.acento===actual ? 'true':'false'));
+}
 function actualizarEstadoSync(){
   const el=document.getElementById('sync-estado-texto'); if(!el) return;
   el.textContent = syncActivo
@@ -5219,7 +5342,7 @@ function actualizarEstadoSync(){
     : 'No conectado. Los datos solo se guardan en este dispositivo.';
   el.style.color = syncActivo ? 'var(--success)' : 'var(--ink-soft)';
   const badge=document.getElementById('sidebar-sync-badge');
-  if(badge) badge.textContent = syncActivo ? '☁ Sincronizado' : '📴 Solo este dispositivo';
+  if(badge) badge.innerHTML = syncActivo ? '<span class="dot on"></span>Sincronizado en la nube' : '<span class="dot"></span>Solo este dispositivo';
 }
 
 /* ================= INIT ================= */
