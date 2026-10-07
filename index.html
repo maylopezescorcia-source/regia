@@ -13,6 +13,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/JsBarcode/3.11.5/JsBarcode.all.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
@@ -55,6 +56,43 @@
   :root[data-acento="dorado"]{--gold:#9A6B13;--accent-soft:#F8EFD9;--accent-ring:rgba(154,107,19,.24);--accent-2:#E0872E;--glow-1:rgba(200,150,40,.18);--glow-2:rgba(224,135,46,.13);}
   :root[data-acento="turquesa"]{--gold:#16757A;--accent-soft:#E2F2F2;--accent-ring:rgba(22,117,122,.24);--accent-2:#3B82C4;--glow-1:rgba(22,117,122,.16);--glow-2:rgba(59,130,196,.14);}
   :root[data-acento="negro"]{--gold:#1B1A21;--accent-soft:#EEEDF1;--accent-ring:rgba(27,26,33,.20);--accent-2:#6C6A80;--glow-1:rgba(27,26,33,.07);--glow-2:rgba(108,106,128,.08);}
+
+  /* ---------- Tienda online / Pedidos web ---------- */
+  .nav-btn[data-view="pedidosweb"]{--tile-bg:#FCE7F1;--tile-fg:#C2377E;}
+  .nav-btn[data-view="tienda"]{--tile-bg:#DDF3F1;--tile-fg:#14808A;}
+  .nav-count{margin-left:auto;background:linear-gradient(135deg,var(--gold),var(--accent-2));color:#fff;font-size:11px;font-weight:700;min-width:20px;height:20px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;padding:0 6px;}
+  .aviso-pw{background:var(--gold-soft);color:var(--amber-ink);border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:14px;}
+  .aviso-pw a{color:inherit;font-weight:600;}
+  #pw-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+  #pw-tabs button{border:1px solid var(--border);background:#fff;border-radius:999px;padding:7px 14px;font:600 12.5px 'Inter',sans-serif;color:var(--ink-soft);cursor:pointer;}
+  #pw-tabs button.on{background:var(--accent-soft);border-color:var(--gold);color:var(--gold);}
+  #pw-tabs .c{margin-left:6px;opacity:.75;}
+  .pw-card{margin-bottom:12px;}
+  .pw-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;}
+  .pw-cod{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink-soft);margin-left:6px;}
+  .pw-fecha{font-size:12px;color:var(--ink-soft);margin-left:6px;}
+  .pw-meta{font-size:12.5px;color:var(--ink-soft);margin-top:3px;}
+  .pw-notas{font-size:12.5px;margin-top:8px;font-style:italic;background:var(--surface-2);padding:7px 10px;border-radius:8px;}
+  .pw-items{margin:10px 0;border-top:1px solid var(--line-soft);}
+  .pw-it{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line-soft);font-size:13.5px;}
+  .pw-it em{color:var(--ink-soft);font-style:normal;font-size:12.5px;}
+  .pw-it.mal{background:var(--danger-soft);margin:0 -8px;padding-left:8px;padding-right:8px;}
+  .pw-tot{display:flex;justify-content:space-between;gap:10px;align-items:baseline;font-size:13px;flex-wrap:wrap;}
+  .pw-tot strong{font-family:'Jost','Inter',sans-serif;font-size:19px;font-weight:500;}
+  .pw-acc{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+  .pw-nota{font-size:12px;color:var(--ink-soft);margin:10px 0 0;}
+  .pw-ok{text-align:center;padding:10px 0;}
+  .pw-ok-ic{width:54px;height:54px;border-radius:50%;background:var(--success-soft);color:var(--success);font-size:28px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;}
+  .tj-th{width:42px;height:42px;border-radius:8px;object-fit:cover;background:var(--surface-2);display:block;}
+  .chk{display:block;font-size:13px;margin:5px 0;font-weight:500;}
+  .chk input{margin-right:6px;}
+  .tj-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 18px;}
+  @media(max-width:700px){.tj-grid{grid-template-columns:1fr;}}
+  #tp-fotos{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 10px;}
+  .tp-foto{position:relative;width:92px;height:92px;border-radius:10px;overflow:hidden;border:1px solid var(--border);}
+  .tp-foto img{width:100%;height:100%;object-fit:cover;}
+  .tp-tag{position:absolute;left:0;right:0;bottom:0;background:rgba(27,26,33,.62);color:#fff;font-size:10px;text-align:center;padding:2px;}
+  .tp-x{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(27,26,33,.7);color:#fff;cursor:pointer;font-size:14px;line-height:1;}
 
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -396,6 +434,7 @@
     <div class="nav-sec">Vender</div>
     <button class="nav-btn" data-view="facturar" title="Facturar" aria-label="Facturar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg><span class="lbl">Facturar</span></button>
     <button class="nav-btn" data-view="ventas" title="Ventas" aria-label="Ventas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg><span class="lbl">Ventas</span></button>
+    <button class="nav-btn" data-view="pedidosweb" title="Pedidos web" aria-label="Pedidos web"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg><span class="lbl">Pedidos web</span><span class="nav-count" id="badge-pedidosweb" style="display:none"></span></button>
     <button class="nav-btn" data-view="apartados" title="Apartados" aria-label="Apartados"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v18l-5-4-5 4z"/></svg><span class="lbl">Apartados</span></button>
     <button class="nav-btn" data-view="creditos" title="Créditos" aria-label="Créditos"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18M7 15h4"/></svg><span class="lbl">Créditos</span></button>
     <button class="nav-btn" data-view="devoluciones" title="Devoluciones/Cambios" aria-label="Devoluciones/Cambios"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span class="lbl">Devoluciones/Cambios</span></button>
@@ -403,6 +442,7 @@
     <div class="nav-sec">Catálogo</div>
     <button class="nav-btn" data-view="inventario" title="Inventario" aria-label="Inventario"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg><span class="lbl">Inventario</span></button>
     <button class="nav-btn" data-view="combos" title="Combos" aria-label="Combos"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v8h14v-8M12 8v12"/><path d="M12 8H7.5a2.5 2.5 0 1 1 0-5C10 3 12 8 12 8zM12 8h4.5a2.5 2.5 0 1 0 0-5C14 3 12 8 12 8z"/></svg><span class="lbl">Combos</span></button>
+    <button class="nav-btn" data-view="tienda" title="Tienda online" aria-label="Tienda online"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9l1.5-5h13L20 9"/><path d="M4 9a2.6 2.6 0 0 0 5.3 0 2.6 2.6 0 0 0 5.4 0A2.6 2.6 0 0 0 20 9"/><path d="M5.5 12v8h13v-8M10 20v-4.5h4V20"/></svg><span class="lbl">Tienda online</span></button>
     <button class="nav-btn" data-view="clientes" title="Clientes" aria-label="Clientes"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14a4.5 4.5 0 0 1 4.5 4.5"/></svg><span class="lbl">Clientes</span></button>
     <button class="nav-btn" data-view="proveedores" title="Proveedores" aria-label="Proveedores"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="7" width="12" height="9" rx="1"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/></svg><span class="lbl">Proveedores</span></button>
     <div class="nav-sec">Finanzas</div>
@@ -418,7 +458,7 @@
   <div id="sidebar-foot">
     <div class="foot-line">Sesión: <strong id="rol-actual">—</strong></div>
     <div class="foot-line" id="sidebar-sync-badge"><span class="dot"></span>Solo este dispositivo</div>
-    <div class="foot-line foot-ver">Versión 2026-10-04 · con color</div>
+    <div class="foot-line foot-ver">Versión 2026-10-06 · con tienda online</div>
     <button class="btn ghost sm" onclick="cerrarSesion()" aria-label="Cerrar sesión" title="Cerrar sesión"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span class="lbl">Cerrar sesión</span></button>
   </div>
 </div>
@@ -970,8 +1010,17 @@
     </div>
     <hr class="stitch head-stitch">
     <div class="toolbar">
-      <div class="field"><label>Desde</label><input type="date" id="rf-desde"></div>
-      <div class="field"><label>Hasta</label><input type="date" id="rf-hasta"></div>
+      <div class="field"><label>Periodo</label>
+        <select id="rf-preset" onchange="renderReportes()">
+          <option value="todo" selected>Todo el historial (desde la primera venta)</option>
+          <option value="mes">Este mes</option>
+          <option value="mespasado">Mes pasado</option>
+          <option value="anio">Este año</option>
+          <option value="7">Últimos 7 días</option>
+          <option value="custom">Fechas personalizadas</option>
+        </select></div>
+      <div class="field"><label>Desde</label><input type="date" id="rf-desde" onchange="document.getElementById('rf-preset').value='custom'"></div>
+      <div class="field"><label>Hasta</label><input type="date" id="rf-hasta" onchange="document.getElementById('rf-preset').value='custom'"></div>
       <button class="btn ghost" onclick="renderReportes()">Generar</button>
     </div>
     <div class="grid grid-4" style="margin-bottom:18px;">
@@ -983,6 +1032,19 @@
     <div class="card" style="margin-bottom:18px;">
       <h3>Utilidad neta del periodo</h3>
       <div class="kpi gold" id="rep-neta" style="font-size:30px;">$0</div>
+    </div>
+    <div class="card" style="margin-bottom:18px;">
+      <h3>Cuadre de las ventas del periodo</h3>
+      <p id="rep-cuadre-msg" style="font-size:12.5px;color:var(--ink-soft);margin:0 0 12px;"></p>
+      <div class="grid grid-2" style="gap:18px;">
+        <div><table><thead><tr><th>Cómo se pagó</th><th class="right">Movimientos</th><th class="right">Total</th></tr></thead><tbody id="tbl-rep-metodos"></tbody></table></div>
+        <div><table><thead><tr><th>De qué tipo</th><th class="right">Movimientos</th><th class="right">Total</th></tr></thead><tbody id="tbl-rep-tipos"></tbody></table></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:18px;">
+      <h3>Resumen por mes</h3>
+      <table><thead><tr><th>Mes</th><th class="right">Ventas</th><th class="right">Costo</th><th class="right">Utilidad bruta</th><th class="right">Gastos</th><th class="right">Utilidad neta</th></tr></thead>
+      <tbody id="tbl-rep-meses"></tbody></table>
     </div>
     <div class="grid grid-2" style="margin-bottom:18px;">
       <div class="card">
@@ -1114,6 +1176,18 @@
       <button class="btn ghost" onclick="volverSemanaActualFlujo()">Ir a la semana actual</button>
     </div>
     <hr class="stitch head-stitch">
+    <div class="card" style="margin-bottom:18px;">
+      <h3 style="margin-bottom:4px;">Estado de cuentas acumulado</h3>
+      <p id="fa-desde" style="font-size:12.5px;color:var(--ink-soft);margin:0 0 12px;"></p>
+      <div class="grid grid-4" style="gap:12px;">
+        <div class="card" style="background:var(--surface-2);"><h3>Ingresos cobrados</h3><div class="kpi indigo" style="font-size:19px;" id="fa-ingresos">$0</div></div>
+        <div class="card" style="background:var(--surface-2);"><h3>Egresos (gastos)</h3><div class="kpi danger" style="font-size:19px;" id="fa-egresos">$0</div></div>
+        <div class="card" style="background:var(--surface-2);"><h3>Saldo acumulado</h3><div class="kpi gold" style="font-size:19px;" id="fa-saldo">$0</div></div>
+        <div class="card" style="background:var(--surface-2);"><h3>Ya distribuido</h3><div class="kpi success" style="font-size:19px;" id="fa-distribuido">$0</div></div>
+      </div>
+      <div class="tot-line big" style="margin-top:12px;"><span id="fa-pend-label">Pendiente por distribuir</span><span class="num" id="fa-pendiente">$0</span></div>
+      <p id="fa-credito" style="font-size:12.5px;color:var(--amber-ink);margin:8px 0 0;"></p>
+    </div>
     <div id="flujo-estado" style="margin-bottom:12px;"></div>
     <p style="margin-bottom:14px;font-size:13.5px;">Semana: <strong id="flujo-semana-rango"></strong></p>
 
@@ -1153,6 +1227,12 @@
         <tbody id="tbl-flujo-historial"></tbody></table>
       </div>
     </div>
+    <div class="card" style="margin-top:18px;">
+      <h3>Todas las semanas desde el inicio</h3>
+      <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;">Cada semana con movimiento desde tu primera venta, con el saldo corriendo semana a semana. Úsala para ver que nada quedó por fuera.</p>
+      <div style="overflow-x:auto;"><table><thead><tr><th>Semana</th><th class="right">Ingresos</th><th class="right">Egresos</th><th class="right">Neto</th><th class="right">Saldo acumulado</th><th>Estado</th><th></th></tr></thead>
+      <tbody id="tbl-flujo-todas"></tbody></table></div>
+    </div>
   </div>
 
   <!-- ================= RESERVA ================= -->
@@ -1187,6 +1267,69 @@
   </div>
 
   <!-- ================= CONFIG ================= -->
+  <!-- ================= PEDIDOS WEB ================= -->
+  <div class="view" id="view-pedidosweb">
+    <div class="view-head"><div><h1>Pedidos web</h1><p>Compras hechas en tu tienda en línea. Confírmalas para facturar y descontar el inventario.</p></div></div>
+    <hr class="stitch head-stitch">
+    <div id="pw-estado"></div>
+    <div id="pw-error" class="aviso-pw" style="display:none;background:var(--danger-soft);color:var(--danger);"></div>
+    <div id="pw-tabs">
+      <button data-f="nuevo" onclick="setFiltroPedidos('nuevo')">Nuevos<span class="c">0</span></button>
+      <button data-f="facturado" onclick="setFiltroPedidos('facturado')">Facturados<span class="c">0</span></button>
+      <button data-f="cancelado" onclick="setFiltroPedidos('cancelado')">Cancelados<span class="c">0</span></button>
+      <button data-f="todos" onclick="setFiltroPedidos('todos')">Todos<span class="c">0</span></button>
+    </div>
+    <div id="pw-lista"></div>
+  </div>
+
+  <!-- ================= TIENDA ONLINE ================= -->
+  <div class="view" id="view-tienda">
+    <div class="view-head"><div><h1>Tienda online</h1><p>Elige qué productos se ven en tu página de ventas, con fotos y descripción.</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn ghost" onclick="repararCatalogoNube()">Revisar catálogo</button><button class="btn gold" onclick="publicarTiendaAhora()">Actualizar tienda ahora</button></div></div>
+    <hr class="stitch head-stitch">
+    <div id="tienda-estado" style="margin-bottom:14px;"></div>
+    <div id="tienda-contenido">
+      <div class="card" style="margin-bottom:16px;">
+        <div class="field" style="margin-bottom:8px;"><label>Archivos de la tienda en GitHub</label>
+          <p class="pw-meta" style="margin:0 0 8px;">Sube <strong>tienda.html</strong> y <strong>tienda-config.js</strong> al mismo lugar donde está este sistema (repositorio regia). El segundo lo genera este botón con tu conexión actual.</p>
+          <button class="btn ghost" onclick="descargarConfigTienda()">Descargar tienda-config.js</button></div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="field" style="margin-bottom:8px;"><label>Enlace de tu tienda (compártelo en Instagram, WhatsApp, etc.)</label>
+          <div style="display:flex;gap:8px;"><input type="text" id="tj-enlace" readonly><button class="btn ghost" onclick="copiarTexto('tj-enlace')">Copiar</button></div></div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="toolbar">
+          <div class="field search-box"><label>Buscar producto</label><input type="text" id="tj-buscar" oninput="tiendaFiltroTxt=this.value;renderTienda()" placeholder="Nombre o categoría…"></div>
+          <div class="field"><label>Mostrar</label><select onchange="tiendaFiltroEstado=this.value;renderTienda()"><option value="todos">Todos</option><option value="pub">En tienda</option><option value="nopub">Ocultos</option></select></div>
+          <button class="btn ghost" onclick="publicarVisibles(true)">Publicar los que veo</button>
+          <button class="btn ghost" onclick="publicarVisibles(false)">Ocultar los que veo</button>
+        </div>
+        <table><thead><tr><th></th><th>Producto</th><th class="right">Desde</th><th class="right">Stock</th><th class="center">Estado</th><th></th></tr></thead><tbody id="tj-lista"></tbody></table>
+      </div>
+      <div id="tienda-ajustes" class="card" style="margin-bottom:16px;">
+        <h3 style="margin-bottom:12px;">Ajustes de la tienda</h3>
+        <label class="chk"><input type="checkbox" id="tj-abierta"> Tienda abierta (si la cierras, el catálogo se ve pero nadie puede pedir)</label>
+        <div class="tj-grid" style="margin-top:10px;">
+          <div class="field"><label>WhatsApp de la tienda (con indicativo, ej. 573001234567)</label><input type="text" id="tj-whatsapp" placeholder="573001234567"></div>
+          <div class="field"><label>Aviso en la parte de arriba (opcional)</label><input type="text" id="tj-aviso" maxlength="200" placeholder="Ej: Envíos todos los miércoles"></div>
+          <div class="field"><label>Formas de pago que ofreces</label><div id="tj-medios"></div></div>
+          <div class="field"><label>Datos para pagar (se muestran al cliente al terminar el pedido)</label><textarea id="tj-datospago" rows="4" maxlength="400" placeholder="Ej: Nequi 300 123 4567 a nombre de…"></textarea></div>
+          <div class="field"><label class="chk" style="margin-top:0"><input type="checkbox" id="tj-envio-activo"> Hago envíos</label><label class="chk"><input type="checkbox" id="tj-retiro"> Se puede recoger en tienda</label>
+            <label style="margin-top:8px">Tiempo de entrega (texto)</label><input type="text" id="tj-tiempo" placeholder="Ej: 2 a 4 días hábiles"></div>
+          <div class="field"><label>Costo de envío ($)</label><input type="number" id="tj-costoenvio" min="0"><label style="margin-top:8px">Envío gratis desde ($, 0 = nunca)</label><input type="number" id="tj-gratis" min="0"></div>
+        </div>
+        <button class="btn gold" onclick="guardarAjustesTienda()">Guardar ajustes</button>
+      </div>
+      <details class="card" style="margin-bottom:16px;">
+        <summary style="cursor:pointer;font-weight:600;">Seguridad: reglas de Firestore (hazlo una sola vez)</summary>
+        <p style="font-size:12.5px;color:var(--ink-soft);">Estas reglas dejan que cualquiera <strong>vea tu catálogo y haga pedidos</strong>, pero solo tú (con tu correo de administrador) puedes ver tu sistema, tus ventas y tus pedidos. El correo se toma de Configuración → Sincronización.</p>
+        <textarea id="tj-reglas" rows="14" readonly style="width:100%;font-family:'IBM Plex Mono',monospace;font-size:11px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;"></textarea>
+        <button class="btn ghost sm" onclick="copiarTexto('tj-reglas')">Copiar reglas</button>
+      </details>
+    </div>
+  </div>
+
   <div class="view" id="view-config">
     <div class="view-head"><div><h1>Configuración</h1><p>Datos del almacén para el comprobante impreso.</p></div></div>
     <hr class="stitch head-stitch">
@@ -1246,6 +1389,8 @@
         <textarea id="sync-firebase-config" rows="5" style="width:100%;font-family:'IBM Plex Mono',monospace;font-size:11.5px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;" placeholder='{"apiKey":"...", "authDomain":"...", "projectId":"...", "storageBucket":"...", "messagingSenderId":"...", "appId":"..."}'></textarea>
       </div>
       <div class="field"><label>Código de tienda (debe ser el mismo en todos tus dispositivos)</label><input type="text" id="sync-store-code" placeholder="Ej: regia-mc-2026-xyz"></div>
+      <div class="field"><label>Correo de administrador (el usuario que creas en Firebase → Authentication)</label><input type="email" id="sync-admin-email" placeholder="tucorreo@gmail.com" autocomplete="username"></div>
+      <div class="field"><label>Contraseña (solo se usa para entrar; no se guarda en el sistema)</label><input type="password" id="sync-admin-pass" autocomplete="current-password"></div>
       <button class="btn gold" style="width:100%;" onclick="activarSincronizacionDesdeForm()">🔄 Conectar y sincronizar</button>
       <button class="btn ghost" style="width:100%;margin-top:8px;" onclick="desconectarSincronizacion()">Desconectar (usar solo este dispositivo)</button>
       <details style="margin-top:12px;font-size:12px;color:var(--ink-soft);">
@@ -1255,22 +1400,50 @@
           <li>Ve a "Compilación" → "Firestore Database" → "Crear base de datos" → modo de prueba.</li>
           <li>Ve a Configuración del proyecto (⚙) → pestaña "General" → "Tus apps" → agrega una app Web (ícono &lt;/&gt;).</li>
           <li>Copia el bloque <code>const firebaseConfig = {...}</code> que te muestra y pégalo arriba, tal cual (no hace falta editarlo).</li>
-          <li>En Firestore → pestaña "Reglas", borra lo que haya y pega exactamente esto, luego dale "Publicar":
-            <pre style="background:var(--surface-2);padding:8px 10px;border-radius:6px;margin:6px 0;white-space:pre-wrap;font-family:'IBM Plex Mono',monospace;font-size:11px;">rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /stores/{storeCode} {
-      allow read, write: if true;
-    }
-  }
-}</pre>
-          </li>
+          <li>Ve a "Compilación" → "Authentication" → "Comenzar" → pestaña "Método de acceso" → habilita <strong>Correo electrónico/contraseña</strong>. Luego, en la pestaña "Usuarios", pulsa "Agregar usuario" y crea tu correo y una contraseña (ese será tu acceso de administrador). En "Configuración" de Authentication → "Acciones del usuario", desmarca "Habilitar creación (registro)" para que nadie más pueda crear usuarios.</li>
+          <li>Abre en este sistema <strong>Tienda online → Seguridad</strong>, copia las reglas (ya llevan tu correo), pégalas en Firestore → pestaña "Reglas" (borrando lo anterior) y dale "Publicar".</li>
           <li>Inventa un "código de tienda" (una palabra o frase única) y úsalo en todos tus dispositivos.</li>
         </ol>
       </details>
     </div>
   </div>
 
+</div>
+
+<!-- ===== Modal: pedido web ===== -->
+<div class="modal-bg" id="modal-pedido-web">
+  <div class="modal" style="width:540px;">
+    <h3>Confirmar pedido web</h3>
+    <div id="pw-modal-body"></div>
+    <div class="modal-actions" id="pw-modal-acciones"></div>
+  </div>
+</div>
+
+<!-- ===== Modal: producto en la tienda ===== -->
+<div class="modal-bg" id="modal-tienda-producto">
+  <div class="modal" style="width:520px;">
+    <h3 id="tp-titulo">Producto</h3>
+    <label class="chk"><input type="checkbox" id="tp-pub"> Mostrar en la tienda</label>
+    <div class="field" style="margin-top:10px;"><label>Descripción para el cliente</label><textarea id="tp-desc" rows="4" maxlength="600" style="width:100%;" placeholder="Material, ajuste, cuidados, a qué combina…"></textarea></div>
+    <div class="field"><label>Fotos de la tienda (hasta 4)</label>
+      <div id="tp-fotos"></div>
+      <div id="tp-add"><input type="file" id="tp-input" accept="image/*" multiple onchange="agregarFotosTienda(this)"></div>
+      <p class="pw-meta">La foto del inventario se usa como portada. Estas fotos se ven al abrir el producto.</p>
+    </div>
+    <div class="modal-actions"><button class="btn ghost" onclick="cerrarModal('modal-tienda-producto')">Cancelar</button><button class="btn gold" onclick="guardarProductoTienda()">Guardar</button></div>
+  </div>
+</div>
+
+<!-- ===== Modal: inicio de sesión del administrador ===== -->
+<div class="modal-bg" id="modal-fb-login">
+  <div class="modal" style="width:400px;">
+    <h3>Entrar como administrador</h3>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-top:-8px;">Para sincronizar tu sistema y recibir pedidos, inicia sesión con el usuario que creaste en Firebase → Authentication.</p>
+    <div id="fbl-msg" class="aviso-pw" style="display:none;background:var(--danger-soft);color:var(--danger);"></div>
+    <div class="field"><label>Correo</label><input type="email" id="fbl-email" autocomplete="username"></div>
+    <div class="field"><label>Contraseña</label><input type="password" id="fbl-pass" autocomplete="current-password" onkeydown="if(event.key==='Enter')confirmarLoginFirebase()"></div>
+    <div class="modal-actions"><button class="btn ghost" onclick="cerrarModal('modal-fb-login')">Ahora no</button><button class="btn gold" onclick="confirmarLoginFirebase()">Entrar</button></div>
+  </div>
 </div>
 
 <!-- ===== Modal: artículo ===== -->
@@ -1770,6 +1943,21 @@ function migrarDB(db){
   if(db.config.comisionPct===undefined) db.config.comisionPct=0;
   if(db.config.finComisionSistecredito===undefined) db.config.finComisionSistecredito=0; // % que cobra Sistecrédito (número, ej. 5 = 5%)
   if(db.config.finComisionAddi===undefined) db.config.finComisionAddi=0; // % que cobra Addi
+  if(!db.tienda) db.tienda={};
+  { const T=db.tienda;
+    if(T.abierta===undefined) T.abierta=true;
+    if(!T.grupos) T.grupos={};          // {[grupoId]:{publicado, descripcion, nFotos, publicadoEn}}
+    if(!T.procesados) T.procesados={};  // {[codigoPedido]: numeroVenta} evita facturar dos veces
+    if(!T.medios) T.medios=['transferencia','contraentrega','tienda'];
+    if(T.whatsapp===undefined) T.whatsapp='';
+    if(T.datosPago===undefined) T.datosPago='';
+    if(T.costoEnvio===undefined) T.costoEnvio=0;
+    if(T.envioGratisDesde===undefined) T.envioGratisDesde=0;
+    if(T.envioActivo===undefined) T.envioActivo=true;
+    if(T.retiroEnTienda===undefined) T.retiroEnTienda=true;
+    if(T.aviso===undefined) T.aviso='';
+    if(T.tiempoEnvio===undefined) T.tiempoEnvio='';
+  }
   return db;
 }
 function guardarDB(){
@@ -1780,6 +1968,7 @@ function guardarDB(){
     console.error('Error guardando en almacenamiento local', err);
     toast('⚠ El almacenamiento de este navegador está lleno (posiblemente por fotos de productos). El cambio no quedó guardado localmente — intenta borrar alguna imagen de un artículo.');
   }
+  if(typeof programarPublicacion==='function') programarPublicacion();
   if(syncActivo && firestoreRef && !aplicandoSnapshotRemoto){
     let tamano;
     try{ tamano=new Blob([JSON.stringify(DB)]).size; }catch(err){ console.error('Error midiendo tamaño de datos', err); return; }
@@ -1981,8 +2170,8 @@ function toast(msg){
 
 /* ---------------- Sesión y permisos ---------------- */
 const PERMISOS = {
-  asesor:['facturar','ventas','cierre','devoluciones','apartados','creditos','inventario','clientes','combos','gastos'],
-  gerencia:['dashboard','facturar','ventas','cierre','devoluciones','apartados','creditos','inventario','combos','clientes','proveedores','activos','gastos','reportes','equilibrio','flujo','reserva','config']
+  asesor:['facturar','pedidosweb','ventas','cierre','devoluciones','apartados','creditos','inventario','clientes','combos','gastos'],
+  gerencia:['dashboard','facturar','pedidosweb','tienda','ventas','cierre','devoluciones','apartados','creditos','inventario','combos','clientes','proveedores','activos','gastos','reportes','equilibrio','flujo','reserva','config']
 };
 let currentRole = null;
 
@@ -2046,6 +2235,8 @@ function goTo(view){
   if(view==='equilibrio') renderEquilibrio();
   if(view==='flujo') renderFlujoCaja();
   if(view==='reserva') renderReserva();
+  if(view==='pedidosweb') renderPedidosWeb();
+  if(view==='tienda') renderTienda();
   if(view==='config') cargarConfigForm();
 }
 document.querySelectorAll('.nav-btn').forEach(b=>b.addEventListener('click',()=>goTo(b.dataset.view)));
@@ -4762,10 +4953,51 @@ function imprimirReporte(){
   prepararImpresion('reporte');
   setTimeout(()=>window.print(), 150);
 }
+function rangoPresetReportes(p){
+  const hoy=new Date(); let d, h=hoyISO();
+  if(p==='todo'){ const f=[...DB.ventas.map(v=>v.fecha),...DB.gastos.map(g=>g.fecha)].filter(Boolean).sort(); d=f[0]||hoyISO(); }
+  else if(p==='mes') d=fechaISOLocal(new Date(hoy.getFullYear(),hoy.getMonth(),1));
+  else if(p==='mespasado'){ d=fechaISOLocal(new Date(hoy.getFullYear(),hoy.getMonth()-1,1)); h=fechaISOLocal(new Date(hoy.getFullYear(),hoy.getMonth(),0)); }
+  else if(p==='anio') d=hoy.getFullYear()+'-01-01';
+  else { const x=new Date(); x.setDate(x.getDate()-6); d=fechaISOLocal(x); }
+  return {d,h};
+}
+function renderCuadreReportes(ventas, gastos, desde, hasta){
+  const sum=(a,k)=>a.reduce((s,x)=>s+(Number(x[k])||0),0);
+  const totVentas=sum(ventas,'total');
+  // por forma de pago
+  const met={}; ventas.forEach(v=>{ const m=v.metodo||'Sin método'; met[m]=met[m]||{n:0,t:0}; met[m].n++; met[m].t+=v.total||0; });
+  const filaT=(a,b,c,neg)=>`<tr style="font-weight:600;border-top:2px solid var(--border);"><td>${a}</td><td class="right">${b}</td><td class="right num">${c}</td></tr>`;
+  document.getElementById('tbl-rep-metodos').innerHTML = (Object.entries(met).sort((a,b)=>b[1].t-a[1].t).map(([m,d])=>`<tr><td>${m}</td><td class="right">${d.n}</td><td class="right num">${fmt(d.t)}</td></tr>`).join('') || '<tr><td colspan="3"><div class="empty">Sin ventas en el periodo.</div></td></tr>') + (ventas.length? filaT('Total',ventas.length,fmt(totVentas)):'');
+  // por tipo de movimiento
+  const tipos={
+    'Ventas de mostrador':v=>!v.esAbonoApartado&&!v.esAjusteDevolucion&&v.origen!=='web',
+    'Ventas de la tienda web':v=>v.origen==='web',
+    'Abonos de apartados':v=>!!v.esAbonoApartado,
+    'Ajustes por devolución, cambio o reembolso':v=>!!v.esAjusteDevolucion
+  };
+  let filas='', cont=0;
+  Object.entries(tipos).forEach(([nom,f])=>{ const l=ventas.filter(f); cont+=l.length; if(l.length) filas+=`<tr><td>${nom}</td><td class="right">${l.length}</td><td class="right num">${fmt(sum(l,'total'))}</td></tr>`; });
+  const pend=ventas.filter(v=>v.credito&&v.credito.estado!=='pagado');
+  document.getElementById('tbl-rep-tipos').innerHTML=(filas||'<tr><td colspan="3"><div class="empty">Sin movimientos.</div></td></tr>')+(ventas.length?filaT('Total',cont,fmt(totVentas)):'')+(pend.length?`<tr><td colspan="3" style="font-size:12px;color:var(--amber-ink);padding-top:10px;">Incluye ${pend.length} venta(s) a crédito aún por cobrar a la financiera: ${fmt(pend.reduce((s,v)=>s+netoCredito(v),0))}.</td></tr>`:'');
+  const todas=DB.ventas.length, totTodas=sum(DB.ventas,'total');
+  document.getElementById('rep-cuadre-msg').innerHTML=`Periodo ${desde} a ${hasta}: <strong>${ventas.length}</strong> movimientos por <strong>${fmt(totVentas)}</strong>. En todo el sistema hay ${todas} movimientos por ${fmt(totTodas)}${ventas.length===todas?' <span class="badge success">todo el historial está incluido</span>':' (el periodo no incluye todo el historial)'}.`;
+  // por mes
+  const meses={};
+  ventas.forEach(v=>{ const m=(v.fecha||'').slice(0,7); meses[m]=meses[m]||{v:0,c:0,g:0}; meses[m].v+=v.total||0; meses[m].c+=v.costoTotal||0; });
+  gastos.forEach(g=>{ const m=(g.fecha||'').slice(0,7); meses[m]=meses[m]||{v:0,c:0,g:0}; meses[m].g+=g.valor||0; });
+  const nom=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const lista=Object.keys(meses).sort().reverse();
+  let tv=0,tc=0,tg=0;
+  const rows=lista.map(m=>{ const d=meses[m]; tv+=d.v; tc+=d.c; tg+=d.g; const [y,mm]=m.split('-'); const ub=d.v-d.c;
+    return `<tr><td>${nom[(+mm)-1]||m} ${y}</td><td class="right num">${fmt(d.v)}</td><td class="right num">${fmt(d.c)}</td><td class="right num">${fmt(ub)}</td><td class="right num">${fmt(d.g)}</td><td class="right num">${fmt(ub-d.g)}</td></tr>`; }).join('');
+  document.getElementById('tbl-rep-meses').innerHTML = rows ? rows+`<tr style="font-weight:600;border-top:2px solid var(--border);"><td>Total</td><td class="right num">${fmt(tv)}</td><td class="right num">${fmt(tc)}</td><td class="right num">${fmt(tv-tc)}</td><td class="right num">${fmt(tg)}</td><td class="right num">${fmt(tv-tc-tg)}</td></tr>` : '<tr><td colspan="6"><div class="empty">Sin movimientos en el periodo.</div></td></tr>';
+}
 function renderReportes(){
   const desdeEl=document.getElementById('rf-desde'), hastaEl=document.getElementById('rf-hasta');
-  if(!desdeEl.value){ const d=new Date(); d.setDate(d.getDate()-6); desdeEl.value=fechaISOLocal(d); }
-  if(!hastaEl.value){ hastaEl.value=hoyISO(); }
+  const presetEl=document.getElementById('rf-preset');
+  if(presetEl.value!=='custom'){ const r=rangoPresetReportes(presetEl.value); desdeEl.value=r.d; hastaEl.value=r.h; }
+  else { if(!desdeEl.value) desdeEl.value=rangoPresetReportes('todo').d; if(!hastaEl.value) hastaEl.value=hoyISO(); }
   const desde=desdeEl.value, hasta=hastaEl.value;
 
   const ventas=DB.ventas.filter(v=>v.fecha>=desde && v.fecha<=hasta);
@@ -4780,6 +5012,7 @@ function renderReportes(){
   document.getElementById('rep-gastos').textContent=fmt(totGastos);
   document.getElementById('rep-neta').textContent=fmt(utilidadBruta-totGastos);
 
+  renderCuadreReportes(ventas, gastos, desde, hasta);
   renderPrendasVendidas(ventas);
   renderCierreDelDia();
   renderGraficoVentasDias();
@@ -4888,14 +5121,14 @@ function fechaLocalDesdeISO(iso){ const [y,m,d]=iso.split('-').map(Number); retu
 function domingoDeLunes(lunesStr){ const l=fechaLocalDesdeISO(lunesStr); const dom=new Date(l); dom.setDate(dom.getDate()+6); return fechaISOLocal(dom); }
 function semanaActualLunesStr(){ return fechaISOLocal(lunesDeSemana(new Date())); }
 function semanaFlujoPendiente(){
+  // semanas pasadas con dinero real (ingresos o egresos) que aún no se distribuyen del todo
   const semanaActual=semanaActualLunesStr();
-  const semanas=new Set();
-  DB.ventas.forEach(v=>{ const s=fechaISOLocal(lunesDeSemana(fechaLocalDesdeISO(v.fecha))); if(s<semanaActual) semanas.add(s); });
-  DB.gastos.forEach(g=>{ const s=fechaISOLocal(lunesDeSemana(fechaLocalDesdeISO(g.fecha))); if(s<semanaActual) semanas.add(s); });
-  const pendientes=[...semanas].filter(s=>{
+  const pendientes=semanasDesdeInicio().filter(s=>{
+    if(s>=semanaActual) return false;
     const registro=DB.flujoCaja.find(f=>f.semanaInicio===s);
-    if(!registro) return true;
-    return Math.round(registro.saldoSinAsignar)!==0;
+    if(registro) return Math.round(registro.saldoSinAsignar)!==0;
+    const c=calcularFlujoSemana(s);
+    return Math.round(c.ingresos)!==0||Math.round(c.egresos)!==0;
   }).sort();
   return pendientes.length? pendientes[0] : null;
 }
@@ -4909,7 +5142,73 @@ function calcularFlujoSemana(lunesStr){
   return {ingresos, egresos, saldoDisponible:ingresos-egresos};
 }
 function saldoAcumuladoPrevioFlujo(lunesStr){
-  return DB.flujoCaja.filter(f=>f.semanaInicio<lunesStr).reduce((s,f)=>s+(f.saldoSinAsignar||0),0);
+  // lo que quedó sin distribuir en semanas previas + el neto de las semanas que se consolidaron en esta
+  return DB.flujoCaja.filter(f=>f.semanaInicio<lunesStr).reduce((s,f)=>s+(f.saldoSinAsignar||0),0)
+    + DB.flujoCaja.filter(f=>f.consolidadaEn===lunesStr).reduce((s,f)=>s+(f.netoConsolidado||0),0);
+}
+function semanasDesdeInicio(){
+  const fechas=[];
+  DB.ventas.forEach(v=>{ if(v.fecha) fechas.push(v.fecha); if(v.credito&&v.credito.fechaPago) fechas.push(v.credito.fechaPago); });
+  DB.gastos.forEach(g=>{ if(g.fecha) fechas.push(g.fecha); });
+  if(!fechas.length) return [];
+  fechas.sort();
+  let l=lunesDeSemana(fechaLocalDesdeISO(fechas[0])); const fin=lunesDeSemana(new Date()); const out=[];
+  while(l<=fin){ out.push(fechaISOLocal(l)); l=new Date(l); l.setDate(l.getDate()+7); }
+  return out;
+}
+function semanasSinGuardarFlujo(){
+  const act=semanaActualLunesStr();
+  return semanasDesdeInicio().filter(s=>s<act && !DB.flujoCaja.some(f=>f.semanaInicio===s)).filter(s=>{ const c=calcularFlujoSemana(s); return Math.round(c.ingresos)!==0||Math.round(c.egresos)!==0; });
+}
+function consolidarSemanasPendientes(){
+  const p=semanasSinGuardarFlujo();
+  if(p.length<2){ toast('No hay varias semanas pendientes para consolidar'); return; }
+  const L=p[p.length-1];
+  if(!confirm('Vas a juntar '+p.length+' semanas sin distribuir ('+p[0]+' a '+domingoDeLunes(L)+') en una sola distribución. Los ingresos y egresos de cada semana quedan registrados tal cual; solo repartirás el saldo total una vez. ¿Continuar?')) return;
+  p.slice(0,-1).forEach(s=>{
+    const c=calcularFlujoSemana(s);
+    DB.flujoCaja.push({id:uid(), semanaInicio:s, semanaFin:domingoDeLunes(s), ingresos:c.ingresos, egresos:c.egresos, saldoDisponible:c.saldoDisponible, asignaciones:[], totalAsignado:0, saldoSinAsignar:0, consolidadaEn:L, netoConsolidado:c.saldoDisponible});
+  });
+  guardarDB();
+  semanaFlujoManual=null;
+  renderFlujoCaja();
+  toast('Semanas consolidadas: ahora distribuye el saldo total en la semana '+L);
+}
+function renderEstadoCuentasFlujo(){
+  const semanas=semanasDesdeInicio();
+  const act=semanaActualLunesStr();
+  let acum=0, tIng=0, tEgr=0;
+  const filas=[...semanas].map(s=>{
+    const c=calcularFlujoSemana(s), reg=DB.flujoCaja.find(f=>f.semanaInicio===s);
+    const neto=c.saldoDisponible; acum+=neto; tIng+=c.ingresos; tEgr+=c.egresos;
+    let estado, accion=`<button class="btn ghost sm" onclick="cargarSemanaFlujo('${s}')">Abrir</button>`;
+    const sinMov=Math.round(c.ingresos)===0&&Math.round(c.egresos)===0;
+    if(reg && reg.consolidadaEn) estado=`<span class="badge gold">Incluida en la semana ${reg.consolidadaEn}</span>`;
+    else if(reg && Math.round(reg.saldoSinAsignar)!==0) estado='<span class="badge danger">Falta distribuir</span>';
+    else if(reg && (Math.abs((reg.ingresos||0)-c.ingresos)>0.5 || Math.abs((reg.egresos||0)-c.egresos)>0.5)) estado='<span class="badge danger">Cambió después de guardar</span>';
+    else if(reg) estado='<span class="badge success">Distribuida ✓</span>';
+    else if(s===act) estado='<span class="badge indigo">En curso</span>';
+    else if(sinMov){ estado='<span class="badge">Sin movimiento</span>'; accion=''; }
+    else estado='<span class="badge danger">Pendiente</span>';
+    return {s,c,neto,acum,estado,accion,sinMov};
+  });
+  const tbody=document.getElementById('tbl-flujo-todas');
+  const visibles=filas.filter(f=>!f.sinMov||f.s===act).reverse();
+  tbody.innerHTML=visibles.length? visibles.map(f=>`<tr><td>${f.s} a ${domingoDeLunes(f.s)}</td><td class="right num">${fmt(f.c.ingresos)}</td><td class="right num">${fmt(f.c.egresos)}</td><td class="right num">${fmt(f.neto)}</td><td class="right num">${fmt(f.acum)}</td><td>${f.estado}</td><td class="right">${f.accion}</td></tr>`).join('')
+    : '<tr><td colspan="7"><div class="empty">Aún no hay ventas ni gastos registrados.</div></td></tr>';
+  const distribuido=DB.flujoCaja.reduce((s,f)=>s+(f.totalAsignado||0),0);
+  const pendiente=acum-distribuido;
+  document.getElementById('fa-desde').textContent=semanas.length? ('Desde la semana del '+semanas[0]+' hasta hoy · '+semanas.length+' semanas.') : 'Todavía no hay movimientos.';
+  document.getElementById('fa-ingresos').textContent=fmt(tIng);
+  document.getElementById('fa-egresos').textContent=fmt(tEgr);
+  document.getElementById('fa-saldo').textContent=fmt(acum);
+  document.getElementById('fa-distribuido').textContent=fmt(distribuido);
+  const pel=document.getElementById('fa-pendiente'), pl=document.getElementById('fa-pend-label');
+  if(Math.round(pendiente)===0){ pl.textContent='✅ Todo el saldo está distribuido'; pel.textContent='$0'; pel.style.color='var(--success)'; }
+  else if(pendiente>0){ pl.textContent='Pendiente por distribuir'; pel.textContent=fmt(pendiente); pel.style.color='var(--danger)'; }
+  else { pl.textContent='Distribuiste más de lo que hay'; pel.textContent=fmt(Math.abs(pendiente)); pel.style.color='var(--danger)'; }
+  const cred=DB.ventas.filter(v=>v.credito && v.credito.estado!=='pagado');
+  document.getElementById('fa-credito').textContent=cred.length? ('Además tienes '+cred.length+' venta(s) a crédito (Sistecrédito/Addi) por cobrar: '+fmt(cred.reduce((s,v)=>s+netoCredito(v),0))+'. Entran al flujo cuando se cobran.') : '';
 }
 let semanaFlujoActual=null;
 let semanaFlujoManual=null;
@@ -4928,13 +5227,18 @@ function renderFlujoCaja(){
       ? `<span class="badge danger">⚠ Tienes una semana pendiente por distribuir: ${pendiente} a ${domingoDeLunes(pendiente)}. Complétala para poder avanzar.</span>`
       : '<span class="badge indigo">Semana actual (en curso).</span>';
   }
+  const nSin=semanasSinGuardarFlujo().length;
+  if(nSin>=2) estado.innerHTML+=` <button class="btn gold sm" onclick="consolidarSemanasPendientes()">Juntar las ${nSin} semanas pendientes en una sola distribución</button>`;
 
   const registro=DB.flujoCaja.find(f=>f.semanaInicio===semanaFlujoActual);
   asignacionesFlujoActual=registro? registro.asignaciones.map(a=>({...a})) : [];
   renderAsignacionesFlujo();
   renderHistorialFlujo();
+  renderEstadoCuentasFlujo();
 }
 function cargarSemanaFlujo(semanaInicio){
+  const reg=DB.flujoCaja.find(f=>f.semanaInicio===semanaInicio);
+  if(reg && reg.consolidadaEn){ toast('Esa semana se distribuyó junto con la semana '+reg.consolidadaEn+'. Te llevo allá.'); semanaInicio=reg.consolidadaEn; }
   semanaFlujoManual=semanaInicio;
   renderFlujoCaja();
 }
@@ -5010,7 +5314,7 @@ function renderHistorialFlujo(){
   const tbody=document.getElementById('tbl-flujo-historial');
   if(!lista.length){ tbody.innerHTML='<tr><td colspan="7"><div class="empty">Aún no has guardado ninguna semana.</div></td></tr>'; return; }
   tbody.innerHTML=lista.map(f=>`
-    <tr><td>${f.semanaInicio} a ${f.semanaFin}</td><td class="right num">${fmt(f.ingresos)}</td><td class="right num">${fmt(f.egresos)}</td>
+    <tr><td>${f.semanaInicio} a ${f.semanaFin}${f.consolidadaEn?' <span class="badge gold">junto con '+f.consolidadaEn+'</span>':''}</td><td class="right num">${fmt(f.ingresos)}</td><td class="right num">${fmt(f.egresos)}</td>
     <td class="right num">${fmt(f.saldoDisponible)}</td><td class="right num">${fmt(f.totalAsignado)}</td>
     <td class="right num" style="color:${Math.round(f.saldoSinAsignar)===0?'var(--success)':'var(--danger)'};">${fmt(f.saldoSinAsignar)}</td>
     <td class="right"><button class="btn ghost sm" onclick="cargarSemanaFlujo('${f.semanaInicio}')">Ver/Editar</button></td></tr>`).join('');
@@ -5221,6 +5525,7 @@ function cargarConfigForm(){
   document.getElementById('cfg-fin-sistecredito').value=DB.config.finComisionSistecredito||0;
   document.getElementById('cfg-fin-addi').value=DB.config.finComisionAddi||0;
   if(syncStoreCode) document.getElementById('sync-store-code').value=syncStoreCode;
+  { const sg=cargarConfigSync(); if(sg && sg.adminEmail) document.getElementById('sync-admin-email').value=sg.adminEmail; }
   marcarAcentoActivo();
   actualizarEstadoSync();
 }
@@ -5297,11 +5602,31 @@ function activarSincronizacionDesdeForm(){
   if(!raw || !storeCode){ toast('Pega la configuración de Firebase y define un código de tienda'); return; }
   const cfg=parsearFirebaseConfig(raw);
   if(!cfg || !cfg.apiKey || !cfg.projectId){ toast('No se pudo leer la configuración de Firebase. Verifica que pegaste el objeto completo (con apiKey, projectId, etc.)'); return; }
-  conectarSincronizacion(cfg, storeCode, true);
+  conectarSincronizacion(cfg, storeCode, true, document.getElementById('sync-admin-email').value, document.getElementById('sync-admin-pass').value);
+  document.getElementById('sync-admin-pass').value='';
 }
-async function conectarSincronizacion(firebaseConfigObj, storeCode, esConexionManual){
+let syncUnsub=null;
+function esperarEstadoAuth(){
+  return new Promise(res=>{ const un=fbAuth.onAuthStateChanged(u=>{ un(); res(u); }); });
+}
+async function conectarSincronizacion(firebaseConfigObj, storeCode, esConexionManual, adminEmail, passAdmin){
+  adminEmail=(adminEmail||'').trim();
   try{
     if(!firebaseApp){ firebaseApp=firebase.initializeApp(firebaseConfigObj); }
+    if(!fbAuth && typeof firebase.auth==='function') fbAuth=firebase.auth();
+    if(adminEmail){
+      if(!fbAuth){ alert('No se pudo cargar el módulo de inicio de sesión de Firebase. Revisa tu internet y recarga la página.'); return; }
+      let user=await esperarEstadoAuth();
+      if(user && (user.email||'').toLowerCase()!==adminEmail.toLowerCase()){ await fbAuth.signOut(); user=null; }
+      if(!user && passAdmin){
+        try{ await fbAuth.signInWithEmailAndPassword(adminEmail, passAdmin); user=fbAuth.currentUser; }
+        catch(err){ abrirLoginFirebase(firebaseConfigObj, storeCode, esConexionManual, adminEmail, mensajeErrorAuth(err)); return; }
+      }
+      if(!user){
+        abrirLoginFirebase(firebaseConfigObj, storeCode, esConexionManual, adminEmail, esConexionManual?'':'Tu sesión venció. Entra de nuevo para seguir sincronizando.');
+        return;
+      }
+    }
     firestoreRef=firebase.firestore().collection('stores').doc(storeCode);
     syncStoreCode=storeCode;
     const snap=await firestoreRef.get();
@@ -5321,7 +5646,8 @@ async function conectarSincronizacion(firebaseConfigObj, storeCode, esConexionMa
     } else {
       await firestoreRef.set(DB);
     }
-    firestoreRef.onSnapshot(doc=>{
+    if(syncUnsub){ try{ syncUnsub(); }catch(e){} }
+    syncUnsub=firestoreRef.onSnapshot(doc=>{
       if(!doc.exists || aplicandoSnapshotRemoto) return;
       const nuevo=migrarDB(doc.data());
       if((nuevo._updatedAtMs||0) < (DB._updatedAtMs||0)) return; // ignorar eco viejo/atrasado que pisaría cambios más recientes
@@ -5338,14 +5664,18 @@ async function conectarSincronizacion(firebaseConfigObj, storeCode, esConexionMa
       aplicandoSnapshotRemoto=false;
     });
     syncActivo=true;
-    guardarConfigSyncLocal({firebaseConfig:firebaseConfigObj, storeCode});
+    guardarConfigSyncLocal({firebaseConfig:firebaseConfigObj, storeCode, adminEmail});
     actualizarEstadoSync();
+    escucharPedidosWeb();
+    if(tiendaActiva()) programarPublicacion();
     if(esConexionManual) toast('Sincronización activada correctamente');
   }catch(err){
     console.error(err);
     let motivo='Revisa la configuración de Firebase y el código de tienda.';
     if(err && err.code==='permission-denied'){
-      motivo='Firestore rechazó el acceso (permission-denied).\n\nVe a Firebase → Firestore Database → pestaña "Reglas" y pega esto, luego dale "Publicar":\n\nrules_version = \'2\';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /stores/{storeCode} {\n      allow read, write: if true;\n    }\n  }\n}\n\nDespués vuelve aquí e intenta conectar de nuevo.';
+      motivo = adminEmail
+        ? 'Firestore rechazó el acceso (permission-denied).\n\nVe a Firebase → Firestore Database → pestaña "Reglas", borra lo que haya, pega las reglas que aparecen en Tienda online → "Seguridad" (o estas) y dale "Publicar":\n\n'+reglasFirestoreTexto(adminEmail)+'\n\nDespués vuelve aquí e intenta conectar de nuevo.'
+        : 'Firestore rechazó el acceso (permission-denied).\n\nSi ya publicaste las reglas seguras de la tienda, escribe también tu correo de administrador en este formulario y vuelve a conectar. Si aún no usas la tienda, las reglas deben permitir leer y escribir en "stores/{código}".';
     } else if(err && (err.code==='not-found' || /Firestore.*NOT_FOUND|database.*does not exist|resource-exhausted/i.test(err.message||''))){
       motivo='No se encontró una base de datos de Firestore en ese proyecto (o no está creada todavía).\n\nVe a Firebase → "Compilación" → "Firestore Database" → "Crear base de datos" (elige modo de producción o de prueba, cualquiera sirve) y luego vuelve aquí e intenta de nuevo.';
     } else if(err && err.message){
@@ -5358,6 +5688,10 @@ async function conectarSincronizacion(firebaseConfigObj, storeCode, esConexionMa
 function desconectarSincronizacion(){
   syncActivo=false;
   firestoreRef=null;
+  if(syncUnsub){ try{ syncUnsub(); }catch(e){} syncUnsub=null; }
+  if(pedidosUnsub){ pedidosUnsub(); pedidosUnsub=null; }
+  TIENDA_PEDIDOS=[]; actualizarBadgePedidos();
+  cerrarSesionFirebase();
   localStorage.removeItem('almacenropa_sync');
   actualizarEstadoSync();
   toast('Sincronización desactivada — ahora solo se guarda en este dispositivo');
@@ -5382,6 +5716,599 @@ function actualizarEstadoSync(){
   if(badge) badge.innerHTML = syncActivo ? '<span class="dot on"></span>Sincronizado en la nube' : '<span class="dot"></span>Solo este dispositivo';
 }
 
+/* ================= TIENDA ONLINE (catálogo público + pedidos web) ================= */
+const TIENDA_MEDIOS=[
+  {id:'transferencia', label:'Transferencia / Nequi / Daviplata', metodo:'Transferencia'},
+  {id:'contraentrega', label:'Contra entrega (efectivo)', metodo:'Efectivo'},
+  {id:'tienda', label:'Pago y recogida en tienda', metodo:'Efectivo'},
+  {id:'sistecredito', label:'Sistecrédito', metodo:'Sistecrédito'},
+  {id:'addi', label:'Addi', metodo:'Addi'}
+];
+let fbAuth=null, TIENDA_PEDIDOS=[], pedidosUnsub=null, pedidosPrimeraCarga=true;
+let pubTimer=null, pubEnCurso=false, pubPendiente=false, ultimaPublicacionMs=0, pedFiltro='nuevo';
+let pedidoEnModal=null, tiendaGrupoEditando=null, tiendaFotosEditando=[], tiendaFiltroTxt='', tiendaFiltroEstado='todos';
+
+function escH(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+// Todo lo que escribe un cliente en la tienda se limpia antes de entrar a tu sistema
+function limpiarTexto(s, max){
+  s=String(s==null?'':s).replace(/[\u0000-\u001f\u007f]/g,' ').replace(/[<>`]/g,'').replace(/"/g,'”').replace(/'/g,'’').replace(/\\/g,'/');
+  return s.replace(/\s+/g,' ').trim().slice(0,max||120);
+}
+function tiendaRef(){ return syncActivo && syncStoreCode ? firebase.firestore().collection('tiendas').doc(syncStoreCode) : null; }
+function tiendaConfig(){ return DB.tienda; }
+function tiendaGrupos(){
+  const m=new Map();
+  DB.articulos.forEach(a=>{ const g=a.grupoId||a.id; if(!m.has(g)) m.set(g,[]); m.get(g).push(a); });
+  return m;
+}
+function reservadoWeb(){
+  const r={};
+  TIENDA_PEDIDOS.filter(p=>p.estado==='nuevo').forEach(p=>(p.items||[]).forEach(it=>{ r[it.vid]=(r[it.vid]||0)+(Number(it.cantidad)||0); }));
+  return r;
+}
+function hashTexto(str){ let h=5381; for(let i=0;i<str.length;i++){ h=((h<<5)+h+str.charCodeAt(i))|0; } return String(h)+':'+str.length; }
+function urlTienda(){
+  try{ return new URL('tienda.html', location.href).href; }catch(e){ return 'tienda.html'; }
+}
+
+/* ---------- Publicación del catálogo (solo escribe lo que cambió) ---------- */
+function construirDocProducto(gid, arts){
+  const T=DB.tienda, g=T.grupos[gid]||{}, res=reservadoWeb();
+  const variantes=arts.map(a=>({id:a.id, talla:a.talla||'Única', color:a.color||'Único', precio:Number(a.precio)||0, stock:Math.max(0,(Number(a.stock)||0)-(res[a.id]||0))}));
+  const precios=variantes.map(v=>v.precio).filter(p=>p>0);
+  return {
+    id:gid, nombre:arts[0].nombre||'', categoria:arts[0].categoria||'', descripcion:g.descripcion||'',
+    precio:precios.length?Math.min(...precios):0, thumb:(arts.find(a=>a.imagen)||{}).imagen||'',
+    nFotos:g.nFotos||0, publicadoEn:g.publicadoEn||0, variantes
+  };
+}
+function construirConfigPublica(){
+  const T=DB.tienda;
+  return {
+    nombre:DB.config.nombre||'Tienda', whatsapp:(T.whatsapp||DB.config.telefono||'').replace(/\D/g,''),
+    abierta:!!T.abierta, aviso:T.aviso||'', tiempoEnvio:T.tiempoEnvio||'',
+    medios:TIENDA_MEDIOS.filter(m=>(T.medios||[]).includes(m.id)).map(m=>({id:m.id,label:m.label})),
+    datosPago:T.datosPago||'', envioActivo:!!T.envioActivo, retiroEnTienda:!!T.retiroEnTienda,
+    costoEnvio:Number(T.costoEnvio)||0, envioGratisDesde:Number(T.envioGratisDesde)||0,
+    direccionTienda:DB.config.direccion||''
+  };
+}
+function claveHashes(){ return 'regia_pubhash_'+syncStoreCode; }
+function cargarHashes(){ try{ return JSON.parse(localStorage.getItem(claveHashes())||'{}'); }catch(e){ return {}; } }
+function guardarHashes(h){ try{ localStorage.setItem(claveHashes(), JSON.stringify(h)); }catch(e){} }
+function tiendaActiva(){
+  const T=DB.tienda; return !!(T.activada || Object.values(T.grupos).some(g=>g.publicado));
+}
+function programarPublicacion(){
+  if(!syncActivo || !tiendaActiva()) return;
+  clearTimeout(pubTimer);
+  pubTimer=setTimeout(()=>publicarTienda(false), 1500);
+}
+async function publicarTienda(forzar){
+  const base=tiendaRef(); if(!base) return {ok:false, motivo:'sin-conexion'};
+  if(pubEnCurso){ pubPendiente=true; return {ok:false, motivo:'ocupado'}; }
+  pubEnCurso=true;
+  let resultado={ok:true, escritos:0, borrados:0};
+  try{
+    const T=DB.tienda, grupos=tiendaGrupos(), hashes=cargarHashes(), nuevos={}, ops=[];
+    const cfgDoc=construirConfigPublica(), hc=hashTexto(JSON.stringify(cfgDoc));
+    nuevos._cfg=hc;
+    if(forzar||hashes._cfg!==hc) ops.push({t:'set', ref:base.collection('config').doc('publica'), data:cfgDoc});
+    grupos.forEach((arts,gid)=>{
+      const g=T.grupos[gid];
+      if(!g||!g.publicado) return;
+      if(!g.publicadoEn){ g.publicadoEn=Date.now(); }
+      const doc=construirDocProducto(gid, arts), h=hashTexto(JSON.stringify(doc));
+      nuevos[gid]=h;
+      if(forzar||hashes[gid]!==h) ops.push({t:'set', ref:base.collection('productos').doc(gid), data:doc});
+    });
+    Object.keys(hashes).forEach(k=>{ if(k!=='_cfg' && !(k in nuevos)) ops.push({t:'del', ref:base.collection('productos').doc(k)}); });
+    // en lotes pequeños (límite de tamaño por escritura)
+    let lote=firebase.firestore().batch(), nLote=0, bytes=0;
+    const cerrarLote=async()=>{ if(nLote){ await lote.commit(); lote=firebase.firestore().batch(); nLote=0; bytes=0; } };
+    for(const op of ops){
+      const tam=op.t==='set'? JSON.stringify(op.data).length : 100;
+      if(nLote>=100 || bytes+tam>4000000) await cerrarLote();
+      if(op.t==='set'){ lote.set(op.ref, op.data); resultado.escritos++; } else { lote.delete(op.ref); resultado.borrados++; }
+      nLote++; bytes+=tam;
+    }
+    await cerrarLote();
+    guardarHashes(nuevos);
+    ultimaPublicacionMs=Date.now();
+  }catch(e){
+    console.error('Error publicando tienda', e);
+    resultado={ok:false, motivo:(e&&e.code)||(e&&e.message)||'error'};
+    toast(e&&e.code==='permission-denied' ? '⚠ La tienda no pudo actualizarse: Firestore rechazó el permiso. Revisa Reglas y que hayas iniciado sesión como administrador.' : '⚠ No se pudo actualizar la tienda en línea (revisa tu conexión)');
+  }finally{
+    pubEnCurso=false;
+    if(pubPendiente){ pubPendiente=false; programarPublicacion(); }
+  }
+  if(document.getElementById('view-tienda')?.classList.contains('active')) renderTienda();
+  return resultado;
+}
+async function publicarTiendaAhora(){
+  if(!syncActivo){ toast('Primero conecta la nube en Configuración'); return; }
+  DB.tienda.activada=true; guardarDB();
+  const r=await publicarTienda(true);
+  if(r.ok) toast('Tienda actualizada: '+r.escritos+' documento(s) publicados');
+}
+// Borra de la nube los productos que ya no deben estar y vuelve a escribir todo lo publicado
+async function repararCatalogoNube(){
+  const base=tiendaRef(); if(!base){ toast('Primero conecta la nube'); return; }
+  try{
+    const snap=await base.collection('productos').get();
+    const queridos=new Set(); const grupos=tiendaGrupos();
+    grupos.forEach((arts,gid)=>{ if(DB.tienda.grupos[gid]?.publicado) queridos.add(gid); });
+    let borrados=0; const b=firebase.firestore().batch();
+    snap.docs.forEach(d=>{ if(!queridos.has(d.id)){ b.delete(d.ref); borrados++; } });
+    if(borrados) await b.commit();
+    guardarHashes({});
+    await publicarTienda(true);
+    toast('Catálogo revisado: '+borrados+' producto(s) viejos eliminados de la tienda');
+  }catch(e){ console.error(e); toast('⚠ No se pudo revisar el catálogo ('+(e.code||e.message)+')'); }
+}
+
+/* ---------- Pedidos web: escucha en tiempo real ---------- */
+function escucharPedidosWeb(){
+  if(pedidosUnsub){ pedidosUnsub(); pedidosUnsub=null; }
+  const base=tiendaRef(); if(!base) return;
+  pedidosPrimeraCarga=true;
+  pedidosUnsub=base.collection('pedidos').orderBy('creado','desc').limit(200).onSnapshot(snap=>{
+    if(!pedidosPrimeraCarga){
+      snap.docChanges().forEach(ch=>{
+        if(ch.type==='added' && ch.doc.data().estado==='nuevo') toast('🛍 Nuevo pedido web de '+limpiarTexto(ch.doc.data().nombre,40)+' — revisa "Pedidos web"');
+      });
+    }
+    pedidosPrimeraCarga=false;
+    TIENDA_PEDIDOS=snap.docs.map(d=>Object.assign({}, d.data(), {_id:d.id}));
+    actualizarBadgePedidos();
+    if(document.getElementById('view-pedidosweb')?.classList.contains('active')) renderPedidosWeb();
+    programarPublicacion(); // el stock publicado descuenta lo apartado por pedidos nuevos
+  }, err=>{
+    console.error('Pedidos web', err);
+    const el=document.getElementById('pw-error');
+    if(el){ el.style.display='block'; el.textContent= err.code==='permission-denied' ? 'Firestore no deja leer los pedidos. Inicia sesión como administrador (Configuración → Nube) y revisa que pegaste las reglas nuevas.' : 'No se pudieron leer los pedidos: '+(err.message||err.code); }
+  });
+}
+function pedidosNuevos(){ return TIENDA_PEDIDOS.filter(p=>p.estado==='nuevo'); }
+function actualizarBadgePedidos(){
+  const n=pedidosNuevos().length;
+  const b=document.getElementById('badge-pedidosweb');
+  if(b){ b.textContent=n>9?'9+':String(n); b.style.display=n?'':'none'; }
+}
+
+/* ---------- Vista: Pedidos web ---------- */
+function setFiltroPedidos(f){ pedFiltro=f; renderPedidosWeb(); }
+function fechaHoraPedido(p){ try{ return new Date(p.creado).toLocaleString('es-CO',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+function renderPedidosWeb(){
+  const cont=document.getElementById('pw-lista'); if(!cont) return;
+  const estadoNube=document.getElementById('pw-estado');
+  if(!syncActivo){
+    estadoNube.innerHTML='<div class="aviso-pw">Para recibir pedidos de la tienda, conecta la nube en <a href="#" onclick="goTo(\'config\');return false;">Configuración</a>.</div>';
+  } else estadoNube.innerHTML='';
+  const cuentas={nuevo:0,facturado:0,cancelado:0};
+  TIENDA_PEDIDOS.forEach(p=>{ if(cuentas[p.estado]!==undefined) cuentas[p.estado]++; });
+  document.querySelectorAll('#pw-tabs button').forEach(b=>{
+    const f=b.dataset.f; b.classList.toggle('on', f===pedFiltro);
+    const c=b.querySelector('.c'); if(c) c.textContent = f==='todos'? TIENDA_PEDIDOS.length : cuentas[f];
+  });
+  const lista=TIENDA_PEDIDOS.filter(p=>pedFiltro==='todos'||p.estado===pedFiltro);
+  if(!lista.length){
+    cont.innerHTML='<div class="empty">'+(pedFiltro==='nuevo'?'No hay pedidos nuevos. Cuando un cliente compre en tu tienda, aparecerá aquí al instante.':'No hay pedidos en esta lista.')+'</div>';
+    return;
+  }
+  cont.innerHTML=lista.map(p=>{
+    const items=(p.items||[]).map(it=>{
+      const a=DB.articulos.find(x=>x.id===it.vid);
+      let aviso='';
+      if(p.estado==='nuevo'){
+        if(!a) aviso=' <span class="badge danger">ya no está en inventario</span>';
+        else if(a.stock<it.cantidad) aviso=' <span class="badge danger">'+(a.stock>0?'solo hay '+a.stock:'sin stock')+'</span>';
+        else if(Number(a.precio)!==Number(it.precio)) aviso=' <span class="badge gold">precio ahora '+fmt(a.precio)+'</span>';
+      }
+      return `<div class="pw-it"><span>${escH(it.cantidad)}× ${escH(it.nombre)} <em>${escH(it.talla)} / ${escH(it.color)}</em>${aviso}</span><span>${fmt((Number(it.precio)||0)*(Number(it.cantidad)||0))}</span></div>`;
+    }).join('');
+    const medio=(TIENDA_MEDIOS.find(m=>m.id===p.medioPago)||{}).label||p.medioPago||'—';
+    const est={nuevo:'<span class="badge gold">Nuevo</span>',facturado:'<span class="badge success">Facturado N.° '+escH(p.ventaNumero||'')+'</span>',cancelado:'<span class="badge danger">Cancelado</span>'}[p.estado]||'';
+    const tel=normalizarTelefono(p.telefono);
+    const acciones = p.estado==='nuevo'
+      ? `<button class="btn gold sm" onclick="abrirConfirmarPedido('${escH(p._id)}')">Confirmar y facturar</button>
+         ${tel?`<button class="btn ghost sm" onclick="whatsappPedido('${escH(p._id)}')">WhatsApp</button>`:''}
+         <button class="btn danger sm" onclick="cancelarPedidoWeb('${escH(p._id)}')">Cancelar</button>`
+      : (tel?`<button class="btn ghost sm" onclick="whatsappPedido('${escH(p._id)}')">WhatsApp</button>`:'');
+    return `<div class="card pw-card">
+      <div class="pw-head"><div><strong>${escH(p.nombre)}</strong> <span class="pw-cod">${escH(p.codigo)}</span></div><div>${est} <span class="pw-fecha">${escH(fechaHoraPedido(p))}</span></div></div>
+      <div class="pw-meta">${escH(p.telefono||'')}${p.correo?' · '+escH(p.correo):''}${p.cedula?' · CC '+escH(p.cedula):''}</div>
+      <div class="pw-meta">${p.entrega==='envio'?'Envío a: '+escH(p.direccion||'')+(p.ciudad?', '+escH(p.ciudad):''):'Recoge en tienda'} · Pago: ${escH(medio)}</div>
+      ${p.notas?`<div class="pw-notas">“${escH(p.notas)}”</div>`:''}
+      <div class="pw-items">${items}</div>
+      <div class="pw-tot"><span>Productos ${fmt(p.subtotal||0)}${p.envio?` · Envío ${fmt(p.envio)}`:''}</span><strong>Total ${fmt(p.total||0)}</strong></div>
+      <div class="pw-acc">${acciones}</div>
+    </div>`;
+  }).join('');
+}
+function pedidoPorId(id){ return TIENDA_PEDIDOS.find(p=>p._id===id); }
+function whatsappPedido(id){
+  const p=pedidoPorId(id); if(!p) return;
+  const tel=normalizarTelefono(p.telefono); if(!tel){ toast('El pedido no tiene teléfono'); return; }
+  let msg;
+  if(p.estado==='facturado' && p.ventaNumero){
+    const v=DB.ventas.find(x=>x.numero===p.ventaNumero);
+    msg=v? mensajeVentaWeb(v,p) : `Hola ${p.nombre}, tu pedido ${p.codigo} fue confirmado. ¡Gracias por tu compra!`;
+  } else if(p.estado==='cancelado'){
+    msg=`Hola ${p.nombre}, te escribimos de ${DB.config.nombre||'la tienda'} sobre tu pedido ${p.codigo}. Lamentablemente no pudimos completarlo. Si quieres, te ayudamos con otra opción.`;
+  } else {
+    msg=`Hola ${p.nombre} 👋 Te escribimos de ${DB.config.nombre||'la tienda'} por tu pedido ${p.codigo} (${fmt(p.total||0)}). `+(p.medioPago==='transferencia' && DB.tienda.datosPago? `Para confirmarlo, el pago es por:\n${DB.tienda.datosPago}\nCuando lo hagas, envíanos el soporte por aquí. 🙏` : `¿Nos confirmas los datos para coordinar la entrega?`);
+  }
+  window.open('https://wa.me/'+tel+'?text='+encodeURIComponent(msg),'_blank');
+}
+function mensajeVentaWeb(v,p){
+  let m=`🧾 *${DB.config.nombre||'Almacén'}*\n✅ ¡Pedido confirmado!\n\n📋 Comprobante N.° *${v.numero}* (pedido ${p.codigo})\n🙋 ${v.cliente}\n\n🛍️ *Tu compra:*\n`;
+  v.items.forEach(it=>{ m+=`• ${it.cantidad}x ${it.nombre} (${it.talla}/${it.color}) — ${fmt(it.precio*it.cantidad)}\n`; });
+  m+=`\n💵 Productos: ${fmt(v.total)}\n`;
+  if(p.envio) m+=`🚚 Envío: ${fmt(p.envio)}\n`;
+  m+=`💰 *TOTAL: ${fmt(v.total+(Number(p.envio)||0))}*\n`;
+  if(p.entrega==='envio' && p.direccion) m+=`\n📍 Entrega en: ${p.direccion}${p.ciudad?', '+p.ciudad:''}\n`;
+  m+=`\n🙏 ¡Gracias por tu compra! 💫`;
+  return m;
+}
+async function cancelarPedidoWeb(id){
+  const p=pedidoPorId(id); if(!p) return;
+  if(!confirm('¿Cancelar el pedido '+p.codigo+' de '+p.nombre+'? El stock reservado volverá a estar disponible en la tienda.')) return;
+  try{
+    await tiendaRef().collection('pedidos').doc(id).update({estado:'cancelado', procesado:Date.now()});
+    toast('Pedido cancelado');
+  }catch(e){ console.error(e); toast('⚠ No se pudo cancelar ('+(e.code||e.message)+')'); }
+}
+
+/* ---------- Confirmar y facturar ---------- */
+function metodoVentaDePedido(p){ return (TIENDA_MEDIOS.find(m=>m.id===p.medioPago)||{}).metodo||'Transferencia'; }
+function lineasPedidoActuales(p){
+  // Precios y stock SIEMPRE se toman de tu inventario, nunca de lo que mandó el navegador del cliente.
+  const lineas=[];
+  (p.items||[]).forEach(it=>{
+    const a=DB.articulos.find(x=>x.id===it.vid);
+    const pidio=Math.max(0,parseInt(it.cantidad)||0);
+    if(!a){ lineas.push({it,a:null,pidio,cant:0,motivo:'ya no está en inventario'}); return; }
+    const cant=Math.min(pidio, Math.max(0,a.stock||0));
+    lineas.push({it,a,pidio,cant,motivo: cant<pidio ? (cant===0?'sin stock':'solo hay '+cant) : ''});
+  });
+  return lineas;
+}
+function abrirConfirmarPedido(id){
+  const p=pedidoPorId(id); if(!p) return;
+  pedidoEnModal=p;
+  const ya=DB.tienda.procesados[p.codigo];
+  const lineas=lineasPedidoActuales(p);
+  const vend=(DB.config.vendedores||[]);
+  const metodoDef=metodoVentaDePedido(p);
+  const filas=lineas.map(l=>`<div class="pw-it ${l.motivo?'mal':''}"><span>${l.cant}× ${escH(l.it.nombre)} <em>${escH(l.it.talla)} / ${escH(l.it.color)}</em>${l.motivo?` <span class="badge danger">${escH(l.motivo)}${l.pidio!==l.cant?' (pidió '+l.pidio+')':''}</span>`:''}${l.a&&Number(l.a.precio)!==Number(l.it.precio)?` <span class="badge gold">precio ${fmt(l.it.precio)} → ${fmt(l.a.precio)}</span>`:''}</span><span>${l.a?fmt(l.a.precio*l.cant):'—'}</span></div>`).join('');
+  document.getElementById('pw-modal-body').innerHTML=`
+    <p class="pw-meta" style="margin-top:0">${escH(p.nombre)} · ${escH(p.telefono||'')} · pedido ${escH(p.codigo)}</p>
+    ${ya?`<div class="aviso-pw">Este pedido ya aparece facturado como venta N.° ${escH(ya)}.</div>`:''}
+    <div class="pw-items">${filas}</div>
+    <div class="row">
+      <div class="field"><label>Método de pago de la venta</label>
+        <select id="pw-metodo" onchange="recalcularPedidoModal()">${['Efectivo','Transferencia','Tarjeta','Sistecrédito','Addi'].map(m=>`<option ${m===metodoDef?'selected':''}>${m}</option>`).join('')}</select></div>
+      <div class="field" id="pw-comision-wrap" style="display:none"><label>Comisión financiera (%)</label><input type="number" id="pw-comision" min="0" max="100" step="0.01" oninput="recalcularPedidoModal()"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Descuento (%)</label><input type="number" id="pw-descuento" min="0" max="100" value="0" oninput="recalcularPedidoModal()"></div>
+      ${vend.length?`<div class="field"><label>Vendedor</label><select id="pw-vendedor"><option value="">—</option>${vend.map(v=>`<option>${escH(v)}</option>`).join('')}</select></div>`:''}
+    </div>
+    <div id="pw-resumen" class="pw-tot"></div>
+    ${p.envio?`<p class="pw-nota">El envío (${fmt(p.envio)}) lo paga el cliente aparte: <strong>no se suma a la venta</strong> de tu sistema; úsalo para pagar la transportadora.</p>`:''}
+    <p class="pw-nota">Factura cuando ya confirmaste el pago (o acordaste contra entrega). Al confirmar se crea la venta y se descuenta el inventario.</p>`;
+  document.getElementById('pw-modal-acciones').innerHTML=`<button class="btn ghost" onclick="cerrarModal('modal-pedido-web')">Cerrar</button><button class="btn gold" id="pw-btn-facturar" onclick="confirmarFacturarPedido()">Facturar pedido</button>`;
+  abrirModal('modal-pedido-web');
+  recalcularPedidoModal();
+}
+function totalesPedidoModal(){
+  const p=pedidoEnModal; const lineas=lineasPedidoActuales(p).filter(l=>l.a&&l.cant>0);
+  const subtotal=lineas.reduce((s,l)=>s+l.a.precio*l.cant,0);
+  const pct=Math.min(100,Math.max(0,parseFloat(document.getElementById('pw-descuento')?.value)||0));
+  const descuento=subtotal*pct/100;
+  const metodo=document.getElementById('pw-metodo')?.value||'Efectivo';
+  const esCred=esMetodoCredito(metodo);
+  const comPct=esCred? Math.max(0,parseFloat(document.getElementById('pw-comision')?.value)||0):0;
+  const comision=esCred? calcularComisionFin(subtotal-descuento,comPct):0;
+  return {lineas,subtotal,descuento,metodo,esCred,comPct,comision,total:subtotal-descuento+comision};
+}
+function recalcularPedidoModal(){
+  if(!pedidoEnModal) return;
+  const metodo=document.getElementById('pw-metodo').value;
+  const wrap=document.getElementById('pw-comision-wrap'), inp=document.getElementById('pw-comision');
+  if(esMetodoCredito(metodo)){ wrap.style.display=''; if(inp.dataset.m!==metodo){ inp.value=comisionDefaultPct(metodo); inp.dataset.m=metodo; } } else { wrap.style.display='none'; inp.dataset.m=''; }
+  const t=totalesPedidoModal();
+  document.getElementById('pw-resumen').innerHTML=`<span>${t.descuento>0?'Descuento '+fmt(t.descuento)+' · ':''}${t.comision>0?'Comisión '+fmt(t.comision)+' · ':''}${t.lineas.length} producto(s)</span><strong>Total venta ${fmt(t.total)}</strong>`;
+  const b=document.getElementById('pw-btn-facturar'); if(b) b.disabled=!t.lineas.length;
+}
+function confirmarFacturarPedido(){
+  const p=pedidoEnModal; if(!p) return;
+  if(diaCierrePendiente()){ toast('No puedes facturar: hay un cierre de caja pendiente. Ve a Cierre de caja.'); return; }
+  if(DB.tienda.procesados[p.codigo]){ toast('Este pedido ya fue facturado (venta N.° '+DB.tienda.procesados[p.codigo]+')'); return; }
+  const t=totalesPedidoModal();
+  if(!t.lineas.length){ toast('No hay productos disponibles para facturar'); return; }
+  const nombre=limpiarTexto(p.nombre,80)||'Cliente web', cedula=limpiarTexto(p.cedula,20), telefonoCliente=limpiarTexto(p.telefono,20), correo=limpiarTexto(p.correo,80);
+  const direccion=p.entrega==='envio'? limpiarTexto((p.direccion||'')+(p.ciudad?', '+p.ciudad:''),160) : '';
+  if(t.esCred && !nombre){ toast('Escribe el nombre del cliente'); return; }
+  const items=t.lineas.map(l=>({articuloId:l.a.id, nombre:l.a.nombre, talla:l.a.talla, color:l.a.color, cantidad:l.cant, precio:l.a.precio, costo:l.a.costo||0}));
+  items.forEach(it=>ajustarStockPorItem(it,it.cantidad,-1));
+  const numero=DB.config.siguienteNumero||1;
+  const costoTotal=items.reduce((s,it)=>s+it.costo*it.cantidad,0);
+  const vendedor=document.getElementById('pw-vendedor')?.value||'';
+  const venta={
+    id:uid(), numero, fecha:hoyISO(), hora:new Date().toISOString(),
+    cliente:nombre, cedula, telefonoCliente, correo, direccion, metodo:t.metodo, vendedor,
+    montoEfectivo:0, montoTransferencia:0, items, subtotal:t.subtotal, descuento:t.descuento, total:t.total, costoTotal,
+    comisionPct:t.comPct, comisionValor:t.comision, origen:'web', pedidoWeb:p.codigo,
+    ...(t.esCred? {credito:{estado:'pendiente', financiera:t.metodo, fechaPago:'', pagadoPor:'', metodoCobro:'', montoRecibido:0}} : {})
+  };
+  DB.ventas.push(venta);
+  DB.config.siguienteNumero=numero+1;
+  if(cedula||telefonoCliente){
+    let c=null;
+    if(cedula) c=DB.clientes.find(x=>x.cedula===cedula);
+    if(!c && telefonoCliente) c=DB.clientes.find(x=>x.telefono===telefonoCliente);
+    if(c){ c.nombre=nombre; if(telefonoCliente) c.telefono=telefonoCliente; if(correo) c.correo=correo; if(direccion) c.direccion=direccion; if(cedula) c.cedula=cedula; }
+    else DB.clientes.push({id:uid(), nombre, telefono:telefonoCliente, cedula, correo, direccion, notas:'Cliente de la tienda web', fechaRegistro:hoyISO()});
+  }
+  DB.tienda.procesados[p.codigo]=numero;
+  guardarDB();
+  const ref=tiendaRef();
+  if(ref) ref.collection('pedidos').doc(p._id).update({estado:'facturado', ventaNumero:numero, procesado:Date.now()}).catch(e=>{ console.error(e); toast('⚠ La venta quedó guardada, pero no se pudo marcar el pedido en la nube'); });
+  ultimaVentaGuardada=venta;
+  const recortado=t.lineas.some(l=>l.cant<l.pidio);
+  document.getElementById('pw-modal-body').innerHTML=`
+    <div class="pw-ok"><div class="pw-ok-ic">✓</div><h3>Venta N.° ${numero} creada</h3>
+    <p>Inventario descontado${t.esCred?' y crédito '+escH(t.metodo)+' pendiente de cobro':''}.${recortado?'<br><strong>Ojo:</strong> algunos productos se facturaron en menor cantidad; avísale al cliente.':''}</p></div>`;
+  document.getElementById('pw-modal-acciones').innerHTML=`
+    <button class="btn ghost" onclick="cerrarModal('modal-pedido-web')">Cerrar</button>
+    <button class="btn ghost" onclick="imprimirVenta(ultimaVentaGuardada)">Imprimir</button>
+    ${telefonoCliente?`<button class="btn gold" onclick="whatsappPedido('${escH(p._id)}')">Enviar por WhatsApp</button>`:''}`;
+  // el estado local del pedido se actualiza ya para que WhatsApp use el comprobante
+  p.estado='facturado'; p.ventaNumero=numero;
+  renderPedidosWeb(); actualizarBadgePedidos();
+  toast('Venta N.° '+numero+' creada desde el pedido '+p.codigo);
+}
+
+/* ---------- Vista: Tienda online (administrar catálogo y ajustes) ---------- */
+function renderTienda(){
+  const T=DB.tienda;
+  const cont=document.getElementById('tienda-contenido'); if(!cont) return;
+  const conectado=syncActivo;
+  const sesion=fbAuth&&fbAuth.currentUser? fbAuth.currentUser.email : '';
+  const cfg=cargarConfigSync()||{};
+  const grupos=[...tiendaGrupos().entries()];
+  const publicados=grupos.filter(([g])=>T.grupos[g]?.publicado).length;
+  document.getElementById('tienda-estado').innerHTML = conectado
+    ? `<span class="badge success">Nube conectada</span> ${sesion?`<span class="badge success">Admin: ${escH(sesion)}</span>`:(cfg.adminEmail?'<span class="badge danger">Sin sesión de administrador</span>':'<span class="badge gold">Sin inicio de sesión (reglas abiertas)</span>')} <span class="badge ${T.abierta?'success':'gold'}">${T.abierta?'Tienda abierta':'Tienda cerrada'}</span> <span class="badge gold">${publicados} producto(s) publicados</span>${ultimaPublicacionMs?` <span class="pw-fecha">Última actualización ${new Date(ultimaPublicacionMs).toLocaleTimeString('es-CO')}</span>`:''}`
+    : '<div class="aviso-pw">La tienda necesita la nube. Ve a <a href="#" onclick="goTo(\'config\');return false;">Configuración → Sincronización</a>, conéctala con tu correo de administrador y vuelve aquí.</div>';
+  // ajustes
+  const sel=(id)=>document.getElementById(id);
+  if(!document.querySelector('#tienda-ajustes :focus')){
+    sel('tj-abierta').checked=!!T.abierta;
+    sel('tj-whatsapp').value=T.whatsapp||'';
+    sel('tj-aviso').value=T.aviso||'';
+    sel('tj-datospago').value=T.datosPago||'';
+    sel('tj-envio-activo').checked=!!T.envioActivo;
+    sel('tj-retiro').checked=!!T.retiroEnTienda;
+    sel('tj-costoenvio').value=T.costoEnvio||0;
+    sel('tj-gratis').value=T.envioGratisDesde||0;
+    sel('tj-tiempo').value=T.tiempoEnvio||'';
+    sel('tj-medios').innerHTML=TIENDA_MEDIOS.map(m=>`<label class="chk"><input type="checkbox" data-m="${m.id}" ${(T.medios||[]).includes(m.id)?'checked':''}> ${escH(m.label)}</label>`).join('');
+  }
+  sel('tj-enlace').value=urlTienda();
+  const email=(cfg.adminEmail||'').trim();
+  sel('tj-reglas').value=reglasFirestoreTexto(email);
+  // lista de productos
+  const q=tiendaFiltroTxt.toLowerCase();
+  const filas=grupos.filter(([gid,arts])=>{
+    const pub=!!T.grupos[gid]?.publicado;
+    if(tiendaFiltroEstado==='pub'&&!pub) return false;
+    if(tiendaFiltroEstado==='nopub'&&pub) return false;
+    return !q || (arts[0].nombre+' '+(arts[0].categoria||'')).toLowerCase().includes(q);
+  }).sort((a,b)=>a[1][0].nombre.localeCompare(b[1][0].nombre));
+  sel('tj-lista').innerHTML = filas.length? filas.map(([gid,arts])=>{
+    const g=T.grupos[gid]||{}; const img=(arts.find(a=>a.imagen)||{}).imagen;
+    const stock=arts.reduce((s,a)=>s+(a.stock||0),0); const precios=arts.map(a=>a.precio).filter(x=>x>0);
+    const sinFoto=!img && !(g.nFotos>0);
+    return `<tr>
+      <td>${img?`<img src="${img}" class="tj-th">`:'<div class="tj-th"></div>'}</td>
+      <td><strong>${escH(arts[0].nombre)}</strong><div class="pw-meta">${escH(arts[0].categoria||'Sin categoría')} · ${arts.length} variante(s)${g.descripcion?'':' · sin descripción'}</div></td>
+      <td class="right num">${precios.length?fmt(Math.min(...precios)):'—'}</td>
+      <td class="right num">${stock}</td>
+      <td class="center">${g.publicado?(sinFoto?'<span class="badge gold">Sin foto</span>':'<span class="badge success">En tienda</span>'):'<span class="badge">Oculto</span>'}</td>
+      <td class="right"><button class="btn ${g.publicado?'ghost':'gold'} sm" onclick="alternarPublicado('${escH(gid)}')">${g.publicado?'Ocultar':'Publicar'}</button> <button class="btn ghost sm" onclick="abrirProductoTienda('${escH(gid)}')">Detalles y fotos</button></td></tr>`;
+  }).join('') : '<tr><td colspan="6"><div class="empty">No hay productos que coincidan. Crea artículos en Inventario y luego publícalos aquí.</div></td></tr>';
+}
+function guardarAjustesTienda(){
+  const g=id=>document.getElementById(id);
+  const T=DB.tienda;
+  T.abierta=g('tj-abierta').checked;
+  T.whatsapp=g('tj-whatsapp').value.replace(/[^\d]/g,'');
+  T.aviso=g('tj-aviso').value.trim().slice(0,200);
+  T.datosPago=g('tj-datospago').value.trim().slice(0,400);
+  T.envioActivo=g('tj-envio-activo').checked;
+  T.retiroEnTienda=g('tj-retiro').checked;
+  T.costoEnvio=Math.max(0,parseInt(g('tj-costoenvio').value)||0);
+  T.envioGratisDesde=Math.max(0,parseInt(g('tj-gratis').value)||0);
+  T.tiempoEnvio=g('tj-tiempo').value.trim().slice(0,80);
+  T.medios=[...document.querySelectorAll('#tj-medios input:checked')].map(i=>i.dataset.m);
+  if(!T.envioActivo && !T.retiroEnTienda){ T.retiroEnTienda=true; g('tj-retiro').checked=true; toast('Debe haber al menos una forma de entrega: dejé "Recoger en tienda" activa'); }
+  T.activada=true;
+  guardarDB(); renderTienda();
+  toast('Ajustes de la tienda guardados');
+}
+function alternarPublicado(gid){
+  const T=DB.tienda; const g=T.grupos[gid]||(T.grupos[gid]={});
+  g.publicado=!g.publicado; if(g.publicado && !g.publicadoEn) g.publicadoEn=Date.now();
+  guardarDB(); renderTienda();
+}
+function publicarVisibles(valor){
+  const T=DB.tienda; const q=tiendaFiltroTxt.toLowerCase(); let n=0;
+  tiendaGrupos().forEach((arts,gid)=>{
+    if(q && !(arts[0].nombre+' '+(arts[0].categoria||'')).toLowerCase().includes(q)) return;
+    const g=T.grupos[gid]||(T.grupos[gid]={});
+    if(!!g.publicado!==valor){ g.publicado=valor; if(valor&&!g.publicadoEn) g.publicadoEn=Date.now(); n++; }
+  });
+  guardarDB(); renderTienda(); toast(n+' producto(s) '+(valor?'publicados':'ocultados'));
+}
+function copiarTexto(id){
+  const el=document.getElementById(id); el.select();
+  try{ navigator.clipboard.writeText(el.value).then(()=>toast('Copiado')).catch(()=>{document.execCommand('copy');toast('Copiado');}); }catch(e){ document.execCommand('copy'); toast('Copiado'); }
+}
+
+/* ---------- Detalles y fotos de un producto ---------- */
+function comprimirImagenWeb(file, cb){
+  const r=new FileReader();
+  r.onload=e=>{ const img=new Image(); img.onload=()=>{
+    const s=Math.min(1, 900/Math.max(img.width,img.height));
+    const c=document.createElement('canvas'); c.width=Math.round(img.width*s); c.height=Math.round(img.height*s);
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height); cb(c.toDataURL('image/jpeg',0.74));
+  }; img.src=e.target.result; };
+  r.readAsDataURL(file);
+}
+async function abrirProductoTienda(gid){
+  const arts=tiendaGrupos().get(gid); if(!arts) return;
+  tiendaGrupoEditando=gid; tiendaFotosEditando=[];
+  const g=DB.tienda.grupos[gid]||{};
+  document.getElementById('tp-titulo').textContent=arts[0].nombre;
+  document.getElementById('tp-desc').value=g.descripcion||'';
+  document.getElementById('tp-pub').checked=!!g.publicado;
+  document.getElementById('tp-input').value='';
+  pintarFotosTienda();
+  abrirModal('modal-tienda-producto');
+  const ref=tiendaRef();
+  if(ref && g.nFotos>0){
+    try{ const d=await ref.collection('fotos').doc(gid).get(); if(d.exists && tiendaGrupoEditando===gid){ tiendaFotosEditando=(d.data().imgs||[]).slice(0,4); pintarFotosTienda(); } }
+    catch(e){ console.error(e); toast('No se pudieron cargar las fotos de la nube'); }
+  }
+}
+function pintarFotosTienda(){
+  const arts=tiendaGrupos().get(tiendaGrupoEditando)||[]; const principal=(arts.find(a=>a.imagen)||{}).imagen;
+  let h='';
+  if(principal) h+=`<div class="tp-foto"><img src="${principal}"><span class="tp-tag">Foto del inventario</span></div>`;
+  h+=tiendaFotosEditando.map((src,i)=>`<div class="tp-foto"><img src="${src}"><button class="tp-x" onclick="quitarFotoTienda(${i})" aria-label="Quitar foto">×</button></div>`).join('');
+  document.getElementById('tp-fotos').innerHTML=h||'<div class="pw-meta">Aún no hay fotos. Agrega hasta 4 fotos para la tienda.</div>';
+  document.getElementById('tp-add').style.display=tiendaFotosEditando.length>=4?'none':'';
+}
+function quitarFotoTienda(i){ tiendaFotosEditando.splice(i,1); pintarFotosTienda(); }
+function agregarFotosTienda(input){
+  const files=[...input.files].slice(0,4-tiendaFotosEditando.length);
+  let pend=files.length; if(!pend) return;
+  files.forEach(f=>comprimirImagenWeb(f, d=>{ tiendaFotosEditando.push(d); if(--pend===0){ pintarFotosTienda(); input.value=''; } }));
+}
+async function guardarProductoTienda(){
+  const gid=tiendaGrupoEditando; if(!gid) return;
+  const total=tiendaFotosEditando.reduce((s,x)=>s+x.length,0);
+  if(total>850000){ toast('Las fotos pesan demasiado juntas. Quita una o usa fotos más sencillas.'); return; }
+  const T=DB.tienda; const g=T.grupos[gid]||(T.grupos[gid]={});
+  g.descripcion=document.getElementById('tp-desc').value.trim().slice(0,600);
+  const quiere=document.getElementById('tp-pub').checked;
+  if(quiere && !g.publicado && !g.publicadoEn) g.publicadoEn=Date.now();
+  g.publicado=quiere;
+  g.nFotos=tiendaFotosEditando.length;
+  const ref=tiendaRef();
+  if(ref){
+    try{
+      if(tiendaFotosEditando.length) await ref.collection('fotos').doc(gid).set({imgs:tiendaFotosEditando, actualizado:Date.now()});
+      else await ref.collection('fotos').doc(gid).delete();
+    }catch(e){ console.error(e); toast('⚠ No se pudieron subir las fotos ('+(e.code||e.message)+'). Los demás cambios sí se guardaron.'); }
+  } else if(tiendaFotosEditando.length){ toast('Conecta la nube para subir las fotos de la tienda'); }
+  T.activada=true;
+  guardarDB(); cerrarModal('modal-tienda-producto'); renderTienda();
+  toast('Producto actualizado en la tienda');
+}
+
+/* ---------- Reglas de seguridad de Firestore ---------- */
+function reglasFirestoreTexto(email){
+  const e=(email||'TU_CORREO_DE_ADMINISTRADOR').replace(/'/g,'');
+  return `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function esAdmin() {
+      return request.auth != null && request.auth.token.email == '${e}';
+    }
+
+    // Tu sistema completo (solo tú)
+    match /stores/{codigo} {
+      allow read, write: if esAdmin();
+    }
+
+    // Catálogo público de la tienda: todos leen, solo tú escribes
+    match /tiendas/{codigo}/config/{doc} {
+      allow read: if true;
+      allow write: if esAdmin();
+    }
+    match /tiendas/{codigo}/productos/{doc} {
+      allow read: if true;
+      allow write: if esAdmin();
+    }
+    match /tiendas/{codigo}/fotos/{doc} {
+      allow read: if true;
+      allow write: if esAdmin();
+    }
+
+    // Pedidos: cualquiera puede crear uno (con formato válido), solo tú los ves y gestionas
+    match /tiendas/{codigo}/pedidos/{doc} {
+      allow create: if request.resource.data.keys().hasOnly(['codigo','estado','creado','nombre','telefono','cedula','correo','entrega','direccion','ciudad','medioPago','notas','items','subtotal','envio','total'])
+        && request.resource.data.estado == 'nuevo'
+        && request.resource.data.codigo is string && request.resource.data.codigo.size() <= 20
+        && request.resource.data.nombre is string && request.resource.data.nombre.size() > 1 && request.resource.data.nombre.size() <= 80
+        && request.resource.data.telefono is string && request.resource.data.telefono.size() >= 7 && request.resource.data.telefono.size() <= 20
+        && request.resource.data.items is list && request.resource.data.items.size() > 0 && request.resource.data.items.size() <= 30
+        && request.resource.data.total is number && request.resource.data.total >= 0;
+      allow read, update, delete: if esAdmin();
+    }
+  }
+}`;
+}
+
+/* ---------- Inicio de sesión del administrador (Firebase Auth) ---------- */
+let conexionPendiente=null;
+function abrirLoginFirebase(cfg, storeCode, manual, adminEmail, mensaje){
+  conexionPendiente={cfg, storeCode, manual};
+  document.getElementById('fbl-email').value=adminEmail||'';
+  document.getElementById('fbl-pass').value='';
+  const m=document.getElementById('fbl-msg'); m.textContent=mensaje||''; m.style.display=mensaje?'block':'none';
+  abrirModal('modal-fb-login');
+}
+function mensajeErrorAuth(err){
+  const c=(err&&err.code)||'';
+  if(c==='auth/operation-not-allowed') return 'En Firebase falta activar el acceso por correo: Authentication → Método de acceso → Correo electrónico/contraseña → Habilitar.';
+  if(c==='auth/invalid-credential'||c==='auth/wrong-password'||c==='auth/user-not-found'||c==='auth/invalid-login-credentials') return 'Correo o contraseña incorrectos. Verifica que el usuario exista en Firebase → Authentication → Usuarios.';
+  if(c==='auth/too-many-requests') return 'Demasiados intentos. Espera unos minutos e intenta de nuevo.';
+  if(c==='auth/network-request-failed') return 'Sin conexión a internet.';
+  if(c==='auth/invalid-email') return 'El correo no es válido.';
+  return 'No se pudo iniciar sesión: '+((err&&err.message)||c);
+}
+async function confirmarLoginFirebase(){
+  const email=document.getElementById('fbl-email').value.trim(), pass=document.getElementById('fbl-pass').value;
+  if(!email||!pass){ toast('Escribe el correo y la contraseña'); return; }
+  const p=conexionPendiente; if(!p) return;
+  try{
+    await fbAuth.signInWithEmailAndPassword(email, pass);
+    cerrarModal('modal-fb-login');
+    conectarSincronizacion(p.cfg, p.storeCode, p.manual, email);
+  }catch(err){
+    const m=document.getElementById('fbl-msg'); m.textContent=mensajeErrorAuth(err); m.style.display='block';
+  }
+}
+function cerrarSesionFirebase(){ try{ fbAuth&&fbAuth.signOut(); }catch(e){} }
+
+function descargarConfigTienda(){
+  const cfg=cargarConfigSync();
+  if(!cfg||!cfg.firebaseConfig||!cfg.storeCode){ toast('Primero conecta la nube en Configuración'); return; }
+  const fc={}; ['apiKey','authDomain','projectId','storageBucket','messagingSenderId','appId'].forEach(k=>{ if(cfg.firebaseConfig[k]) fc[k]=cfg.firebaseConfig[k]; });
+  const txt='// Conexión de la tienda en línea (generado por tu sistema). Súbelo a GitHub junto a tienda.html\nwindow.TIENDA_CONFIG='+JSON.stringify({firebaseConfig:fc, storeCode:cfg.storeCode},null,2)+';\n';
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([txt],{type:'text/javascript'})); a.download='tienda-config.js';
+  document.body.appendChild(a); a.click(); a.remove();
+  toast('Descargado tienda-config.js — súbelo a GitHub junto a tienda.html');
+}
+
 /* ================= INIT ================= */
 function initApp(){
   document.getElementById('brand-name').textContent=DB.config.nombre||'Almacén';
@@ -5390,7 +6317,7 @@ function initApp(){
   document.getElementById('login-logo-img').src=LOGO_DATA_URI;
   const syncGuardado=cargarConfigSync();
   if(syncGuardado && syncGuardado.firebaseConfig && syncGuardado.storeCode){
-    conectarSincronizacion(syncGuardado.firebaseConfig, syncGuardado.storeCode, false);
+    conectarSincronizacion(syncGuardado.firebaseConfig, syncGuardado.storeCode, false, syncGuardado.adminEmail||'');
   }
   const savedRol=sessionStorage.getItem('almacenropa_rol');
   if(savedRol && PERMISOS[savedRol]){
