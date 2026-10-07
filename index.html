@@ -1042,6 +1042,12 @@
       </div>
     </div>
     <div class="card" style="margin-bottom:18px;">
+      <h3>Resumen por semana</h3>
+      <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;">De lunes a domingo; cuando cambia el mes, la semana se corta y empieza otra.</p>
+      <div style="overflow-x:auto;"><table><thead><tr><th>Semana</th><th class="right">Ventas</th><th class="right">Costo</th><th class="right">Utilidad bruta</th><th class="right">Gastos</th><th class="right">Utilidad neta</th></tr></thead>
+      <tbody id="tbl-rep-semanas"></tbody></table></div>
+    </div>
+    <div class="card" style="margin-bottom:18px;">
       <h3>Resumen por mes</h3>
       <table><thead><tr><th>Mes</th><th class="right">Ventas</th><th class="right">Costo</th><th class="right">Utilidad bruta</th><th class="right">Gastos</th><th class="right">Utilidad neta</th></tr></thead>
       <tbody id="tbl-rep-meses"></tbody></table>
@@ -1213,8 +1219,12 @@
             </select>
           </div>
           <div class="field"><label>Valor</label><input type="number" id="flujo-valor" min="0"></div>
+        </div>
+        <div class="row" style="align-items:flex-end;">
+          <div class="field"><label>Observación (opcional)</label><input type="text" id="flujo-obs" maxlength="140" placeholder="Ej: pedido de blusas a Proveedor X"></div>
           <button class="btn gold" onclick="agregarAsignacionFlujo()">+ Agregar</button>
         </div>
+        <p style="font-size:11.5px;color:var(--ink-soft);margin:-4px 0 0;">Puedes agregar el mismo concepto varias veces (por ejemplo, varias reinversiones en mercancía), cada una con su propia observación.</p>
         <div id="flujo-asignaciones-lista" style="margin-top:12px;"></div>
         <div class="tot-line"><span>Total asignado</span><span class="num" id="flujo-total-asignado">$0</span></div>
         <div class="tot-line big"><span id="flujo-diferencia-label">Saldo sin asignar</span><span class="num" id="flujo-diferencia">$0</span></div>
@@ -1229,7 +1239,7 @@
     </div>
     <div class="card" style="margin-top:18px;">
       <h3>Todas las semanas desde el inicio</h3>
-      <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;">Cada semana con movimiento desde tu primera venta, con el saldo corriendo semana a semana. Úsala para ver que nada quedó por fuera.</p>
+      <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;">Cada semana (de lunes a domingo, cortada cuando cambia el mes) con movimiento desde tu primera venta, con el saldo corriendo semana a semana. Úsala para ver que nada quedó por fuera.</p>
       <div style="overflow-x:auto;"><table><thead><tr><th>Semana</th><th class="right">Ingresos</th><th class="right">Egresos</th><th class="right">Neto</th><th class="right">Saldo acumulado</th><th>Estado</th><th></th></tr></thead>
       <tbody id="tbl-flujo-todas"></tbody></table></div>
     </div>
@@ -4982,6 +4992,13 @@ function renderCuadreReportes(ventas, gastos, desde, hasta){
   document.getElementById('tbl-rep-tipos').innerHTML=(filas||'<tr><td colspan="3"><div class="empty">Sin movimientos.</div></td></tr>')+(ventas.length?filaT('Total',cont,fmt(totVentas)):'')+(pend.length?`<tr><td colspan="3" style="font-size:12px;color:var(--amber-ink);padding-top:10px;">Incluye ${pend.length} venta(s) a crédito aún por cobrar a la financiera: ${fmt(pend.reduce((s,v)=>s+netoCredito(v),0))}.</td></tr>`:'');
   const todas=DB.ventas.length, totTodas=sum(DB.ventas,'total');
   document.getElementById('rep-cuadre-msg').innerHTML=`Periodo ${desde} a ${hasta}: <strong>${ventas.length}</strong> movimientos por <strong>${fmt(totVentas)}</strong>. En todo el sistema hay ${todas} movimientos por ${fmt(totTodas)}${ventas.length===todas?' <span class="badge success">todo el historial está incluido</span>':' (el periodo no incluye todo el historial)'}.`;
+  // por semana (cortada al cambio de mes)
+  const sems={};
+  ventas.forEach(v=>{ if(!v.fecha) return; const k=inicioPeriodo(v.fecha); sems[k]=sems[k]||{v:0,c:0,g:0}; sems[k].v+=v.total||0; sems[k].c+=v.costoTotal||0; });
+  gastos.forEach(g=>{ if(!g.fecha) return; const k=inicioPeriodo(g.fecha); sems[k]=sems[k]||{v:0,c:0,g:0}; sems[k].g+=g.valor||0; });
+  { let sv=0,sc=0,sg=0; const ks=Object.keys(sems).sort().reverse();
+    const r=ks.map(k=>{ const d=sems[k]; sv+=d.v; sc+=d.c; sg+=d.g; const ub=d.v-d.c; return `<tr><td>${k} a ${domingoDeLunes(k)}</td><td class="right num">${fmt(d.v)}</td><td class="right num">${fmt(d.c)}</td><td class="right num">${fmt(ub)}</td><td class="right num">${fmt(d.g)}</td><td class="right num">${fmt(ub-d.g)}</td></tr>`; }).join('');
+    document.getElementById('tbl-rep-semanas').innerHTML = r? r+`<tr style="font-weight:600;border-top:2px solid var(--border);"><td>Total</td><td class="right num">${fmt(sv)}</td><td class="right num">${fmt(sc)}</td><td class="right num">${fmt(sv-sc)}</td><td class="right num">${fmt(sg)}</td><td class="right num">${fmt(sv-sc-sg)}</td></tr>` : '<tr><td colspan="6"><div class="empty">Sin movimientos en el periodo.</div></td></tr>'; }
   // por mes
   const meses={};
   ventas.forEach(v=>{ const m=(v.fecha||'').slice(0,7); meses[m]=meses[m]||{v:0,c:0,g:0}; meses[m].v+=v.total||0; meses[m].c+=v.costoTotal||0; });
@@ -5118,8 +5135,17 @@ function renderComisiones(ventasFiltradas){
 
 /* ================= FLUJO DE CAJA SEMANAL ================= */
 function fechaLocalDesdeISO(iso){ const [y,m,d]=iso.split('-').map(Number); return new Date(y,m-1,d); }
-function domingoDeLunes(lunesStr){ const l=fechaLocalDesdeISO(lunesStr); const dom=new Date(l); dom.setDate(dom.getDate()+6); return fechaISOLocal(dom); }
-function semanaActualLunesStr(){ return fechaISOLocal(lunesDeSemana(new Date())); }
+// Las "semanas" van de lunes a domingo, pero se cortan al cambiar de mes: si el 1.º cae en miércoles, ese día empieza otra semana.
+function inicioPeriodo(iso){
+  const d=fechaLocalDesdeISO(iso); const l=lunesDeSemana(d); const p1=new Date(d.getFullYear(),d.getMonth(),1);
+  return fechaISOLocal(l>p1? l : p1);
+}
+function domingoDeLunes(inicioStr){ // fin del periodo: el domingo o el último día del mes, lo que llegue primero
+  const ini=fechaLocalDesdeISO(inicioStr); const dom=new Date(lunesDeSemana(ini)); dom.setDate(dom.getDate()+6);
+  const finMes=new Date(ini.getFullYear(),ini.getMonth()+1,0);
+  return fechaISOLocal(dom<finMes? dom : finMes);
+}
+function semanaActualLunesStr(){ return inicioPeriodo(hoyISO()); }
 function semanaFlujoPendiente(){
   // semanas pasadas con dinero real (ingresos o egresos) que aún no se distribuyen del todo
   const semanaActual=semanaActualLunesStr();
@@ -5152,8 +5178,8 @@ function semanasDesdeInicio(){
   DB.gastos.forEach(g=>{ if(g.fecha) fechas.push(g.fecha); });
   if(!fechas.length) return [];
   fechas.sort();
-  let l=lunesDeSemana(fechaLocalDesdeISO(fechas[0])); const fin=lunesDeSemana(new Date()); const out=[];
-  while(l<=fin){ out.push(fechaISOLocal(l)); l=new Date(l); l.setDate(l.getDate()+7); }
+  let s=inicioPeriodo(fechas[0]); const fin=inicioPeriodo(hoyISO()); const out=[];
+  while(s<=fin){ out.push(s); const nx=fechaLocalDesdeISO(domingoDeLunes(s)); nx.setDate(nx.getDate()+1); s=fechaISOLocal(nx); }
   return out;
 }
 function semanasSinGuardarFlujo(){
@@ -5250,8 +5276,10 @@ function agregarAsignacionFlujo(){
   const concepto=document.getElementById('flujo-concepto').value;
   const valor=parseFloat(document.getElementById('flujo-valor').value)||0;
   if(valor<=0){ toast('Ingresa un valor válido'); return; }
-  asignacionesFlujoActual.push({concepto, valor});
+  const observacion=(document.getElementById('flujo-obs').value||'').trim().slice(0,140);
+  asignacionesFlujoActual.push({concepto, valor, observacion});
   document.getElementById('flujo-valor').value='';
+  document.getElementById('flujo-obs').value='';
   renderAsignacionesFlujo();
 }
 function quitarAsignacionFlujo(idx){
@@ -5263,7 +5291,7 @@ function renderAsignacionesFlujo(){
   if(!asignacionesFlujoActual.length){ cont.innerHTML='<div class="empty">Aún no has agregado a dónde va este dinero.</div>'; }
   else{
     cont.innerHTML=asignacionesFlujoActual.map((a,idx)=>`
-      <div class="carr-row"><div class="nm">${a.concepto}</div><div class="num" style="width:110px;text-align:right;">${fmt(a.valor)}</div>
+      <div class="carr-row"><div class="nm">${a.concepto}${a.observacion?`<div style="font-size:11.5px;color:var(--ink-soft);font-weight:400;">${String(a.observacion).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</div>`:''}</div><div class="num" style="width:110px;text-align:right;">${fmt(a.valor)}</div>
       <button class="btn danger sm" onclick="quitarAsignacionFlujo(${idx})">×</button></div>`).join('');
   }
   const calc=calcularFlujoSemana(semanaFlujoActual);
