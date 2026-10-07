@@ -1042,6 +1042,20 @@
       </div>
     </div>
     <div class="card" style="margin-bottom:18px;">
+      <h3>¿A dónde fue el dinero? (periodo seleccionado)</h3>
+      <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 12px;">Junta lo que repartes en Flujo de caja, lo que sale de la Reserva y los gastos diarios, para ver cuánto se reinvirtió, cuánto fue a nómina, arriendo y otros gastos, y que la reserva cuadre.</p>
+      <h3 style="font-size:15px;margin:6px 0 8px;">1. Cómo repartiste el dinero en el Flujo de caja</h3>
+      <table><thead><tr><th>Concepto</th><th class="right">Total</th><th class="right">%</th></tr></thead><tbody id="tbl-uso-flujo"></tbody></table>
+      <details style="margin-top:8px;"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;">Ver el detalle con observaciones</summary>
+        <div style="overflow-x:auto;"><table style="margin-top:8px;"><thead><tr><th>Semana</th><th>Concepto</th><th>Observación</th><th class="right">Valor</th></tr></thead><tbody id="tbl-uso-flujo-detalle"></tbody></table></div></details>
+      <h3 style="font-size:15px;margin:18px 0 8px;">2. Cuadre de la Reserva</h3>
+      <table><tbody id="tbl-uso-reserva"></tbody></table>
+      <p id="uso-reserva-msg" style="font-size:12.5px;margin:8px 0 0;"></p>
+      <h3 style="font-size:15px;margin:18px 0 8px;">3. Gastos diarios por categoría</h3>
+      <table><thead><tr><th>Categoría</th><th class="right">Total</th><th class="right">%</th></tr></thead><tbody id="tbl-uso-gastos"></tbody></table>
+      <p style="font-size:11.5px;color:var(--ink-soft);margin:10px 0 0;">Ojo: un mismo pago puede aparecer en dos cuadros si lo registraste en dos sitios (por ejemplo, la nómina como gasto diario y también como salida de la Reserva). Cada cuadro se suma por separado.</p>
+    </div>
+    <div class="card" style="margin-bottom:18px;">
       <h3>Resumen por semana</h3>
       <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;">De lunes a domingo; cuando cambia el mes, la semana se corta y empieza otra.</p>
       <div style="overflow-x:auto;"><table><thead><tr><th>Semana</th><th class="right">Ventas</th><th class="right">Costo</th><th class="right">Utilidad bruta</th><th class="right">Gastos</th><th class="right">Utilidad neta</th></tr></thead>
@@ -1261,6 +1275,7 @@
       <div class="card">
         <h3 style="margin-bottom:10px;">Registrar gasto de la reserva</h3>
         <div class="field"><label>Fecha</label><input type="date" id="reserva-fecha"></div>
+        <div class="field"><label>Categoría</label><select id="reserva-categoria"><option>Nómina</option><option>Arriendo</option><option>Servicios públicos</option><option>Compra de mercancía</option><option>Compra de otras cosas</option><option>Pago de deudas</option><option>Retiro personal</option><option>Otros</option></select></div>
         <div class="field"><label>Concepto</label><input type="text" id="reserva-concepto" placeholder="Ej: Nómina quincenal"></div>
         <div class="field"><label>Valor</label><input type="number" id="reserva-valor" min="0"></div>
         <div class="field"><label>Método de pago</label>
@@ -1461,7 +1476,8 @@
   <div class="modal" style="width:420px;">
     <h3 id="rm-titulo">Editar movimiento</h3>
     <input type="hidden" id="rm-id">
-    <div class="field"><label>Tipo</label><select id="rm-tipo" onchange="document.getElementById('rm-metodo-wrap').style.display=this.value==='salida'?'':'none'"><option value="salida">Salida (gasto de la reserva)</option><option value="entrada">Entrada (ahorro que entra)</option></select></div>
+    <div class="field"><label>Tipo</label><select id="rm-tipo" onchange="document.getElementById('rm-metodo-wrap').style.display=this.value==='salida'?'':'none';document.getElementById('rm-cat-wrap').style.display=this.value==='salida'?'':'none'"><option value="salida">Salida (gasto de la reserva)</option><option value="entrada">Entrada (ahorro que entra)</option></select></div>
+    <div class="field" id="rm-cat-wrap"><label>Categoría</label><select id="rm-categoria"><option>Nómina</option><option>Arriendo</option><option>Servicios públicos</option><option>Compra de mercancía</option><option>Compra de otras cosas</option><option>Pago de deudas</option><option>Retiro personal</option><option>Otros</option></select></div>
     <div class="field"><label>Fecha</label><input type="date" id="rm-fecha"></div>
     <div class="field"><label>Concepto</label><input type="text" id="rm-concepto" maxlength="120"></div>
     <div class="field"><label>Valor</label><input type="number" id="rm-valor" min="0"></div>
@@ -5025,6 +5041,46 @@ function renderCuadreReportes(ventas, gastos, desde, hasta){
     return `<tr><td>${nom[(+mm)-1]||m} ${y}</td><td class="right num">${fmt(d.v)}</td><td class="right num">${fmt(d.c)}</td><td class="right num">${fmt(ub)}</td><td class="right num">${fmt(d.g)}</td><td class="right num">${fmt(ub-d.g)}</td></tr>`; }).join('');
   document.getElementById('tbl-rep-meses').innerHTML = rows ? rows+`<tr style="font-weight:600;border-top:2px solid var(--border);"><td>Total</td><td class="right num">${fmt(tv)}</td><td class="right num">${fmt(tc)}</td><td class="right num">${fmt(tv-tc)}</td><td class="right num">${fmt(tg)}</td><td class="right num">${fmt(tv-tc-tg)}</td></tr>` : '<tr><td colspan="6"><div class="empty">Sin movimientos en el periodo.</div></td></tr>';
 }
+function renderUsoDineroReportes(desde, hasta, gastos){
+  const esc=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const tot=(rows,p)=>`<tr style="font-weight:600;border-top:2px solid var(--border);"><td>Total</td><td class="right num">${fmt(p)}</td><td class="right">100%</td></tr>`;
+  // 1. distribución del flujo
+  const regs=DB.flujoCaja.filter(f=>f.semanaInicio>=desde && f.semanaInicio<=hasta);
+  const porC={}, det=[];
+  regs.forEach(f=>(f.asignaciones||[]).forEach(a=>{ porC[a.concepto]=(porC[a.concepto]||0)+a.valor; det.push({s:f.semanaInicio,c:a.concepto,o:a.observacion||'',v:a.valor}); }));
+  const tF=Object.values(porC).reduce((a,b)=>a+b,0);
+  document.getElementById('tbl-uso-flujo').innerHTML = tF? Object.entries(porC).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`<tr><td>${esc(c)}</td><td class="right num">${fmt(v)}</td><td class="right">${(v/tF*100).toFixed(0)}%</td></tr>`).join('')+tot(0,tF) : '<tr><td colspan="3"><div class="empty">No hay semanas distribuidas en este periodo.</div></td></tr>';
+  document.getElementById('tbl-uso-flujo-detalle').innerHTML = det.sort((a,b)=>b.s.localeCompare(a.s)).map(d=>`<tr><td>${d.s}</td><td>${esc(d.c)}</td><td>${esc(d.o)||'—'}</td><td class="right num">${fmt(d.v)}</td></tr>`).join('') || '<tr><td colspan="4"><div class="empty">Sin detalle.</div></td></tr>';
+  // 2. reserva
+  const M=DB.reservaMovimientos, signo=m=>m.tipo==='entrada'?m.valor:-m.valor;
+  const saldoIni=M.filter(m=>(m.fecha||'')<desde).reduce((s,m)=>s+signo(m),0);
+  const enP=M.filter(m=>(m.fecha||'')>=desde && (m.fecha||'')<=hasta);
+  const entradas=enP.filter(m=>m.tipo==='entrada').reduce((s,m)=>s+m.valor,0);
+  const salidas=enP.filter(m=>m.tipo==='salida');
+  const porCat={}; salidas.forEach(m=>{ const c=categoriaMovReserva(m); porCat[c]=(porCat[c]||0)+m.valor; });
+  const totSal=salidas.reduce((s,m)=>s+m.valor,0);
+  const saldoFin=saldoIni+entradas-totSal;
+  const fila=(a,b,estilo)=>`<tr style="${estilo||''}"><td>${a}</td><td class="right num">${b}</td></tr>`;
+  document.getElementById('tbl-uso-reserva').innerHTML =
+    fila('Saldo de la reserva al inicio del periodo', fmt(saldoIni)) +
+    fila('+ Ahorro que entró a la reserva', fmt(entradas), 'color:var(--success);') +
+    Object.entries(porCat).sort((a,b)=>b[1]-a[1]).map(([c,v])=>fila('− '+esc(c), fmt(v), 'color:var(--danger);')).join('') +
+    fila('Total que salió de la reserva', fmt(totSal), 'font-weight:600;') +
+    fila('= Saldo de la reserva al final del periodo', fmt(saldoFin), 'font-weight:600;border-top:2px solid var(--border);');
+  const hayDespues=M.some(m=>(m.fecha||'')>hasta);
+  const saldoPantalla=calcularSaldoReserva();
+  const ahorroFlujo=regs.reduce((s,f)=>s+(f.asignaciones||[]).filter(a=>a.concepto==='Ahorro / reserva').reduce((x,a)=>x+a.valor,0),0);
+  const entAuto=M.filter(m=>m.tipo==='entrada'&&m.automatico&&m.semanaInicio>=desde&&m.semanaInicio<=hasta).reduce((s,m)=>s+m.valor,0);
+  const msgs=[];
+  if(!hayDespues) msgs.push(Math.round(saldoFin)===Math.round(saldoPantalla)? '<span class="badge success">✓ El saldo final cuadra con la pantalla Reserva ('+fmt(saldoPantalla)+')</span>' : '<span class="badge danger">El saldo final ('+fmt(saldoFin)+') no coincide con la pantalla Reserva ('+fmt(saldoPantalla)+')</span>');
+  else msgs.push('<span class="badge gold">Hay movimientos de reserva posteriores al periodo; el saldo actual es '+fmt(saldoPantalla)+'.</span>');
+  msgs.push(Math.round(ahorroFlujo)===Math.round(entAuto)? '<span class="badge success">✓ Lo asignado a "Ahorro / reserva" en Flujo ('+fmt(ahorroFlujo)+') coincide con lo que entró a la reserva</span>' : '<span class="badge danger">Asignaste '+fmt(ahorroFlujo)+' a ahorro en Flujo, pero a la reserva entraron '+fmt(entAuto)+' (diferencia '+fmt(ahorroFlujo-entAuto)+'). Revisa entradas editadas a mano o usa "Sincronizar con Flujo de caja".</span>');
+  document.getElementById('uso-reserva-msg').innerHTML=msgs.join(' ');
+  // 3. gastos diarios
+  const gc={}; gastos.forEach(g=>{ const c=g.categoria||'Sin categoría'; gc[c]=(gc[c]||0)+g.valor; });
+  const tG=Object.values(gc).reduce((a,b)=>a+b,0);
+  document.getElementById('tbl-uso-gastos').innerHTML = tG? Object.entries(gc).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`<tr><td>${esc(c)}</td><td class="right num">${fmt(v)}</td><td class="right">${(v/tG*100).toFixed(0)}%</td></tr>`).join('')+tot(0,tG) : '<tr><td colspan="3"><div class="empty">Sin gastos diarios en el periodo.</div></td></tr>';
+}
 function renderReportes(){
   const desdeEl=document.getElementById('rf-desde'), hastaEl=document.getElementById('rf-hasta');
   const presetEl=document.getElementById('rf-preset');
@@ -5045,6 +5101,7 @@ function renderReportes(){
   document.getElementById('rep-neta').textContent=fmt(utilidadBruta-totGastos);
 
   renderCuadreReportes(ventas, gastos, desde, hasta);
+  renderUsoDineroReportes(desde, hasta, gastos);
   renderPrendasVendidas(ventas);
   renderCierreDelDia();
   renderGraficoVentasDias();
@@ -5398,7 +5455,7 @@ function registrarSalidaReserva(){
   if(valor<=0){ toast('Ingresa un valor válido'); return; }
   const saldoActual=calcularSaldoReserva();
   if(valor>saldoActual && !confirm('Este gasto ('+fmt(valor)+') es mayor que el saldo actual de la reserva ('+fmt(saldoActual)+'). ¿Registrarlo de todas formas?')) return;
-  DB.reservaMovimientos.push({id:uid(), fecha, tipo:'salida', concepto, valor, metodo, automatico:false, creadoEn:new Date().toISOString()});
+  DB.reservaMovimientos.push({id:uid(), fecha, tipo:'salida', concepto, valor, metodo, categoria:document.getElementById('reserva-categoria').value, automatico:false, creadoEn:new Date().toISOString()});
   guardarDB();
   document.getElementById('reserva-concepto').value='';
   document.getElementById('reserva-valor').value='';
@@ -5417,10 +5474,22 @@ function renderReserva(){
   const tbody=document.getElementById('tbl-reserva-movimientos');
   if(!filas.length){ tbody.innerHTML='<tr><td colspan="6"><div class="empty">Aún no hay movimientos de reserva.</div></td></tr>'; return; }
   tbody.innerHTML=filas.map(m=>`
-    <tr><td>${m.fecha}</td><td>${m.concepto}</td><td>${m.tipo==='entrada'? '—' : (m.metodo||'—')}</td>
+    <tr><td>${m.fecha}</td><td>${m.concepto}${m.tipo==='salida'?`<div style="font-size:11.5px;color:var(--ink-soft);">${categoriaMovReserva(m)}</div>`:''}</td><td>${m.tipo==='entrada'? '—' : (m.metodo||'—')}</td>
     <td class="right num" style="color:${m.tipo==='entrada'?'var(--success)':'var(--danger)'};">${m.tipo==='entrada'?'+':'−'}${fmt(m.valor)}</td>
     <td class="right num">${fmt(m.saldoCorrido)}</td>
     <td class="right" style="white-space:nowrap;"><button class="btn ghost sm" onclick="abrirMovReserva('${m.id}')">Editar</button> <button class="btn danger sm" onclick="eliminarMovReserva('${m.id}')">×</button></td></tr>`).join('');
+}
+const CATEGORIAS_RESERVA=['Nómina','Arriendo','Servicios públicos','Compra de mercancía','Compra de otras cosas','Pago de deudas','Retiro personal','Otros'];
+function categoriaMovReserva(m){
+  if(m.categoria) return m.categoria;
+  const t=(m.concepto||'').toLowerCase();
+  if(/n[óo]mina|sueldo|salario/.test(t)) return 'Nómina';
+  if(/arriendo|alquiler/.test(t)) return 'Arriendo';
+  if(/servicio|luz|agua|internet|energ/.test(t)) return 'Servicios públicos';
+  if(/mercanc|inventario|proveedor|reinversi/.test(t)) return 'Compra de mercancía';
+  if(/deuda|pr[ée]stamo|cuota/.test(t)) return 'Pago de deudas';
+  if(/retiro|personal/.test(t)) return 'Retiro personal';
+  return 'Otros';
 }
 function abrirMovReserva(id){
   const m=id? DB.reservaMovimientos.find(x=>x.id===id) : null;
@@ -5433,6 +5502,8 @@ function abrirMovReserva(id){
   document.getElementById('rm-valor').value=m? m.valor : '';
   document.getElementById('rm-metodo').value=(m&&m.metodo)||'Efectivo';
   document.getElementById('rm-metodo-wrap').style.display=document.getElementById('rm-tipo').value==='salida'?'':'none';
+  document.getElementById('rm-cat-wrap').style.display=document.getElementById('rm-tipo').value==='salida'?'':'none';
+  document.getElementById('rm-categoria').value=m&&m.tipo==='salida'? categoriaMovReserva(m) : 'Otros';
   const av=document.getElementById('rm-aviso');
   if(m&&m.automatico){ av.style.display='block'; av.textContent='Esta entrada vino del Flujo de caja (semana '+m.semanaInicio+'). Si cambias el valor aquí, el sistema respeta tu valor aunque vuelvas a guardar esa semana.'; } else av.style.display='none';
   abrirModal('modal-reserva-mov');
@@ -5450,9 +5521,9 @@ function guardarMovReserva(){
     const m=DB.reservaMovimientos.find(x=>x.id===id); if(!m) return;
     if(m.automatico && Math.round(m.valor)!==Math.round(valor)) m.editadoManual=true;
     m.tipo=tipo; m.fecha=fecha; m.concepto=concepto; m.valor=valor;
-    if(tipo==='salida') m.metodo=metodo; else delete m.metodo;
+    if(tipo==='salida'){ m.metodo=metodo; m.categoria=document.getElementById('rm-categoria').value; } else { delete m.metodo; delete m.categoria; }
   } else {
-    DB.reservaMovimientos.push({id:uid(), fecha, tipo, concepto, valor, ...(tipo==='salida'?{metodo}:{}), automatico:false, creadoEn:new Date().toISOString()});
+    DB.reservaMovimientos.push({id:uid(), fecha, tipo, concepto, valor, ...(tipo==='salida'?{metodo,categoria:document.getElementById('rm-categoria').value}:{}), automatico:false, creadoEn:new Date().toISOString()});
   }
   guardarDB(); cerrarModal('modal-reserva-mov'); renderReserva();
   toast(id?'Movimiento actualizado':'Movimiento agregado');
