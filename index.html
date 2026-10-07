@@ -1248,7 +1248,7 @@
   <!-- ================= RESERVA ================= -->
   <div class="view" id="view-reserva">
     <div class="view-head"><div><h1>Reserva</h1><p>Saldo acumulado en tu reserva/ahorro, y en qué se va gastando.</p></div>
-      <button class="btn ghost" onclick="sincronizarReservaConFlujo()">Sincronizar con Flujo de caja</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn gold" onclick="abrirMovReserva()">+ Movimiento manual</button><button class="btn ghost" onclick="sincronizarReservaConFlujo()">Sincronizar con Flujo de caja</button></div>
     </div>
     <hr class="stitch head-stitch">
     <div class="card" style="margin-bottom:18px;max-width:320px;">
@@ -1270,7 +1270,7 @@
       </div>
       <div class="card">
         <h3>Historial de movimientos</h3>
-        <table><thead><tr><th>Fecha</th><th>Concepto</th><th>Método</th><th class="right">Valor</th><th class="right">Saldo</th></tr></thead>
+        <table><thead><tr><th>Fecha</th><th>Concepto</th><th>Método</th><th class="right">Valor</th><th class="right">Saldo</th><th></th></tr></thead>
         <tbody id="tbl-reserva-movimientos"></tbody></table>
       </div>
     </div>
@@ -1453,6 +1453,21 @@
     <div class="field"><label>Correo</label><input type="email" id="fbl-email" autocomplete="username"></div>
     <div class="field"><label>Contraseña</label><input type="password" id="fbl-pass" autocomplete="current-password" onkeydown="if(event.key==='Enter')confirmarLoginFirebase()"></div>
     <div class="modal-actions"><button class="btn ghost" onclick="cerrarModal('modal-fb-login')">Ahora no</button><button class="btn gold" onclick="confirmarLoginFirebase()">Entrar</button></div>
+  </div>
+</div>
+
+<!-- ===== Modal: movimiento de reserva ===== -->
+<div class="modal-bg" id="modal-reserva-mov">
+  <div class="modal" style="width:420px;">
+    <h3 id="rm-titulo">Editar movimiento</h3>
+    <input type="hidden" id="rm-id">
+    <div class="field"><label>Tipo</label><select id="rm-tipo" onchange="document.getElementById('rm-metodo-wrap').style.display=this.value==='salida'?'':'none'"><option value="salida">Salida (gasto de la reserva)</option><option value="entrada">Entrada (ahorro que entra)</option></select></div>
+    <div class="field"><label>Fecha</label><input type="date" id="rm-fecha"></div>
+    <div class="field"><label>Concepto</label><input type="text" id="rm-concepto" maxlength="120"></div>
+    <div class="field"><label>Valor</label><input type="number" id="rm-valor" min="0"></div>
+    <div class="field" id="rm-metodo-wrap"><label>Método de pago</label><select id="rm-metodo"><option>Efectivo</option><option>Transferencia</option></select></div>
+    <p id="rm-aviso" class="pw-nota" style="display:none;"></p>
+    <div class="modal-actions"><button class="btn ghost" onclick="cerrarModal('modal-reserva-mov')">Cancelar</button><button class="btn gold" onclick="guardarMovReserva()">Guardar</button></div>
   </div>
 </div>
 
@@ -5366,7 +5381,7 @@ function sincronizarEntradaReserva(semanaInicio, montoAhorro){
     return;
   }
   if(mov){
-    mov.valor=montoAhorro;
+    if(!mov.editadoManual) mov.valor=montoAhorro; // si lo editaste a mano, se respeta tu valor
   } else {
     DB.reservaMovimientos.push({id:uid(), fecha:hoyISO(), tipo:'entrada', concepto:'Ahorro/reserva — semana '+semanaInicio, valor:montoAhorro, semanaInicio, automatico:true, creadoEn:new Date().toISOString()});
   }
@@ -5393,18 +5408,61 @@ function registrarSalidaReserva(){
 function renderReserva(){
   document.getElementById('reserva-fecha').value=hoyISO();
   document.getElementById('reserva-saldo').textContent=fmt(calcularSaldoReserva());
-  const lista=[...DB.reservaMovimientos].sort((a,b)=>a.creadoEn.localeCompare(b.creadoEn));
+  const lista=[...DB.reservaMovimientos].sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'') || (a.creadoEn||'').localeCompare(b.creadoEn||''));
   let saldoCorrido=0;
   const filas=lista.map(m=>{
     saldoCorrido += m.tipo==='entrada'? m.valor : -m.valor;
     return {...m, saldoCorrido};
   }).reverse();
   const tbody=document.getElementById('tbl-reserva-movimientos');
-  if(!filas.length){ tbody.innerHTML='<tr><td colspan="5"><div class="empty">Aún no hay movimientos de reserva.</div></td></tr>'; return; }
+  if(!filas.length){ tbody.innerHTML='<tr><td colspan="6"><div class="empty">Aún no hay movimientos de reserva.</div></td></tr>'; return; }
   tbody.innerHTML=filas.map(m=>`
     <tr><td>${m.fecha}</td><td>${m.concepto}</td><td>${m.tipo==='entrada'? '—' : (m.metodo||'—')}</td>
     <td class="right num" style="color:${m.tipo==='entrada'?'var(--success)':'var(--danger)'};">${m.tipo==='entrada'?'+':'−'}${fmt(m.valor)}</td>
-    <td class="right num">${fmt(m.saldoCorrido)}</td></tr>`).join('');
+    <td class="right num">${fmt(m.saldoCorrido)}</td>
+    <td class="right" style="white-space:nowrap;"><button class="btn ghost sm" onclick="abrirMovReserva('${m.id}')">Editar</button> <button class="btn danger sm" onclick="eliminarMovReserva('${m.id}')">×</button></td></tr>`).join('');
+}
+function abrirMovReserva(id){
+  const m=id? DB.reservaMovimientos.find(x=>x.id===id) : null;
+  if(id && !m) return;
+  document.getElementById('rm-id').value=id||'';
+  document.getElementById('rm-titulo').textContent=m? 'Editar movimiento' : 'Nuevo movimiento de reserva';
+  document.getElementById('rm-tipo').value=m? m.tipo : 'salida';
+  document.getElementById('rm-fecha').value=m? (m.fecha||hoyISO()) : hoyISO();
+  document.getElementById('rm-concepto').value=m? m.concepto : '';
+  document.getElementById('rm-valor').value=m? m.valor : '';
+  document.getElementById('rm-metodo').value=(m&&m.metodo)||'Efectivo';
+  document.getElementById('rm-metodo-wrap').style.display=document.getElementById('rm-tipo').value==='salida'?'':'none';
+  const av=document.getElementById('rm-aviso');
+  if(m&&m.automatico){ av.style.display='block'; av.textContent='Esta entrada vino del Flujo de caja (semana '+m.semanaInicio+'). Si cambias el valor aquí, el sistema respeta tu valor aunque vuelvas a guardar esa semana.'; } else av.style.display='none';
+  abrirModal('modal-reserva-mov');
+}
+function guardarMovReserva(){
+  const id=document.getElementById('rm-id').value;
+  const tipo=document.getElementById('rm-tipo').value;
+  const fecha=document.getElementById('rm-fecha').value||hoyISO();
+  const concepto=document.getElementById('rm-concepto').value.trim();
+  const valor=parseFloat(document.getElementById('rm-valor').value)||0;
+  const metodo=document.getElementById('rm-metodo').value;
+  if(!concepto){ toast('Escribe el concepto'); return; }
+  if(valor<=0){ toast('Ingresa un valor válido'); return; }
+  if(id){
+    const m=DB.reservaMovimientos.find(x=>x.id===id); if(!m) return;
+    if(m.automatico && Math.round(m.valor)!==Math.round(valor)) m.editadoManual=true;
+    m.tipo=tipo; m.fecha=fecha; m.concepto=concepto; m.valor=valor;
+    if(tipo==='salida') m.metodo=metodo; else delete m.metodo;
+  } else {
+    DB.reservaMovimientos.push({id:uid(), fecha, tipo, concepto, valor, ...(tipo==='salida'?{metodo}:{}), automatico:false, creadoEn:new Date().toISOString()});
+  }
+  guardarDB(); cerrarModal('modal-reserva-mov'); renderReserva();
+  toast(id?'Movimiento actualizado':'Movimiento agregado');
+}
+function eliminarMovReserva(id){
+  const m=DB.reservaMovimientos.find(x=>x.id===id); if(!m) return;
+  const extra=m.automatico? '\n\nEs una entrada que vino del Flujo de caja; si usas "Sincronizar con Flujo de caja" volverá a aparecer.' : '';
+  if(!confirm('¿Eliminar "'+m.concepto+'" por '+fmt(m.valor)+'?'+extra)) return;
+  DB.reservaMovimientos=DB.reservaMovimientos.filter(x=>x.id!==id);
+  guardarDB(); renderReserva(); toast('Movimiento eliminado');
 }
 
 /* ================= PUNTO DE EQUILIBRIO ================= */
