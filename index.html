@@ -458,7 +458,7 @@
   <div id="sidebar-foot">
     <div class="foot-line">Sesión: <strong id="rol-actual">—</strong></div>
     <div class="foot-line" id="sidebar-sync-badge"><span class="dot"></span>Solo este dispositivo</div>
-    <div class="foot-line foot-ver">Versión 2026-10-06 · con tienda online</div>
+    <div class="foot-line foot-ver">Versión 2026-10-18 · reporte financiero</div>
     <button class="btn ghost sm" onclick="cerrarSesion()" aria-label="Cerrar sesión" title="Cerrar sesión"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span class="lbl">Cerrar sesión</span></button>
   </div>
 </div>
@@ -1003,7 +1003,7 @@
   <!-- ================= REPORTES ================= -->
   <div class="view" id="view-reportes">
     <div class="view-head">
-      <div><h1>Reportes de costos y utilidades</h1><p>Resumen por rango de fechas.</p></div>
+      <div><h1>Reporte financiero</h1><p>Liquidación, estado de resultados e indicadores por rango de fechas.</p></div>
       <button class="btn ghost" onclick="imprimirReporte()">Imprimir reporte</button>
       <button class="btn ghost" onclick="exportarReportePDF()">Descargar PDF</button>
       <button class="btn ghost" onclick="exportarReporteExcel()">Descargar Excel</button>
@@ -1029,9 +1029,23 @@
       <div class="card"><h3>Utilidad bruta</h3><div class="kpi success" id="rep-utilidad">$0</div></div>
       <div class="card"><h3>Gastos</h3><div class="kpi danger" id="rep-gastos">$0</div></div>
     </div>
+    <div class="card" style="margin-bottom:18px;border:2px solid var(--gold);">
+      <h3 style="margin-bottom:4px;">Liquidación del periodo: ¿cuánto queda realmente?</h3>
+      <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 12px;">A todo lo producido en el periodo se le descuentan los gastos, todo lo que salió en los cierres de caja, la reinversión en mercancía y lo que se repartió en Flujo de caja y Reserva. Si un mismo pago lo registraste en dos sitios, desmarca la línea repetida para no descontarlo dos veces (la selección queda guardada).</p>
+      <div style="overflow-x:auto;"><table><thead><tr><th style="width:34px;"></th><th>Concepto</th><th class="right">Valor</th><th class="right">% de lo producido</th></tr></thead>
+      <tbody id="tbl-liquidacion"></tbody></table></div>
+      <div class="tot-line big" style="margin-top:14px;"><span>Lo que queda libre del periodo</span><span class="num" id="rep-neta" style="font-size:26px;">$0</span></div>
+      <p id="rep-liq-nota" style="font-size:12.5px;color:var(--ink-soft);margin:8px 0 0;"></p>
+    </div>
     <div class="card" style="margin-bottom:18px;">
-      <h3>Utilidad neta del periodo</h3>
-      <div class="kpi gold" id="rep-neta" style="font-size:30px;">$0</div>
+      <h3 style="margin-bottom:4px;">Estado de resultados del periodo</h3>
+      <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 12px;">Visión contable: aquí se descuenta el costo de la mercancía vendida (no la reinversión), más gastos, comisiones, depreciación de activos y los descuadres de caja.</p>
+      <div style="overflow-x:auto;"><table><thead><tr><th>Concepto</th><th class="right">Valor</th><th class="right">% s/ ingresos netos</th></tr></thead>
+      <tbody id="tbl-estado-resultados"></tbody></table></div>
+    </div>
+    <div class="card" style="margin-bottom:18px;">
+      <h3 style="margin-bottom:10px;">Indicadores financieros</h3>
+      <div class="grid grid-4" style="gap:12px;" id="rep-indicadores"></div>
     </div>
     <div class="card" style="margin-bottom:18px;">
       <h3>Cuadre de las ventas del periodo</h3>
@@ -2022,22 +2036,6 @@ function guardarDB(){
 }
 
 /* ---------------- Exportar a Excel (CSV) ---------------- */
-function descargarCSV(filename, headers, rows){
-  const escape=(v)=>{
-    v=String(v??'');
-    if(v.includes(',')||v.includes('"')||v.includes('\n')) v='"'+v.replace(/"/g,'""')+'"';
-    return v;
-  };
-  let csv=headers.map(escape).join(',')+'\n';
-  csv+=rows.map(r=>r.map(escape).join(',')).join('\n');
-  const blob=new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8;'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url; a.download=filename;
-  document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(url);
-  toast('Archivo descargado — ábrelo con Excel');
-}
 
 /* ---------------- Generador genérico de PDF ---------------- */
 function generarPDF(nombreArchivo, titulo, subtitulo, headers, rows, lineasTotales){
@@ -2815,6 +2813,7 @@ function marcarApartadoEntregado(){
   const a=apartadoDetalleActual; if(!a) return;
   if(a.saldoPendiente>0 && !confirm('Este apartado todavía tiene un saldo pendiente de '+fmt(a.saldoPendiente)+'. ¿Marcarlo como entregado de todas formas?')) return;
   a.estado='completado';
+  a.fechaEntrega=hoyISO();
   guardarDB();
   cerrarModal('modal-detalle-apartado');
   renderApartados();
@@ -5098,7 +5097,10 @@ function renderReportes(){
   document.getElementById('rep-costo').textContent=fmt(totCosto);
   document.getElementById('rep-utilidad').textContent=fmt(utilidadBruta);
   document.getElementById('rep-gastos').textContent=fmt(totGastos);
-  document.getElementById('rep-neta').textContent=fmt(utilidadBruta-totGastos);
+  const RF=calcularReporteFinanciero(desde, hasta);
+  document.getElementById('rep-costo').textContent=fmt(RF.costoVentas);
+  document.getElementById('rep-utilidad').textContent=fmt(RF.utilidadBruta);
+  renderReporteFinanciero(RF);
 
   renderCuadreReportes(ventas, gastos, desde, hasta);
   renderUsoDineroReportes(desde, hasta, gastos);
@@ -5143,20 +5145,497 @@ function datosReporteDesglose(){
   });
   return {headers, rows, desde, hasta, totVentas, totCosto, totGastos, utilidadBruta};
 }
-function exportarReporteExcel(){
-  const d=datosReporteDesglose();
-  descargarCSV('reporte-'+d.desde+'-a-'+d.hasta+'.csv', d.headers, d.rows);
+/* ================= REPORTE FINANCIERO COMPLETO (2026-10-18) ================= */
+const LIQ_LINEAS=[
+  {k:'comFin',    txt:'Comisiones de financieras (Sistecrédito / Addi)', def:true},
+  {k:'gastos',    txt:'Gastos diarios registrados', def:true},
+  {k:'salCierre', txt:'Salidas de efectivo en los cierres de caja (no registradas como gasto)', def:true},
+  {k:'difCierre', txt:'Faltantes de caja en los cierres (menos sobrantes)', def:true},
+  {k:'reinvFlujo',txt:'Reinversión en mercancía (Flujo de caja)', def:true},
+  {k:'reinvRes',  txt:'Compra de mercancía pagada desde la Reserva', def:true},
+  {k:'otrosFlujo',txt:'Nómina, deudas, retiros y otros repartidos en Flujo de caja', def:true},
+  {k:'otrosRes',  txt:'Otras salidas de la Reserva (nómina, arriendo, deudas, retiros…)', def:true},
+  {k:'comVend',   txt:'Comisiones a vendedores', def:true},
+  {k:'compProv',  txt:'Compras a proveedores pagadas en el periodo', def:false, nota:'Márcala solo si estas compras NO las registraste ya como reinversión en Flujo de caja o Reserva.'}
+];
+function liqIncluye(k){
+  const cfg=(DB.config.repLiqIncluir)||{};
+  if(cfg[k]!==undefined) return !!cfg[k];
+  const l=LIQ_LINEAS.find(x=>x.k===k); return l? l.def : true;
+}
+function toggleLiq(k, val){
+  if(!DB.config.repLiqIncluir) DB.config.repLiqIncluir={};
+  DB.config.repLiqIncluir[k]=!!val;
+  guardarDB();
+  renderReportes();
+}
+function costoItemReporte(it){
+  if(it.costo!=null && !isNaN(it.costo)) return Number(it.costo)||0;
+  const a=DB.articulos.find(x=>x.id===it.articuloId);
+  return a? (Number(a.costo)||0) : 0;
+}
+function depreciacionEnPeriodo(a, desde, hasta){
+  const valor=Number(a.valorCompra)||0, vida=Number(a.vidaUtilAnios)||0;
+  if(valor<=0 || vida<=0 || !a.fechaAdquisicion) return 0;
+  const ini=fechaLocalDesdeISO(a.fechaAdquisicion);
+  const finVida=new Date(ini); finVida.setFullYear(finVida.getFullYear()+vida);
+  const d1=fechaLocalDesdeISO(desde), d2=fechaLocalDesdeISO(hasta); d2.setDate(d2.getDate()+1);
+  const a1=Math.max(ini, d1), a2=Math.min(finVida, d2);
+  if(a2<=a1) return 0;
+  const diasTot=(finVida-ini)/86400000;
+  return valor*((a2-a1)/86400000)/diasTot;
+}
+function calcularReporteFinanciero(desde, hasta){
+  const enR=f=>f && f>=desde && f<=hasta;
+  const S=(arr,fn)=>arr.reduce((s,x)=>s+(Number(fn(x))||0),0);
+  const ventas=DB.ventas.filter(v=>enR(v.fecha));
+  const gastos=DB.gastos.filter(g=>enR(g.fecha));
+  const merc=ventas.filter(v=>!v.esAbonoApartado && !v.esAjusteDevolucion);
+  const abonos=ventas.filter(v=>v.esAbonoApartado);
+  const ajustes=ventas.filter(v=>v.esAjusteDevolucion);
+
+  const R={desde, hasta, ventas, gastosLista:gastos};
+  R.ventasBrutas=S(merc,v=>v.subtotal!=null? v.subtotal : v.total);
+  R.descuentos=S(merc,v=>v.descuento);
+  R.ventasMercancia=S(merc,v=>v.total);
+  R.abonosApartados=S(abonos,v=>v.total);
+  R.ajustesDevolucion=S(ajustes,v=>v.total);
+  R.producido=S(ventas,v=>v.total);
+  R.comFin=S(ventas,v=>v.comisionValor);
+  R.ingresosNetos=R.producido-R.comFin;
+
+  // costo: mercancía facturada + apartados entregados en el periodo (sus abonos entran con costo 0)
+  R.costoFacturado=S(ventas,v=>v.costoTotal);
+  const apEnt=(DB.apartados||[]).filter(a=>a.estado==='completado' && enR(a.fechaEntrega||a.fecha));
+  R.costoApartados=apEnt.reduce((s,a)=>s+(a.items||[]).reduce((x,it)=>x+costoItemReporte(it)*(Number(it.cantidad)||0),0),0);
+  R.costoVentas=R.costoFacturado+R.costoApartados;
+  R.utilidadBruta=R.ingresosNetos-R.costoVentas;
+
+  R.gastos=S(gastos,g=>g.valor);
+  const gc={}; gastos.forEach(g=>{ const c=g.categoria||'Sin categoría'; gc[c]=(gc[c]||0)+(Number(g.valor)||0); });
+  R.gastosPorCategoria=Object.entries(gc).sort((a,b)=>b[1]-a[1]);
+
+  const pctV=Number(DB.config.comisionPct)||0;
+  R.comVend=Math.round(S(merc,v=>(v.total||0)-(v.comisionValor||0))*pctV);
+  R.depreciacion=(DB.activosFijos||[]).reduce((s,a)=>s+depreciacionEnPeriodo(a,desde,hasta),0);
+
+  // cierres de caja del periodo
+  const cierres=(DB.cierres||[]).filter(c=>enR(c.fecha)).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  R.cierres=cierres.map(c=>{
+    const gDia=DB.gastos.filter(g=>g.fecha===c.fecha).reduce((s,g)=>s+(Number(g.valor)||0),0);
+    const sal=Number(c.salidasEfectivo)||0;
+    return {...c, gastosDia:gDia, salidaNoRegistrada:Math.max(0, sal-gDia)};
+  });
+  R.salidasCierresTotal=S(R.cierres,c=>c.salidasEfectivo);
+  R.salCierre=S(R.cierres,c=>c.salidaNoRegistrada);
+  R.faltantes=S(R.cierres,c=>(c.diferencia||0)<0? -c.diferencia : 0);
+  R.sobrantes=S(R.cierres,c=>(c.diferencia||0)>0? c.diferencia : 0);
+  R.difCierre=R.faltantes-R.sobrantes;
+  R.diasSinCierre=[...new Set(ventas.map(v=>v.fecha))].filter(f=>!cierres.some(c=>c.fecha===f)).sort();
+
+  // flujo de caja y reserva
+  const regs=(DB.flujoCaja||[]).filter(f=>enR(f.semanaInicio));
+  R.flujoDetalle=[];
+  regs.forEach(f=>(f.asignaciones||[]).forEach(a=>R.flujoDetalle.push({semana:f.semanaInicio, concepto:a.concepto, observacion:a.observacion||'', valor:Number(a.valor)||0})));
+  R.reinvFlujo=S(R.flujoDetalle.filter(a=>a.concepto==='Reinversión en mercancía'),a=>a.valor);
+  R.ahorroFlujo=S(R.flujoDetalle.filter(a=>a.concepto==='Ahorro / reserva'),a=>a.valor);
+  R.otrosFlujo=S(R.flujoDetalle.filter(a=>a.concepto!=='Reinversión en mercancía' && a.concepto!=='Ahorro / reserva'),a=>a.valor);
+  const M=DB.reservaMovimientos||[];
+  R.reservaDetalle=M.filter(m=>enR(m.fecha)).map(m=>({fecha:m.fecha, tipo:m.tipo, categoria:m.tipo==='salida'? categoriaMovReserva(m) : 'Entrada / ahorro', concepto:m.concepto||'', valor:Number(m.valor)||0})).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const salR=R.reservaDetalle.filter(m=>m.tipo==='salida');
+  R.reinvRes=S(salR.filter(m=>m.categoria==='Compra de mercancía'),m=>m.valor);
+  R.otrosRes=S(salR.filter(m=>m.categoria!=='Compra de mercancía'),m=>m.valor);
+  R.reservaSaldoIni=M.filter(m=>(m.fecha||'')<desde).reduce((s,m)=>s+(m.tipo==='entrada'?m.valor:-m.valor),0);
+  R.reservaEntradas=S(R.reservaDetalle.filter(m=>m.tipo==='entrada'),m=>m.valor);
+  R.reservaSalidas=S(salR,m=>m.valor);
+  R.reservaSaldoFin=R.reservaSaldoIni+R.reservaEntradas-R.reservaSalidas;
+
+  // proveedores
+  R.comprasPeriodo=(DB.compras||[]).filter(c=>enR(c.fecha));
+  R.compProv=S((DB.compras||[]).filter(c=>c.pagado && enR(c.fechaPago||c.fecha)),c=>c.valor);
+  R.cxpProveedores=S((DB.compras||[]).filter(c=>!c.pagado),c=>c.valor);
+
+  // créditos con financieras
+  R.creditosPendientes=DB.ventas.filter(v=>v.credito && v.credito.estado!=='pagado');
+  R.cxcFinancieras=R.creditosPendientes.reduce((s,v)=>s+netoCredito(v),0);
+  R.cxcFinPeriodo=ventas.filter(v=>v.credito && v.credito.estado!=='pagado').reduce((s,v)=>s+netoCredito(v),0);
+
+  // estado de resultados
+  R.utilidadOperacional=R.utilidadBruta-R.gastos-R.comVend-R.depreciacion;
+  R.utilidadNetaContable=R.utilidadOperacional-R.salCierre-R.difCierre;
+
+  // liquidación: lo que queda
+  R.liq=LIQ_LINEAS.map(l=>({...l, valor:Math.round(R[l.k]||0), incluida:liqIncluye(l.k)}));
+  R.totalDescuentos=R.liq.filter(l=>l.incluida).reduce((s,l)=>s+l.valor,0);
+  R.queda=Math.round(R.producido)-R.totalDescuentos;
+
+  // indicadores
+  R.nFacturas=merc.length;
+  R.unidades=merc.reduce((s,v)=>s+(v.items||[]).reduce((x,it)=>x+(Number(it.cantidad)||0),0),0);
+  R.ticketPromedio=R.nFacturas? R.ventasMercancia/R.nFacturas : 0;
+  R.diasConVenta=new Set(merc.map(v=>v.fecha)).size;
+  R.ventaDiaria=R.diasConVenta? R.ventasMercancia/R.diasConVenta : 0;
+  R.inventarioCosto=DB.articulos.reduce((s,a)=>s+(Number(a.stock)||0)*(Number(a.costo)||0),0);
+  R.inventarioPrecio=DB.articulos.reduce((s,a)=>s+(Number(a.stock)||0)*(Number(a.precio)||0),0);
+  R.inventarioUnidades=DB.articulos.reduce((s,a)=>s+(Number(a.stock)||0),0);
+  R.reservaSaldoActual=calcularSaldoReserva();
+
+  // por método de pago
+  const met={}; ventas.forEach(v=>{ const m=v.metodo||'Sin método'; met[m]=met[m]||{n:0,t:0,com:0}; met[m].n++; met[m].t+=v.total||0; met[m].com+=v.comisionValor||0; });
+  R.porMetodo=Object.entries(met).sort((a,b)=>b[1].t-a[1].t);
+
+  // prendas vendidas (con costo y utilidad)
+  const pm={};
+  merc.forEach(v=>{
+    const tot=(v.items||[]).reduce((s,it)=>s+(it.precio||0)*(it.cantidad||0),0);
+    const factor=tot>0? ((v.total||0)-(v.comisionValor||0))/tot : 1; // reparte descuentos y quita la comisión
+    (v.items||[]).forEach(it=>{
+      const k=it.nombre+'|'+it.talla+'|'+it.color;
+      pm[k]=pm[k]||{nombre:it.nombre,talla:it.talla,color:it.color,cantidad:0,venta:0,costo:0};
+      pm[k].cantidad+=it.cantidad||0; pm[k].venta+=(it.precio||0)*(it.cantidad||0)*factor; pm[k].costo+=costoItemReporte(it)*(it.cantidad||0);
+    });
+  });
+  R.prendas=Object.values(pm).sort((a,b)=>b.venta-a.venta);
+
+  // por día / semana / mes
+  const agrega=(keyFn)=>{
+    const o={};
+    const g=k=>o[k]=o[k]||{ventas:0,comFin:0,costo:0,gastos:0,salCierre:0,difCierre:0};
+    ventas.forEach(v=>{ const d=g(keyFn(v.fecha)); d.ventas+=v.total||0; d.comFin+=v.comisionValor||0; d.costo+=v.costoTotal||0; });
+    gastos.forEach(x=>{ g(keyFn(x.fecha)).gastos+=Number(x.valor)||0; });
+    R.cierres.forEach(c=>{ const d=g(keyFn(c.fecha)); d.salCierre+=c.salidaNoRegistrada; d.difCierre+=-(c.diferencia||0); });
+    return Object.keys(o).sort().map(k=>{ const d=o[k]; const ub=d.ventas-d.comFin-d.costo; return {k, ...d, ub, neta:ub-d.gastos-d.salCierre-d.difCierre}; });
+  };
+  R.porDia=agrega(f=>f);
+  R.porSemana=agrega(f=>inicioPeriodo(f));
+  R.porMes=agrega(f=>f.slice(0,7));
+  return R;
+}
+function renderReporteFinanciero(R){
+  const pct=(v,b)=> b? ((v/b)*100).toFixed(1)+'%' : '—';
+  const P=R.producido;
+  let h=`<tr style="font-weight:600;"><td></td><td>Total producido en el periodo</td><td class="right num">${fmt(P)}</td><td class="right">100%</td></tr>`;
+  h+=`<tr style="font-size:12px;color:var(--ink-soft);"><td></td><td style="padding-left:18px;">Ventas de mercancía ${fmt(R.ventasMercancia)} · Abonos de apartados ${fmt(R.abonosApartados)} · Ajustes por devoluciones/cambios ${fmt(R.ajustesDevolucion)}</td><td></td><td></td></tr>`;
+  R.liq.forEach(l=>{
+    const est=l.incluida? 'color:var(--danger);' : 'color:var(--ink-soft);text-decoration:line-through;';
+    h+=`<tr><td class="center"><input type="checkbox" ${l.incluida?'checked':''} onchange="toggleLiq('${l.k}',this.checked)" title="Incluir en el descuento"></td>
+      <td style="${est}">− ${l.txt}${l.nota?`<div style="font-size:11px;color:var(--ink-soft);text-decoration:none;">${l.nota}</div>`:''}</td>
+      <td class="right num" style="${est}">${fmt(l.valor)}</td><td class="right" style="${est}">${pct(l.valor,P)}</td></tr>`;
+  });
+  h+=`<tr style="font-weight:600;border-top:2px solid var(--border);"><td></td><td>Total descontado</td><td class="right num">${fmt(R.totalDescuentos)}</td><td class="right">${pct(R.totalDescuentos,P)}</td></tr>`;
+  document.getElementById('tbl-liquidacion').innerHTML=h;
+  const neta=document.getElementById('rep-neta');
+  neta.textContent=fmt(R.queda); neta.style.color=R.queda<0?'var(--danger)':'';
+  const notas=[];
+  if(R.cxcFinPeriodo>0) notas.push(`De lo producido, <strong>${fmt(R.cxcFinPeriodo)}</strong> todavía lo deben las financieras.`);
+  if(R.ahorroFlujo>0) notas.push(`Lo enviado a "Ahorro / reserva" (${fmt(R.ahorroFlujo)}) no se descuenta porque sigue siendo tuyo; el saldo actual de la Reserva es ${fmt(R.reservaSaldoActual)}.`);
+  if(R.diasSinCierre.length) notas.push(`<span class="badge danger">Hay ${R.diasSinCierre.length} día(s) con ventas sin cierre de caja: ${R.diasSinCierre.slice(0,6).join(', ')}${R.diasSinCierre.length>6?'…':''}</span>`);
+  document.getElementById('rep-liq-nota').innerHTML=notas.join(' ');
+
+  const IN=R.ingresosNetos;
+  const fila=(t,v,o={})=>`<tr style="${o.b?'font-weight:600;':''}${o.top?'border-top:2px solid var(--border);':''}${o.c?'color:'+o.c+';':''}"><td style="${o.ind?'padding-left:18px;':''}">${t}</td><td class="right num">${fmt(v)}</td><td class="right">${o.nopct?'':pct(v,IN)}</td></tr>`;
+  let e='';
+  e+=fila('Ventas brutas de mercancía', R.ventasBrutas);
+  e+=fila('− Descuentos concedidos', R.descuentos, {ind:1});
+  e+=fila('+ Abonos de apartados', R.abonosApartados, {ind:1});
+  e+=fila('± Ajustes por devoluciones y cambios', R.ajustesDevolucion, {ind:1});
+  e+=fila('= Total producido', R.producido, {b:1});
+  e+=fila('− Comisiones de financieras', R.comFin, {ind:1});
+  e+=fila('= Ingresos netos', IN, {b:1,top:1});
+  e+=fila('− Costo de la mercancía vendida', R.costoFacturado, {ind:1});
+  if(R.costoApartados) e+=fila('− Costo de apartados entregados', R.costoApartados, {ind:1});
+  e+=fila('= Utilidad bruta', R.utilidadBruta, {b:1,top:1,c:'var(--success)'});
+  R.gastosPorCategoria.forEach(([c,v])=>{ e+=fila('− Gasto: '+c, v, {ind:1}); });
+  if(!R.gastosPorCategoria.length) e+=fila('− Gastos diarios', 0, {ind:1});
+  if(R.comVend) e+=fila('− Comisiones a vendedores', R.comVend, {ind:1});
+  if(R.depreciacion) e+=fila('− Depreciación de activos fijos', R.depreciacion, {ind:1});
+  e+=fila('= Utilidad operacional', R.utilidadOperacional, {b:1,top:1});
+  e+=fila('− Salidas de caja en cierres no registradas como gasto', R.salCierre, {ind:1});
+  e+=fila('− Faltantes de caja', R.faltantes, {ind:1});
+  e+=fila('+ Sobrantes de caja', R.sobrantes, {ind:1});
+  e+=fila('= Utilidad neta del periodo', R.utilidadNetaContable, {b:1,top:1,c:R.utilidadNetaContable<0?'var(--danger)':'var(--gold)'});
+  document.getElementById('tbl-estado-resultados').innerHTML=e;
+
+  const kpi=(t,v,cl)=>`<div class="card" style="background:var(--surface-2);"><h3>${t}</h3><div class="kpi ${cl||''}" style="font-size:18px;">${v}</div></div>`;
+  document.getElementById('rep-indicadores').innerHTML=
+    kpi('Margen bruto', pct(R.utilidadBruta,IN), 'success')+
+    kpi('Margen operacional', pct(R.utilidadOperacional,IN))+
+    kpi('Margen neto', pct(R.utilidadNetaContable,IN), 'gold')+
+    kpi('Gastos sobre ventas', pct(R.gastos,IN), 'danger')+
+    kpi('Facturas de mercancía', R.nFacturas.toLocaleString('es-CO'))+
+    kpi('Prendas vendidas', R.unidades.toLocaleString('es-CO'))+
+    kpi('Ticket promedio', fmt(R.ticketPromedio), 'indigo')+
+    kpi('Venta promedio por día', fmt(R.ventaDiaria), 'indigo')+
+    kpi('Inventario a costo (hoy)', fmt(R.inventarioCosto))+
+    kpi('Inventario a precio de venta', fmt(R.inventarioPrecio))+
+    kpi('Por cobrar a financieras', fmt(R.cxcFinancieras), 'danger')+
+    kpi('Por pagar a proveedores', fmt(R.cxpProveedores), 'danger');
+}
+
+/* ---------- Excel real (.xlsx) con cifras en pesos completos ---------- */
+const XLSX_CDN='https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js';
+function cargarXLSX(){
+  if(window.XLSX && window.XLSX.utils) return Promise.resolve();
+  return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=XLSX_CDN; s.onload=()=>res(); s.onerror=()=>rej(new Error('No cargó la librería de Excel')); document.head.appendChild(s); });
+}
+const XF={
+  money:'"$"#,##0;[Red]-"$"#,##0', int:'#,##0', pct:'0.0%',
+  border:{top:{style:'thin',color:{rgb:'D9D4CA'}},bottom:{style:'thin',color:{rgb:'D9D4CA'}},left:{style:'thin',color:{rgb:'D9D4CA'}},right:{style:'thin',color:{rgb:'D9D4CA'}}}
+};
+function xCell(v, tipo, extra){
+  const base={font:{name:'Calibri',sz:11,color:{rgb:'21262B'}}, border:XF.border, alignment:{vertical:'center'}};
+  const s=Object.assign({}, base, extra||{});
+  if(extra&&extra.font) s.font=Object.assign({}, base.font, extra.font);
+  if(v && typeof v==='object' && v.f){ const z=XF[tipo]||XF.money; return {t:'n', f:v.f, v:Math.round((v.v||0)*1000)/1000, z, s:Object.assign(s,{numFmt:z, alignment:{horizontal:'right',vertical:'center'}})}; }
+  if(tipo==='money'||tipo==='int'){ const n=Math.round(Number(v)||0); return {t:'n', v:n, z:XF[tipo], s:Object.assign(s,{numFmt:XF[tipo], alignment:{horizontal:'right',vertical:'center'}})}; }
+  if(tipo==='pct'){ const n=Number(v)||0; return {t:'n', v:n, z:XF.pct, s:Object.assign(s,{numFmt:XF.pct, alignment:{horizontal:'right',vertical:'center'}})}; }
+  return {t:'s', v:v==null?'':String(v), s};
+}
+function xCol(i){ let s=''; i++; while(i>0){ const m=(i-1)%26; s=String.fromCharCode(65+m)+s; i=Math.floor((i-1)/26); } return s; }
+/* Crea una hoja con título, encabezados, filas y fila de totales con fórmulas SUM.
+   cols: [{h:'Encabezado', t:'text'|'money'|'int'|'pct', w:ancho, sum:true}] */
+function xHoja(titulo, subtitulo, cols, filas, opts){
+  opts=opts||{};
+  const ws={}; const merges=[]; let r=0;
+  const nC=cols.length;
+  const put=(row,col,cell)=>{ ws[xCol(col)+(row+1)]=cell; };
+  const tituloS={font:{bold:true,sz:15,color:{rgb:'2F4157'}}, border:{}};
+  put(r,0,xCell((DB.config.nombre||'Almacén')+' — '+titulo,'text',tituloS)); merges.push({s:{r,c:0},e:{r,c:Math.max(nC-1,0)}}); r++;
+  put(r,0,xCell(subtitulo||'','text',{font:{italic:true,sz:10,color:{rgb:'5A5F66'}},border:{}})); merges.push({s:{r,c:0},e:{r,c:Math.max(nC-1,0)}}); r++;
+  r++;
+  const filaHead=r;
+  cols.forEach((c,i)=>put(r,i,xCell(c.h,'text',{font:{bold:true,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'2F4157'}},alignment:{horizontal:c.t==='text'?'left':'center',vertical:'center',wrapText:true}})));
+  r++;
+  const primera=r;
+  filas.forEach((f,idx)=>{
+    const zebra=idx%2? {fill:{fgColor:{rgb:'F7F5F1'}}} : {};
+    const st=f._estilo? Object.assign({},zebra,f._estilo) : zebra;
+    cols.forEach((c,i)=>put(r,i,xCell(f[i], c.t, st)));
+    r++;
+  });
+  const ultima=r-1;
+  if(opts.totales!==false && filas.length && cols.some(c=>c.sum)){
+    const st={font:{bold:true},fill:{fgColor:{rgb:'EFE6D2'}},border:{top:{style:'medium',color:{rgb:'B08D3E'}},bottom:{style:'medium',color:{rgb:'B08D3E'}}}};
+    cols.forEach((c,i)=>{
+      if(i===0) put(r,i,xCell('TOTAL','text',st));
+      else if(c.sum){ const L=xCol(i); const v=filas.reduce((s,f)=>s+(Number(f[i])||0),0); put(r,i,xCell({f:`SUM(${L}${primera+1}:${L}${ultima+1})`, v}, c.t, st)); }
+      else if(c.formulaTotal){ put(r,i,xCell({f:c.formulaTotal(r+1, primera+1, ultima+1), v:0}, c.t, st)); }
+      else put(r,i,xCell('','text',st));
+    });
+    r++;
+  }
+  ws['!ref']='A1:'+xCol(nC-1)+Math.max(r,1);
+  ws['!merges']=merges;
+  ws['!cols']=cols.map((c,i)=>{ const maxLen=Math.max(String(c.h).length, ...filas.slice(0,300).map(f=>String(f[i]==null?'':(typeof f[i]==='number'? Math.round(f[i]).toLocaleString('es-CO')+'$$':f[i])).length)); return {wch:c.w||Math.min(Math.max(maxLen+2,10),55)}; });
+  ws['!rows']=[{hpt:22}];
+  ws['!autofilter']={ref:xCol(0)+(filaHead+1)+':'+xCol(nC-1)+(filaHead+1)};
+  return ws;
+}
+function xLibro(hojas, nombreArchivo){
+  const wb=XLSX.utils.book_new();
+  hojas.forEach(([nombre,ws])=>XLSX.utils.book_append_sheet(wb, ws, nombre.slice(0,31)));
+  XLSX.writeFile(wb, nombreArchivo);
+}
+function hojaResumen(R){
+  const ws={}; const merges=[]; let r=0;
+  const put=(row,col,cell)=>{ ws[xCol(col)+(row+1)]=cell; };
+  const IN=R.ingresosNetos||0, P=R.producido||0;
+  const sinB={border:{}};
+  put(r,0,xCell((DB.config.nombre||'Almacén')+' — Reporte financiero','text',{font:{bold:true,sz:16,color:{rgb:'2F4157'}},border:{}})); merges.push({s:{r,c:0},e:{r,c:2}}); r++;
+  put(r,0,xCell('Periodo: '+R.desde+' a '+R.hasta+'   ·   Generado: '+new Date().toLocaleString('es-CO'),'text',{font:{italic:true,sz:10,color:{rgb:'5A5F66'}},border:{}})); merges.push({s:{r,c:0},e:{r,c:2}}); r++;
+  r++;
+  const seccion=(t)=>{ put(r,0,xCell(t,'text',{font:{bold:true,sz:13,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'B08D3E'}}})); put(r,1,xCell('','text',{fill:{fgColor:{rgb:'B08D3E'}}})); put(r,2,xCell('','text',{fill:{fgColor:{rgb:'B08D3E'}}})); merges.push({s:{r,c:0},e:{r,c:2}}); r++; };
+  const cab=(a,b,c)=>{ const st={font:{bold:true,color:{rgb:'FFFFFF'}},fill:{fgColor:{rgb:'2F4157'}}}; put(r,0,xCell(a,'text',st)); put(r,1,xCell(b,'text',Object.assign({},st,{alignment:{horizontal:'center'}}))); put(r,2,xCell(c,'text',Object.assign({},st,{alignment:{horizontal:'center'}}))); r++; };
+  const lin=(t,v,base,o)=>{ o=o||{};
+    const st=o.total? {font:{bold:true},fill:{fgColor:{rgb:'EFE6D2'}}} : (o.tachado? {font:{color:{rgb:'9A9A9A'},strike:true}} : {});
+    if(o.color) st.font=Object.assign({},st.font||{},{color:{rgb:o.color},bold:!!o.total});
+    put(r,0,xCell((o.ind?'      ':'')+t,'text',st)); put(r,1,xCell(v,'money',st));
+    put(r,2, base? xCell(v/base,'pct',st) : xCell('','text',st)); r++; };
+
+  seccion('1. LIQUIDACIÓN DEL PERIODO — ¿CUÁNTO QUEDA REALMENTE?');
+  cab('Concepto','Valor','% producido');
+  lin('Total producido en el periodo', P, P, {total:1});
+  lin('Ventas de mercancía', R.ventasMercancia, P, {ind:1});
+  lin('Abonos de apartados', R.abonosApartados, P, {ind:1});
+  lin('Ajustes por devoluciones y cambios', R.ajustesDevolucion, P, {ind:1});
+  R.liq.forEach(l=>lin('(−) '+l.txt+(l.incluida?'':'  [NO incluida]'), l.valor, P, {tachado:!l.incluida}));
+  lin('Total descontado', R.totalDescuentos, P, {total:1});
+  lin('LO QUE QUEDA LIBRE DEL PERIODO', R.queda, P, {total:1, color:R.queda<0?'C0392B':'1E7B4F'});
+  if(R.cxcFinPeriodo) lin('Nota: de lo producido, aún lo deben las financieras', R.cxcFinPeriodo, P, {ind:1});
+  lin('Nota: saldo actual de la Reserva (ahorro, no se descuenta)', R.reservaSaldoActual, 0, {ind:1});
+  r++;
+
+  seccion('2. ESTADO DE RESULTADOS');
+  cab('Concepto','Valor','% ingresos');
+  lin('Ventas brutas de mercancía', R.ventasBrutas, IN);
+  lin('(−) Descuentos concedidos', R.descuentos, IN, {ind:1});
+  lin('(+) Abonos de apartados', R.abonosApartados, IN, {ind:1});
+  lin('(±) Ajustes por devoluciones y cambios', R.ajustesDevolucion, IN, {ind:1});
+  lin('Total producido', R.producido, IN, {total:1});
+  lin('(−) Comisiones de financieras', R.comFin, IN, {ind:1});
+  lin('INGRESOS NETOS', IN, IN, {total:1});
+  lin('(−) Costo de la mercancía vendida', R.costoFacturado, IN, {ind:1});
+  if(R.costoApartados) lin('(−) Costo de apartados entregados', R.costoApartados, IN, {ind:1});
+  lin('UTILIDAD BRUTA', R.utilidadBruta, IN, {total:1});
+  R.gastosPorCategoria.forEach(([c,v])=>lin('(−) Gasto: '+c, v, IN, {ind:1}));
+  lin('Total gastos diarios', R.gastos, IN, {ind:1});
+  lin('(−) Comisiones a vendedores', R.comVend, IN, {ind:1});
+  lin('(−) Depreciación de activos fijos', R.depreciacion, IN, {ind:1});
+  lin('UTILIDAD OPERACIONAL', R.utilidadOperacional, IN, {total:1});
+  lin('(−) Salidas de caja en cierres no registradas como gasto', R.salCierre, IN, {ind:1});
+  lin('(−) Faltantes de caja', R.faltantes, IN, {ind:1});
+  lin('(+) Sobrantes de caja', R.sobrantes, IN, {ind:1});
+  lin('UTILIDAD NETA DEL PERIODO', R.utilidadNetaContable, IN, {total:1, color:R.utilidadNetaContable<0?'C0392B':'1E7B4F'});
+  r++;
+
+  seccion('3. INDICADORES FINANCIEROS');
+  cab('Indicador','Valor','');
+  const ind=(t,v,tipo)=>{ put(r,0,xCell(t,'text')); put(r,1,xCell(v,tipo)); put(r,2,xCell('','text')); r++; };
+  ind('Margen bruto', IN? R.utilidadBruta/IN:0, 'pct');
+  ind('Margen operacional', IN? R.utilidadOperacional/IN:0, 'pct');
+  ind('Margen neto', IN? R.utilidadNetaContable/IN:0, 'pct');
+  ind('Gastos diarios sobre ingresos netos', IN? R.gastos/IN:0, 'pct');
+  ind('Lo que queda sobre lo producido', P? R.queda/P:0, 'pct');
+  ind('Facturas de mercancía', R.nFacturas, 'int');
+  ind('Prendas vendidas (unidades)', R.unidades, 'int');
+  ind('Ticket promedio por factura', R.ticketPromedio, 'money');
+  ind('Días con ventas', R.diasConVenta, 'int');
+  ind('Venta promedio por día', R.ventaDiaria, 'money');
+  ind('Inventario actual a costo', R.inventarioCosto, 'money');
+  ind('Inventario actual a precio de venta', R.inventarioPrecio, 'money');
+  ind('Utilidad potencial del inventario', R.inventarioPrecio-R.inventarioCosto, 'money');
+  ind('Unidades en inventario', R.inventarioUnidades, 'int');
+  ind('Cuentas por cobrar a financieras (total)', R.cxcFinancieras, 'money');
+  ind('Cuentas por pagar a proveedores (total)', R.cxpProveedores, 'money');
+  ind('Saldo actual de la Reserva', R.reservaSaldoActual, 'money');
+  if(R.diasSinCierre.length) ind('Días con ventas sin cierre de caja', R.diasSinCierre.length, 'int');
+
+  ws['!ref']='A1:C'+r; ws['!merges']=merges;
+  ws['!cols']=[{wch:58},{wch:14},{wch:11}];
+  return ws;
+}
+async function exportarReporteExcel(){
+  try{
+    toast('Preparando el Excel…');
+    await cargarXLSX();
+    const desde=document.getElementById('rf-desde').value, hasta=document.getElementById('rf-hasta').value;
+    const R=calcularReporteFinanciero(desde, hasta);
+    const sub='Periodo: '+desde+' a '+hasta;
+    const hojas=[['Resumen financiero', hojaResumen(R)]];
+
+    const per=(arr,etq)=>arr.map(d=>[etq(d.k), d.ventas, d.comFin, d.costo, d.ub, d.gastos, d.salCierre, d.difCierre, d.neta, (d.ventas-d.comFin)? d.neta/(d.ventas-d.comFin):0]);
+    const colsPer=(t)=>[{h:t,t:'text'},{h:'Producido',t:'money',sum:1},{h:'Comisión financieras',t:'money',sum:1},{h:'Costo mercancía',t:'money',sum:1},{h:'Utilidad bruta',t:'money',sum:1},{h:'Gastos',t:'money',sum:1},{h:'Salidas cierre no registradas',t:'money',sum:1},{h:'Faltante (+) / sobrante (−)',t:'money',sum:1},{h:'Utilidad neta',t:'money',sum:1},{h:'Margen neto',t:'pct',formulaTotal:(r)=>`IFERROR(I${r}/(B${r}-C${r}),0)`}];
+    const nomM=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    hojas.push(['Por mes', xHoja('Resultados por mes', sub, colsPer('Mes'), per(R.porMes, k=>{ const [y,m]=k.split('-'); return (nomM[(+m)-1]||k)+' '+y; }))]);
+    hojas.push(['Por semana', xHoja('Resultados por semana', sub+' · semanas de lunes a domingo, cortadas al cambiar de mes', colsPer('Semana'), per(R.porSemana, k=>k+' a '+domingoDeLunes(k)))]);
+    hojas.push(['Por día', xHoja('Resultados por día', sub, colsPer('Fecha'), per(R.porDia, k=>k))]);
+
+    const vrows=[...R.ventas].sort((a,b)=>a.numero-b.numero).map(v=>{
+      const tipo=v.esAbonoApartado?'Abono apartado':v.esAjusteDevolucion?'Ajuste devolución/cambio':v.origen==='web'?'Venta tienda web':'Venta mostrador';
+      const neto=(v.total||0)-(v.comisionValor||0), ut=neto-(v.costoTotal||0);
+      return [v.numero, v.fecha, tipo, v.cliente||'', v.vendedor||'', v.metodo||'', (v.items||[]).reduce((s,it)=>s+(it.cantidad||0),0), v.subtotal!=null?v.subtotal:v.total, v.descuento||0, v.total||0, v.comisionValor||0, neto, v.costoTotal||0, ut, neto? ut/neto:0, v.credito? (v.credito.estado==='pagado'?'Pagado':'Pendiente') : ''];
+    });
+    hojas.push(['Ventas detalle', xHoja('Detalle de ventas y movimientos de caja', sub, [
+      {h:'N°',t:'text'},{h:'Fecha',t:'text'},{h:'Tipo',t:'text'},{h:'Cliente',t:'text'},{h:'Vendedor',t:'text'},{h:'Método de pago',t:'text'},{h:'Prendas',t:'int',sum:1},{h:'Subtotal',t:'money',sum:1},{h:'Descuento',t:'money',sum:1},{h:'Total facturado',t:'money',sum:1},{h:'Comisión financiera',t:'money',sum:1},{h:'Ingreso neto',t:'money',sum:1},{h:'Costo',t:'money',sum:1},{h:'Utilidad',t:'money',sum:1},{h:'Margen',t:'pct',formulaTotal:(r)=>`IFERROR(N${r}/L${r},0)`},{h:'Crédito',t:'text'}], vrows)]);
+
+    hojas.push(['Prendas vendidas', xHoja('Prendas vendidas con costo y utilidad', sub+' · el valor vendido ya descuenta descuentos y comisiones', [
+      {h:'Artículo',t:'text'},{h:'Talla',t:'text'},{h:'Color',t:'text'},{h:'Cantidad',t:'int',sum:1},{h:'Valor vendido',t:'money',sum:1},{h:'Costo',t:'money',sum:1},{h:'Utilidad',t:'money',sum:1},{h:'Margen',t:'pct',formulaTotal:(r)=>`IFERROR(G${r}/E${r},0)`},{h:'% de las ventas',t:'pct',formulaTotal:()=>`1`}],
+      R.prendas.map(p=>{ const tot=R.prendas.reduce((s,x)=>s+x.venta,0); return [p.nombre,p.talla,p.color,p.cantidad,p.venta,p.costo,p.venta-p.costo,p.venta? (p.venta-p.costo)/p.venta:0, tot? p.venta/tot:0]; }))]);
+
+    hojas.push(['Gastos', xHoja('Gastos diarios del periodo', sub, [{h:'Fecha',t:'text'},{h:'Categoría',t:'text'},{h:'Descripción',t:'text'},{h:'Valor',t:'money',sum:1}],
+      [...R.gastosLista].sort((a,b)=>a.fecha.localeCompare(b.fecha)).map(g=>[g.fecha, g.categoria||'', g.descripcion||'', g.valor||0]))]);
+    hojas.push(['Gastos por categoría', xHoja('Gastos por categoría', sub, [{h:'Categoría',t:'text'},{h:'Total',t:'money',sum:1},{h:'% del total',t:'pct',formulaTotal:()=>`1`}],
+      R.gastosPorCategoria.map(([c,v])=>[c, v, R.gastos? v/R.gastos:0]))]);
+
+    hojas.push(['Cierres de caja', xHoja('Cierres de caja del periodo', sub, [
+      {h:'Fecha',t:'text'},{h:'Base',t:'money'},{h:'Efectivo',t:'money',sum:1},{h:'Transferencia',t:'money',sum:1},{h:'Tarjeta',t:'money',sum:1},{h:'Sistecrédito',t:'money',sum:1},{h:'Addi',t:'money',sum:1},{h:'Total ventas',t:'money',sum:1},{h:'Salidas de efectivo',t:'money',sum:1},{h:'Gastos registrados ese día',t:'money',sum:1},{h:'Salida no registrada como gasto',t:'money',sum:1},{h:'Efectivo esperado',t:'money'},{h:'Efectivo contado',t:'money'},{h:'Diferencia',t:'money',sum:1},{h:'Notas',t:'text'}],
+      R.cierres.map(c=>[c.fecha, c.baseCaja||0, c.ventasEfectivo||0, c.ventasTransferencia||0, c.ventasTarjeta||0, c.ventasSistecredito||0, c.ventasAddi||0, c.totalVentas||0, c.salidasEfectivo||0, c.gastosDia, c.salidaNoRegistrada, c.efectivoEsperado||0, c.efectivoContado||0, c.diferencia||0, c.notas||'']))]);
+
+    hojas.push(['Reinversión y flujo', xHoja('Distribución del Flujo de caja (reinversión, nómina, ahorro…)', sub, [{h:'Semana',t:'text'},{h:'Concepto',t:'text'},{h:'Observación',t:'text'},{h:'Valor',t:'money',sum:1}],
+      R.flujoDetalle.sort((a,b)=>a.semana.localeCompare(b.semana)).map(d=>[d.semana, d.concepto, d.observacion, d.valor]))]);
+    const resRows=R.reservaDetalle.map(m=>[m.fecha, m.tipo==='entrada'?'Entrada':'Salida', m.categoria, m.concepto, m.tipo==='entrada'?m.valor:0, m.tipo==='salida'?m.valor:0]);
+    const wsRes=xHoja('Movimientos de la Reserva', sub+' · saldo inicial '+fmt(R.reservaSaldoIni)+' · saldo final '+fmt(R.reservaSaldoFin), [{h:'Fecha',t:'text'},{h:'Tipo',t:'text'},{h:'Categoría',t:'text'},{h:'Concepto',t:'text'},{h:'Entrada',t:'money',sum:1},{h:'Salida',t:'money',sum:1}], resRows);
+    hojas.push(['Reserva', wsRes]);
+
+    hojas.push(['Métodos de pago', xHoja('Ventas por método de pago', sub, [{h:'Método',t:'text'},{h:'Movimientos',t:'int',sum:1},{h:'Total',t:'money',sum:1},{h:'Comisión financiera',t:'money',sum:1},{h:'Neto',t:'money',sum:1},{h:'% del total',t:'pct',formulaTotal:()=>`1`}],
+      R.porMetodo.map(([m,d])=>[m, d.n, d.t, d.com, d.t-d.com, R.producido? d.t/R.producido:0]))]);
+
+    hojas.push(['Créditos por cobrar', xHoja('Créditos pendientes con financieras (a la fecha)', 'Todas las ventas a crédito aún sin pagar', [{h:'N° venta',t:'text'},{h:'Fecha',t:'text'},{h:'Financiera',t:'text'},{h:'Cliente',t:'text'},{h:'Días transcurridos',t:'int'},{h:'Total venta',t:'money',sum:1},{h:'Comisión',t:'money',sum:1},{h:'Neto por cobrar',t:'money',sum:1}],
+      R.creditosPendientes.map(v=>[v.numero, v.fecha, v.metodo, v.cliente||'', diasEntreFechas(v.fecha, hoyISO()), v.total||0, v.comisionValor||0, netoCredito(v)]))]);
+
+    hojas.push(['Proveedores', xHoja('Compras a proveedores', 'Compras registradas en el periodo', [{h:'Fecha',t:'text'},{h:'Proveedor',t:'text'},{h:'Descripción',t:'text'},{h:'Estado',t:'text'},{h:'Fecha de pago',t:'text'},{h:'Valor',t:'money',sum:1}],
+      R.comprasPeriodo.map(c=>{ const p=DB.proveedores.find(x=>x.id===c.proveedorId); return [c.fecha, p?p.nombre:'', c.descripcion||'', c.pagado?'Pagado':'Por pagar', c.fechaPago||'', c.valor||0]; }))]);
+
+    hojas.push(['Inventario valorizado', xHoja('Inventario valorizado (existencias actuales)', 'Corte: '+hoyISO(), [{h:'Artículo',t:'text'},{h:'Categoría',t:'text'},{h:'Talla',t:'text'},{h:'Color',t:'text'},{h:'Stock',t:'int',sum:1},{h:'Costo unitario',t:'money'},{h:'Precio unitario',t:'money'},{h:'Total a costo',t:'money',sum:1},{h:'Total a precio',t:'money',sum:1},{h:'Utilidad potencial',t:'money',sum:1},{h:'Margen',t:'pct',formulaTotal:(r)=>`IFERROR(J${r}/I${r},0)`}],
+      [...DB.articulos].sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(a=>{ const st=Number(a.stock)||0, c=Number(a.costo)||0, p=Number(a.precio)||0; return [a.nombre, a.categoria||'', a.talla||'', a.color||'', st, c, p, st*c, st*p, st*(p-c), p? (p-c)/p:0]; }))]);
+
+    xLibro(hojas, 'reporte-financiero-'+desde+'-a-'+hasta+'.xlsx');
+    toast('Excel descargado');
+  }catch(err){
+    console.error(err);
+    toast('No se pudo generar el Excel (revisa tu conexión a internet)');
+  }
 }
 function exportarReportePDF(){
-  const d=datosReporteDesglose();
-  generarPDF('reporte-'+d.desde+'-a-'+d.hasta+'.pdf', 'Reporte de costos y utilidades', 'Periodo: '+d.desde+' a '+d.hasta, d.headers, d.rows, [
-    {texto:'Ventas: '+fmt(d.totVentas)},
-    {texto:'Costo de ventas: '+fmt(d.totCosto)},
-    {texto:'Utilidad bruta: '+fmt(d.utilidadBruta)},
-    {texto:'Gastos: '+fmt(d.totGastos)},
-    {texto:'Utilidad neta: '+fmt(d.utilidadBruta-d.totGastos), bold:true}
+  const desde=document.getElementById('rf-desde').value, hasta=document.getElementById('rf-hasta').value;
+  const R=calcularReporteFinanciero(desde, hasta);
+  const P=R.producido, IN=R.ingresosNetos;
+  const pc=(v,b)=> b? ((v/b)*100).toFixed(1)+'%' : '';
+  const rows=[];
+  rows.push(['LIQUIDACIÓN — ¿CUÁNTO QUEDA?','','']);
+  rows.push(['Total producido', fmt(P), '100%']);
+  R.liq.filter(l=>l.incluida).forEach(l=>rows.push(['(−) '+l.txt, fmt(l.valor), pc(l.valor,P)]));
+  rows.push(['Total descontado', fmt(R.totalDescuentos), pc(R.totalDescuentos,P)]);
+  rows.push(['LO QUE QUEDA LIBRE', fmt(R.queda), pc(R.queda,P)]);
+  rows.push(['','','']);
+  rows.push(['ESTADO DE RESULTADOS','','']);
+  rows.push(['Total producido', fmt(R.producido), pc(R.producido,IN)]);
+  rows.push(['(−) Comisiones de financieras', fmt(R.comFin), pc(R.comFin,IN)]);
+  rows.push(['Ingresos netos', fmt(IN), '100%']);
+  rows.push(['(−) Costo de la mercancía vendida', fmt(R.costoVentas), pc(R.costoVentas,IN)]);
+  rows.push(['Utilidad bruta', fmt(R.utilidadBruta), pc(R.utilidadBruta,IN)]);
+  R.gastosPorCategoria.forEach(([c,v])=>rows.push(['(−) Gasto: '+c, fmt(v), pc(v,IN)]));
+  if(R.comVend) rows.push(['(−) Comisiones a vendedores', fmt(R.comVend), pc(R.comVend,IN)]);
+  if(R.depreciacion) rows.push(['(−) Depreciación de activos', fmt(R.depreciacion), pc(R.depreciacion,IN)]);
+  rows.push(['Utilidad operacional', fmt(R.utilidadOperacional), pc(R.utilidadOperacional,IN)]);
+  rows.push(['(−) Salidas de caja no registradas como gasto', fmt(R.salCierre), pc(R.salCierre,IN)]);
+  rows.push(['(−) Faltantes / (+) sobrantes de caja', fmt(R.difCierre), pc(R.difCierre,IN)]);
+  rows.push(['Utilidad neta del periodo', fmt(R.utilidadNetaContable), pc(R.utilidadNetaContable,IN)]);
+  rows.push(['','','']);
+  rows.push(['RESULTADOS POR DÍA (producido / utilidad neta)','','']);
+  R.porDia.forEach(d=>rows.push([d.k, fmt(d.ventas), fmt(d.neta)]));
+  generarPDF('reporte-financiero-'+desde+'-a-'+hasta+'.pdf', 'Reporte financiero', 'Periodo: '+desde+' a '+hasta, ['Concepto','Valor','%'], rows, [
+    {texto:'Lo que queda libre: '+fmt(R.queda), bold:true},
+    {texto:'Utilidad neta contable: '+fmt(R.utilidadNetaContable), bold:true}
   ]);
 }
+/* Todas las demás descargas "Excel" ahora generan .xlsx real con cifras numéricas en pesos */
+function descargarCSV(filename, headers, rows){
+  const esPesos=v=>typeof v==='string' && /^\$-?[\d.]+$/.test(v.trim());
+  const aNum=v=>parseInt(v.replace(/[$.]/g,''),10)||0;
+  cargarXLSX().then(()=>{
+    const tipos=headers.map((h,i)=>{
+      const col=rows.map(r=>r[i]).filter(v=>v!=='' && v!=null);
+      if(col.length && col.every(esPesos)) return 'money';
+      if(col.length && col.every(v=>typeof v==='number')) return 'int';
+      return 'text';
+    });
+    const cols=headers.map((h,i)=>({h, t:tipos[i], sum:tipos[i]==='money'}));
+    const filas=rows.map(r=>r.map((v,i)=> tipos[i]==='money'? (esPesos(v)? aNum(v) : 0) : v));
+    const titulo=filename.replace(/-\d{4}-\d{2}-\d{2}.*$/,'').replace(/\.csv$/,'').replace(/-/g,' ');
+    const ws=xHoja(titulo.charAt(0).toUpperCase()+titulo.slice(1), 'Generado el '+new Date().toLocaleString('es-CO'), cols, filas);
+    xLibro([[titulo.slice(0,31)||'Datos', ws]], filename.replace(/\.csv$/,'.xlsx'));
+    toast('Excel descargado');
+  }).catch(()=>{
+    const escape=(v)=>{ v=String(v??''); if(v.includes(',')||v.includes('"')||v.includes('\n')) v='"'+v.replace(/"/g,'""')+'"'; return v; };
+    const fix=v=> esPesos(v)? aNum(v) : v;
+    let csv=headers.map(escape).join(',')+'\n'+rows.map(r=>r.map(v=>escape(fix(v))).join(',')).join('\n');
+    const blob=new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8;'});
+    const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    toast('Sin conexión: se descargó como CSV');
+  });
+}
+
 function renderGraficoVentasDias(){
   const dias=[];
   for(let i=6;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); dias.push(fechaISOLocal(d)); }
