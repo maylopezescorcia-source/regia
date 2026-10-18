@@ -458,7 +458,7 @@
   <div id="sidebar-foot">
     <div class="foot-line">Sesión: <strong id="rol-actual">—</strong></div>
     <div class="foot-line" id="sidebar-sync-badge"><span class="dot"></span>Solo este dispositivo</div>
-    <div class="foot-line foot-ver">Versión 2026-10-18 · Regia + Fraganza</div>
+    <div class="foot-line foot-ver">Versión 2026-10-18 · compras e inventario</div>
     <button class="btn ghost sm" onclick="cerrarSesion()" aria-label="Cerrar sesión" title="Cerrar sesión"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span class="lbl">Cerrar sesión</span></button>
   </div>
 </div>
@@ -917,11 +917,12 @@
   <!-- ================= PROVEEDORES ================= -->
   <div class="view" id="view-proveedores">
     <div class="view-head">
-      <div><h1>Proveedores</h1><p>Contactos y cuentas por pagar.</p></div>
+      <div><h1>Proveedores y compras</h1><p>Compras de mercancía que entran al inventario, cuentas por pagar y pagos.</p></div>
       <div style="display:flex;gap:8px;">
         <button class="btn ghost" onclick="exportarProveedoresExcel()">Excel</button>
         <button class="btn ghost" onclick="exportarProveedoresPDF()">PDF</button>
-        <button class="btn gold" onclick="abrirModalProveedor()">+ Nuevo proveedor</button>
+        <button class="btn ghost" onclick="abrirModalProveedor()">+ Nuevo proveedor</button>
+        <button class="btn gold" onclick="abrirModalCompra()">+ Compra de mercancía</button>
       </div>
     </div>
     <hr class="stitch head-stitch">
@@ -932,7 +933,8 @@
         <tbody id="tbl-proveedores"></tbody></table>
       </div>
       <div class="card">
-        <h3 style="margin-bottom:10px;">Registrar compra / cuenta por pagar</h3>
+        <h3 style="margin-bottom:4px;">Otra cuenta por pagar (no es mercancía)</h3>
+        <p style="font-size:12px;color:var(--ink-soft);margin:0 0 10px;">Para mercancía usa <strong>+ Compra de mercancía</strong>: así entra al inventario y actualiza el costo.</p>
         <div class="field"><label>Proveedor</label><select id="compra-proveedor"></select></div>
         <div class="field"><label>Fecha</label><input type="date" id="compra-fecha"></div>
         <div class="field"><label>Descripción</label><input type="text" id="compra-descripcion" placeholder="Ej: pedido de camisetas"></div>
@@ -941,10 +943,14 @@
       </div>
     </div>
     <div class="card">
-      <h3 style="margin-bottom:10px;">Cuentas por pagar</h3>
-      <div class="kpi-sub" style="margin-bottom:10px;">Total pendiente: <strong class="num" id="compras-total-pendiente">$0</strong></div>
-      <table><thead><tr><th>Fecha</th><th>Proveedor</th><th>Descripción</th><th class="right">Valor</th><th>Estado</th><th></th></tr></thead>
-      <tbody id="tbl-compras"></tbody></table>
+      <h3 style="margin-bottom:10px;">Compras y cuentas por pagar</h3>
+      <div class="toolbar" style="margin-bottom:8px;">
+        <div class="field"><label>Tienda</label><select id="compras-filtro-tienda" onchange="renderCompras()"><option value="todas">Las dos</option><option value="regia">Regia by CM</option><option value="fraganza">Fraganza by CM</option></select></div>
+        <div class="field"><label>Estado</label><select id="compras-filtro-estado" onchange="renderCompras()"><option value="todas">Todas</option><option value="pend">Por pagar</option><option value="pag">Pagadas</option></select></div>
+      </div>
+      <div class="kpi-sub" style="margin-bottom:10px;">Total por pagar: <strong class="num" id="compras-total-pendiente">$0</strong></div>
+      <div style="overflow-x:auto;"><table><thead><tr><th>Fecha</th><th>Proveedor</th><th>Tienda</th><th>Detalle</th><th class="right">Total</th><th class="right">Pagado</th><th class="right">Saldo</th><th>Estado</th><th></th></tr></thead>
+      <tbody id="tbl-compras"></tbody></table></div>
     </div>
   </div>
 
@@ -1632,6 +1638,80 @@
   </div>
 </div>
 
+
+<!-- ===== Modal: compra de mercancía ===== -->
+<div class="modal-bg" id="modal-compra">
+  <div class="modal" style="width:860px;max-width:96vw;">
+    <h3>Compra de mercancía</h3>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin:-4px 0 12px;">Lo que registres aquí entra al inventario, actualiza el costo promedio de cada referencia y queda como cuenta por pagar (o pagada).</p>
+    <div class="row">
+      <div class="field"><label>Proveedor</label><select id="cm-proveedor"></select></div>
+      <div class="field"><label>Tienda</label><select id="cm-tienda" onchange="cmRefrescarLista()"><option value="regia">Regia by CM (ropa deportiva)</option><option value="fraganza">Fraganza by CM (perfumes)</option></select></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Fecha</label><input type="date" id="cm-fecha"></div>
+      <div class="field"><label>N.° factura del proveedor (opcional)</label><input type="text" id="cm-factura" maxlength="40"></div>
+    </div>
+    <div class="card" style="background:var(--surface-2);margin:6px 0 12px;">
+      <h3 style="font-size:14px;margin-bottom:8px;">Agregar referencia que ya tienes</h3>
+      <div class="row" style="align-items:flex-end;">
+        <div class="field" style="flex:3;"><label>Referencia (escribe para buscar o escanea el código)</label><input type="text" id="cm-buscar" list="cm-dl" placeholder="Nombre, talla o color…"><datalist id="cm-dl"></datalist></div>
+        <div class="field"><label>Cantidad</label><input type="number" id="cm-cant" min="1" value="1"></div>
+        <div class="field"><label>Costo unitario</label><input type="number" id="cm-costo" min="0"></div>
+        <button class="btn gold" onclick="cmAgregarExistente()">+ Agregar</button>
+      </div>
+      <details style="margin-top:6px;"><summary style="cursor:pointer;font-weight:600;font-size:13px;">¿Es una referencia nueva? Créala aquí</summary>
+        <div class="row" style="margin-top:8px;">
+          <div class="field" style="flex:2;"><label>Nombre</label><input type="text" id="cm-n-nombre"></div>
+          <div class="field"><label>Categoría</label><input type="text" id="cm-n-cat"></div>
+        </div>
+        <div class="row" style="align-items:flex-end;">
+          <div class="field"><label>Tallas o presentaciones (separadas por coma)</label><input type="text" id="cm-n-tallas" placeholder="S, M, L  ·  100ml"></div>
+          <div class="field"><label>Colores (separados por coma)</label><input type="text" id="cm-n-colores" placeholder="Negro, Blanco"></div>
+          <div class="field"><label>Cantidad por variante</label><input type="number" id="cm-n-cant" min="1" value="1"></div>
+        </div>
+        <div class="row" style="align-items:flex-end;">
+          <div class="field"><label>Costo unitario</label><input type="number" id="cm-n-costo" min="0"></div>
+          <div class="field"><label>Precio de venta</label><input type="number" id="cm-n-precio" min="0"></div>
+          <button class="btn gold" onclick="cmAgregarNueva()">+ Agregar nueva</button>
+        </div>
+      </details>
+    </div>
+    <div style="overflow-x:auto;"><table><thead><tr><th>Referencia</th><th class="center">Talla</th><th class="center">Color</th><th class="right">Cant.</th><th class="right">Costo unit.</th><th class="right">Subtotal</th><th></th></tr></thead><tbody id="cm-lineas"></tbody></table></div>
+    <div class="row" style="margin-top:10px;align-items:flex-end;">
+      <div class="field"><label>Fletes, envío u otros costos de la compra</label><input type="number" id="cm-fletes" min="0" value="0" oninput="cmPintar()"></div>
+      <div class="field"><label>¿Cómo se paga?</label><select id="cm-pago" onchange="cmPintar()"><option value="credito">A crédito (queda por pagar)</option><option value="contado">Pagada de contado</option><option value="parcial">Abono parcial</option></select></div>
+      <div class="field" id="cm-abono-wrap" style="display:none;"><label>Valor abonado</label><input type="number" id="cm-abono" min="0"></div>
+      <div class="field" id="cm-metodo-wrap" style="display:none;"><label>Método</label><select id="cm-metodo"><option>Transferencia</option><option>Efectivo</option></select></div>
+    </div>
+    <p style="font-size:11.5px;color:var(--ink-soft);margin:0;">Los fletes se suman al costo de cada unidad en proporción a su valor, para que la utilidad sea real.</p>
+    <div class="tot-line big" style="margin-top:10px;"><span>Total de la compra</span><span class="num" id="cm-total">$0</span></div>
+    <div id="cm-resumen" style="font-size:12.5px;color:var(--ink-soft);"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="cerrarModal('modal-compra')">Cancelar</button>
+      <button class="btn gold" onclick="guardarCompraMercancia()">Guardar compra y sumar al inventario</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal: detalle / pago de compra ===== -->
+<div class="modal-bg" id="modal-compra-detalle">
+  <div class="modal" style="width:640px;max-width:96vw;">
+    <h3 id="cd-titulo">Compra</h3>
+    <div id="cd-body"></div>
+    <div class="card" style="background:var(--surface-2);margin-top:12px;" id="cd-pago-wrap">
+      <h3 style="font-size:14px;margin-bottom:8px;">Registrar pago</h3>
+      <div class="row" style="align-items:flex-end;">
+        <div class="field"><label>Fecha</label><input type="date" id="cd-fecha"></div>
+        <div class="field"><label>Valor</label><input type="number" id="cd-valor" min="0"></div>
+        <div class="field"><label>Método</label><select id="cd-metodo"><option>Transferencia</option><option>Efectivo</option></select></div>
+        <button class="btn gold" onclick="registrarPagoCompra()">Registrar pago</button>
+      </div>
+    </div>
+    <div class="modal-actions"><button class="btn ghost" onclick="cerrarModal('modal-compra-detalle')">Cerrar</button></div>
+  </div>
+</div>
+
 <!-- ===== Modal: gasto ===== -->
 <div class="modal-bg" id="modal-gasto">
   <div class="modal">
@@ -2214,7 +2294,7 @@ function datosProveedores(){
   const headers=['Nombre','Teléfono','NIT','Correo','Dirección','Debe'];
   let totalDeuda=0;
   const rows=DB.proveedores.map(p=>{
-    const debo=DB.compras.filter(c=>c.proveedorId===p.id && !c.pagado).reduce((s,c)=>s+c.valor,0);
+    const debo=DB.compras.filter(c=>c.proveedorId===p.id).reduce((s,c)=>s+saldoCompra(c),0);
     totalDeuda+=debo;
     return [p.nombre, p.telefono||'', p.nit||'', p.correo||'', p.direccion||'', fmt(debo)];
   });
@@ -4680,7 +4760,7 @@ function renderTablaProveedores(){
   const tbody=document.getElementById('tbl-proveedores');
   if(!DB.proveedores.length){ tbody.innerHTML='<tr><td colspan="5"><div class="empty">Aún no tienes proveedores. Agrega el primero.</div></td></tr>'; return; }
   tbody.innerHTML=DB.proveedores.map(p=>{
-    const debo=DB.compras.filter(c=>c.proveedorId===p.id && !c.pagado).reduce((s,c)=>s+c.valor,0);
+    const debo=DB.compras.filter(c=>c.proveedorId===p.id).reduce((s,c)=>s+saldoCompra(c),0);
     return `<tr><td>${p.nombre}</td><td>${p.telefono||'—'}</td><td>${p.nit||'—'}</td>
       <td class="right num">${fmt(debo)}</td>
       <td class="right">
@@ -4742,43 +4822,210 @@ function guardarCompra(){
   const descripcion=document.getElementById('compra-descripcion').value.trim();
   const valor=parseFloat(document.getElementById('compra-valor').value)||0;
   if(valor<=0){ toast('Ingresa un valor válido'); return; }
-  DB.compras.push({id:uid(), proveedorId, fecha, descripcion, valor, pagado:false, fechaPago:null});
+  DB.compras.push({id:uid(), tipo:'otro', proveedorId, fecha, descripcion, valor, pagado:false, fechaPago:null, abonos:[]});
   guardarDB();
   document.getElementById('compra-descripcion').value='';
   document.getElementById('compra-valor').value='';
   renderProveedores();
   toast('Compra registrada');
 }
+/* ---------- Compras: pagos (abonos) y saldo ---------- */
+function abonosCompra(c){
+  if(Array.isArray(c.abonos)) return c.abonos;
+  return c.pagado? [{fecha:c.fechaPago||c.fecha, valor:Number(c.valor)||0, metodo:'', legado:true}] : [];
+}
+function pagadoCompra(c){ return abonosCompra(c).reduce((s,a)=>s+(Number(a.valor)||0),0); }
+function saldoCompra(c){ return Math.max(0,(Number(c.valor)||0)-pagadoCompra(c)); }
+function tiendaDeCompra(c){
+  if(c.tienda) return c.tienda;
+  const p=(DB.proveedores||[]).find(x=>x.id===c.proveedorId);
+  const t=((c.descripcion||'')+' '+(p?p.nombre:'')).toLowerCase();
+  if(/fraganza|perfum/.test(t)) return 'fraganza';
+  if(/regia/.test(t)) return 'regia';
+  return null; // compra antigua sin tienda: en los reportes se reparte según las ventas
+}
+function normalizarPagoCompra(c){
+  if(!Array.isArray(c.abonos)) c.abonos=abonosCompra(c).map(a=>({fecha:a.fecha,valor:a.valor,metodo:a.metodo||''}));
+  c.pagado=saldoCompra(c)<=0;
+  c.fechaPago=c.pagado? (c.abonos.length? c.abonos[c.abonos.length-1].fecha : hoyISO()) : null;
+}
 function marcarCompraPagada(id){
   const c=DB.compras.find(x=>x.id===id); if(!c) return;
-  c.pagado=!c.pagado;
-  c.fechaPago=c.pagado? hoyISO() : null;
-  guardarDB();
-  renderProveedores();
+  normalizarPagoCompra(c);
+  const saldo=saldoCompra(c);
+  if(saldo>0){ c.abonos.push({fecha:hoyISO(), valor:saldo, metodo:'Transferencia'}); }
+  else { if(!confirm('¿Quitar los pagos registrados y dejarla otra vez por pagar?')) return; c.abonos=[]; }
+  normalizarPagoCompra(c); guardarDB(); renderProveedores();
 }
 function eliminarCompra(id){
-  if(!confirm('¿Eliminar este registro de compra?')) return;
-  DB.compras=DB.compras.filter(c=>c.id!==id);
-  guardarDB();
-  renderProveedores();
+  const c=DB.compras.find(x=>x.id===id); if(!c) return;
+  if(c.tipo==='mercancia' && (c.lineas||[]).length){
+    if(!confirm('¿Eliminar esta compra de mercancía?\n\nSe RESTARÁN del inventario las unidades que entraron con ella y, si esas referencias no han tenido movimiento, vuelven al costo que tenían antes.')) return;
+    c.lineas.forEach(l=>{
+      const a=DB.articulos.find(x=>x.id===l.articuloId); if(!a) return;
+      const stockAhora=Number(a.stock)||0;
+      if(l.nueva && stockAhora===l.cantidad){ DB.articulos=DB.articulos.filter(x=>x!==a); return; }
+      if(stockAhora===(l.stockAntes||0)+l.cantidad && l.costoAntes!=null) a.costo=l.costoAntes;
+      a.stock=Math.max(0, stockAhora-l.cantidad);
+    });
+  } else if(!confirm('¿Eliminar este registro de compra?')) return;
+  DB.compras=DB.compras.filter(x=>x.id!==id);
+  guardarDB(); renderProveedores(); if(typeof renderInventario==='function') renderInventario();
+  toast('Compra eliminada');
 }
 function renderCompras(){
-  const lista=[...DB.compras].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  const fT=document.getElementById('compras-filtro-tienda')?.value||'todas';
+  const fE=document.getElementById('compras-filtro-estado')?.value||'todas';
+  let lista=[...DB.compras].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  if(fT!=='todas') lista=lista.filter(c=>tiendaDeCompra(c)===fT);
+  if(fE==='pend') lista=lista.filter(c=>saldoCompra(c)>0);
+  if(fE==='pag') lista=lista.filter(c=>saldoCompra(c)<=0);
   const tbody=document.getElementById('tbl-compras');
-  const pendiente=DB.compras.filter(c=>!c.pagado).reduce((s,c)=>s+c.valor,0);
-  document.getElementById('compras-total-pendiente').textContent=fmt(pendiente);
-  if(!lista.length){ tbody.innerHTML='<tr><td colspan="6"><div class="empty">Aún no hay compras registradas.</div></td></tr>'; return; }
+  document.getElementById('compras-total-pendiente').textContent=fmt(lista.reduce((s,c)=>s+saldoCompra(c),0));
+  if(!lista.length){ tbody.innerHTML='<tr><td colspan="9"><div class="empty">No hay compras con ese filtro.</div></td></tr>'; return; }
   tbody.innerHTML=lista.map(c=>{
-    const p=DB.proveedores.find(x=>x.id===c.proveedorId);
-    return `<tr><td>${c.fecha}</td><td>${p?p.nombre:'—'}</td><td>${c.descripcion||'—'}</td>
-      <td class="right num">${fmt(c.valor)}</td>
-      <td>${c.pagado? '<span class="badge success">Pagado</span>' : '<span class="badge danger">Pendiente</span>'}</td>
-      <td class="right">
-        <button class="btn ghost sm" onclick="marcarCompraPagada('${c.id}')">${c.pagado?'Marcar pendiente':'Marcar pagado'}</button>
+    const p=DB.proveedores.find(x=>x.id===c.proveedorId), t=tiendaDeCompra(c), saldo=saldoCompra(c), pag=pagadoCompra(c);
+    const det= c.tipo==='mercancia'? `${(c.lineas||[]).reduce((s,l)=>s+l.cantidad,0)} unid. · ${(c.lineas||[]).length} ref.${c.numeroFactura?' · Fact. '+escH(c.numeroFactura):''}` : escH(c.descripcion||'—');
+    const est= saldo<=0? '<span class="badge success">Pagada</span>' : pag>0? '<span class="badge gold">Abonada</span>' : '<span class="badge danger">Por pagar</span>';
+    return `<tr><td>${c.fecha}</td><td>${p?escH(p.nombre):'—'}</td><td>${t?badgeTienda(t):'<span class="badge">Sin tienda</span>'}</td><td>${c.tipo==='mercancia'?'📦 ':''}${det}</td>
+      <td class="right num">${fmt(c.valor)}</td><td class="right num">${fmt(pag)}</td><td class="right num">${fmt(saldo)}</td><td>${est}</td>
+      <td class="right" style="white-space:nowrap;">
+        <button class="btn ghost sm" onclick="verCompra('${c.id}')">${saldo>0?'Ver / pagar':'Ver'}</button>
         <button class="btn danger sm" onclick="eliminarCompra('${c.id}')">Eliminar</button>
       </td></tr>`;
   }).join('');
 }
+
+/* ---------- Compra de mercancía: formulario ---------- */
+let cmLineas=[];
+function abrirModalCompra(){
+  if(!DB.proveedores.length){ toast('Primero crea el proveedor con "+ Nuevo proveedor"'); abrirModalProveedor(); return; }
+  cmLineas=[];
+  document.getElementById('cm-proveedor').innerHTML=DB.proveedores.map(p=>`<option value="${p.id}">${escH(p.nombre)}</option>`).join('');
+  document.getElementById('cm-fecha').value=hoyISO();
+  ['cm-factura','cm-buscar','cm-costo','cm-n-nombre','cm-n-cat','cm-n-tallas','cm-n-colores','cm-n-costo','cm-n-precio','cm-abono'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('cm-cant').value=1; document.getElementById('cm-n-cant').value=1; document.getElementById('cm-fletes').value=0;
+  document.getElementById('cm-pago').value='credito';
+  cmRefrescarLista(); cmPintar(); abrirModal('modal-compra');
+}
+function cmEtiqueta(a){ return `${a.nombre} · ${a.talla} · ${a.color}${a.codigoBarras?' · '+a.codigoBarras:''}`; }
+function cmRefrescarLista(){
+  const t=document.getElementById('cm-tienda').value;
+  document.getElementById('cm-dl').innerHTML=DB.articulos.filter(a=>tiendaDeArticulo(a)===t).sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(a=>`<option value="${escH(cmEtiqueta(a))}">`).join('');
+}
+function cmBuscarArticulo(txt){
+  txt=(txt||'').trim(); if(!txt) return null;
+  const t=document.getElementById('cm-tienda').value;
+  const arts=DB.articulos.filter(a=>tiendaDeArticulo(a)===t);
+  return arts.find(a=>cmEtiqueta(a)===txt) || arts.find(a=>a.codigoBarras && a.codigoBarras===txt) || null;
+}
+// al elegir una referencia, propone su costo actual
+document.addEventListener('change', e=>{ if(e.target && e.target.id==='cm-buscar'){ const a=cmBuscarArticulo(e.target.value); if(a && !document.getElementById('cm-costo').value) document.getElementById('cm-costo').value=a.costo||''; } });
+function cmAgregarExistente(){
+  const a=cmBuscarArticulo(document.getElementById('cm-buscar').value);
+  if(!a){ toast('Elige la referencia de la lista (o escanea su código de barras)'); return; }
+  const cant=parseInt(document.getElementById('cm-cant').value)||0, costo=parseFloat(document.getElementById('cm-costo').value);
+  if(cant<=0){ toast('Escribe la cantidad'); return; }
+  if(isNaN(costo) || costo<0){ toast('Escribe el costo unitario de esta compra'); return; }
+  const ex=cmLineas.find(l=>!l.nueva && l.articuloId===a.id && l.costoUnit===costo);
+  if(ex) ex.cantidad+=cant; else cmLineas.push({articuloId:a.id, nombre:a.nombre, talla:a.talla, color:a.color, cantidad:cant, costoUnit:costo});
+  document.getElementById('cm-buscar').value=''; document.getElementById('cm-costo').value=''; document.getElementById('cm-cant').value=1;
+  cmPintar(); document.getElementById('cm-buscar').focus();
+}
+function cmAgregarNueva(){
+  const g=id=>document.getElementById(id);
+  const nombre=g('cm-n-nombre').value.trim(); if(!nombre){ toast('Escribe el nombre de la referencia nueva'); return; }
+  const cant=parseInt(g('cm-n-cant').value)||0, costo=parseFloat(g('cm-n-costo').value)||0, precio=parseFloat(g('cm-n-precio').value)||0;
+  if(cant<=0){ toast('Escribe la cantidad por variante'); return; }
+  if(costo<=0){ toast('Escribe el costo unitario'); return; }
+  if(precio<=0){ toast('Escribe el precio de venta'); return; }
+  const tallas=g('cm-n-tallas').value.split(',').map(s=>s.trim()).filter(Boolean), colores=g('cm-n-colores').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const grupoId=uid();
+  (tallas.length?tallas:['Única']).forEach(t=>(colores.length?colores:['Único']).forEach(c=>{
+    cmLineas.push({nueva:true, grupoId, nombre, categoria:g('cm-n-cat').value.trim(), talla:t, color:c, cantidad:cant, costoUnit:costo, precio});
+  }));
+  ['cm-n-nombre','cm-n-cat','cm-n-tallas','cm-n-colores','cm-n-costo','cm-n-precio'].forEach(id=>g(id).value=''); g('cm-n-cant').value=1;
+  cmPintar();
+}
+function cmQuitar(i){ cmLineas.splice(i,1); cmPintar(); }
+function cmTotales(){
+  const sub=cmLineas.reduce((s,l)=>s+l.cantidad*l.costoUnit,0);
+  const fletes=Math.max(0,parseFloat(document.getElementById('cm-fletes').value)||0);
+  return {sub, fletes, total:sub+fletes, factor: sub>0? (sub+fletes)/sub : 1};
+}
+function cmPintar(){
+  const T=cmTotales();
+  document.getElementById('cm-lineas').innerHTML= cmLineas.length? cmLineas.map((l,i)=>`<tr><td>${l.nueva?'<span class="badge gold">Nueva</span> ':''}${escH(l.nombre)}</td><td class="center">${escH(l.talla)}</td><td class="center">${escH(l.color)}</td><td class="right num">${l.cantidad}</td><td class="right num">${fmt(l.costoUnit)}</td><td class="right num">${fmt(l.cantidad*l.costoUnit)}</td><td class="right"><button class="btn danger sm" onclick="cmQuitar(${i})">×</button></td></tr>`).join('')
+    : '<tr><td colspan="7"><div class="empty">Agrega las referencias que llegaron en esta compra.</div></td></tr>';
+  document.getElementById('cm-total').textContent=fmt(T.total);
+  const pago=document.getElementById('cm-pago').value;
+  document.getElementById('cm-abono-wrap').style.display= pago==='parcial'?'':'none';
+  document.getElementById('cm-metodo-wrap').style.display= pago!=='credito'?'':'none';
+  const unid=cmLineas.reduce((s,l)=>s+l.cantidad,0);
+  document.getElementById('cm-resumen').innerHTML= cmLineas.length? `${unid} unidad(es) · subtotal ${fmt(T.sub)}${T.fletes?` · fletes ${fmt(T.fletes)} (suben el costo de cada unidad ${((T.factor-1)*100).toFixed(1)}%)`:''}` : '';
+}
+function guardarCompraMercancia(){
+  const g=id=>document.getElementById(id);
+  if(!cmLineas.length){ toast('Agrega al menos una referencia'); return; }
+  const proveedorId=g('cm-proveedor').value, tienda=g('cm-tienda').value, fecha=g('cm-fecha').value||hoyISO();
+  const T=cmTotales(), pago=g('cm-pago').value, metodo=g('cm-metodo').value;
+  const abono= pago==='contado'? T.total : pago==='parcial'? Math.min(T.total, Math.max(0,parseFloat(g('cm-abono').value)||0)) : 0;
+  if(pago==='parcial' && abono<=0){ toast('Escribe el valor abonado'); return; }
+  const lineas=[];
+  cmLineas.forEach(l=>{
+    const costoFinal=Math.round(l.costoUnit*T.factor);
+    if(l.nueva){
+      const a={id:uid(), grupoId:l.grupoId, tienda, nombre:l.nombre, categoria:l.categoria||'', talla:l.talla, color:l.color, costo:costoFinal, precio:l.precio, stock:l.cantidad, codigoBarras:generarCodigoBarras(), imagen:null};
+      DB.articulos.push(a);
+      lineas.push({articuloId:a.id, nueva:true, nombre:a.nombre, talla:a.talla, color:a.color, cantidad:l.cantidad, costoUnit:l.costoUnit, costoFinal, stockAntes:0, costoAntes:null, costoDespues:costoFinal});
+    } else {
+      const a=DB.articulos.find(x=>x.id===l.articuloId); if(!a) return;
+      const st=Math.max(0,Number(a.stock)||0), cA=Number(a.costo)||0;
+      const nuevoCosto= st>0? Math.round((st*cA + l.cantidad*costoFinal)/(st+l.cantidad)) : costoFinal; // costo promedio ponderado
+      lineas.push({articuloId:a.id, nombre:a.nombre, talla:a.talla, color:a.color, cantidad:l.cantidad, costoUnit:l.costoUnit, costoFinal, stockAntes:st, costoAntes:cA, costoDespues:nuevoCosto});
+      a.stock=(Number(a.stock)||0)+l.cantidad; a.costo=nuevoCosto;
+    }
+  });
+  const unid=lineas.reduce((s,l)=>s+l.cantidad,0);
+  const compra={id:uid(), tipo:'mercancia', proveedorId, tienda, fecha, numeroFactura:g('cm-factura').value.trim(), descripcion:'Mercancía '+cortoTienda(tienda)+' · '+unid+' unid.', subtotal:T.sub, fletes:T.fletes, valor:T.total, lineas,
+    abonos: abono>0? [{fecha, valor:abono, metodo}] : [], pagado:false, fechaPago:null, creadoEn:new Date().toISOString()};
+  normalizarPagoCompra(compra);
+  DB.compras.push(compra);
+  guardarDB(); cerrarModal('modal-compra'); renderProveedores(); if(typeof renderInventario==='function') renderInventario();
+  toast('Compra guardada: '+unid+' unidad(es) sumadas al inventario de '+nombreTienda(tienda));
+}
+
+/* ---------- Detalle y pagos ---------- */
+let compraDetalleId=null;
+function verCompra(id){
+  const c=DB.compras.find(x=>x.id===id); if(!c) return; compraDetalleId=id;
+  const p=DB.proveedores.find(x=>x.id===c.proveedorId), t=tiendaDeCompra(c);
+  document.getElementById('cd-titulo').textContent=(c.tipo==='mercancia'?'Compra de mercancía':'Cuenta por pagar')+' — '+(p?p.nombre:'');
+  let html=`<p style="margin:0 0 8px;">${c.fecha} · ${t?badgeTienda(t):'Sin tienda'}${c.numeroFactura?' · Factura '+escH(c.numeroFactura):''}</p>`;
+  if(c.tipo==='mercancia'){
+    html+=`<div style="overflow-x:auto;"><table><thead><tr><th>Referencia</th><th class="right">Cant.</th><th class="right">Costo factura</th><th class="right">Costo con fletes</th><th class="right">Costo promedio nuevo</th></tr></thead><tbody>`+
+      (c.lineas||[]).map(l=>`<tr><td>${escH(l.nombre)} <em style="color:var(--ink-soft)">${escH(l.talla)}/${escH(l.color)}</em>${l.nueva?' <span class="badge gold">Nueva</span>':''}</td><td class="right num">${l.cantidad}</td><td class="right num">${fmt(l.costoUnit)}</td><td class="right num">${fmt(l.costoFinal)}</td><td class="right num">${fmt(l.costoDespues!=null?l.costoDespues:l.costoFinal)}</td></tr>`).join('')+`</tbody></table></div>`;
+    if(c.fletes) html+=`<p style="font-size:12.5px;margin:6px 0 0;">Subtotal ${fmt(c.subtotal)} + fletes ${fmt(c.fletes)}</p>`;
+  } else html+=`<p>${escH(c.descripcion||'')}</p>`;
+  const ab=abonosCompra(c);
+  html+=`<div class="tot-line" style="margin-top:10px;"><span>Total</span><span class="num">${fmt(c.valor)}</span></div>`+
+    ab.map(a=>`<div class="tot-line"><span>Pago ${a.fecha}${a.metodo?' · '+escH(a.metodo):''}</span><span class="num">− ${fmt(a.valor)}</span></div>`).join('')+
+    `<div class="tot-line big"><span>Saldo por pagar</span><span class="num">${fmt(saldoCompra(c))}</span></div>`;
+  document.getElementById('cd-body').innerHTML=html;
+  document.getElementById('cd-pago-wrap').style.display= saldoCompra(c)>0? '' : 'none';
+  document.getElementById('cd-fecha').value=hoyISO(); document.getElementById('cd-valor').value=saldoCompra(c);
+  abrirModal('modal-compra-detalle');
+}
+function registrarPagoCompra(){
+  const c=DB.compras.find(x=>x.id===compraDetalleId); if(!c) return;
+  const valor=Math.min(saldoCompra(c), Math.max(0,parseFloat(document.getElementById('cd-valor').value)||0));
+  if(valor<=0){ toast('Escribe el valor del pago'); return; }
+  normalizarPagoCompra(c);
+  c.abonos.push({fecha:document.getElementById('cd-fecha').value||hoyISO(), valor, metodo:document.getElementById('cd-metodo').value});
+  normalizarPagoCompra(c); guardarDB(); renderProveedores(); verCompra(c.id);
+  toast(saldoCompra(c)<=0? 'Compra pagada completa' : 'Abono registrado; saldo '+fmt(saldoCompra(c)));
+}
+
 
 /* ================= ACTIVOS FIJOS ================= */
 function calcularDepreciacionActivo(a){
@@ -5216,7 +5463,7 @@ const FILAS_COMPARATIVO=[
   ['Comisiones a vendedores','comVend','money'],['Depreciación de activos','depreciacion','money'],
   ['Utilidad operacional','utilidadOperacional','money',1],['Descuadres y salidas de caja','',R=>R.salCierre+R.difCierre,'money'],
   ['Utilidad neta','utilidadNetaContable','money',1],['Margen neto',R=>R.ingresosNetos? R.utilidadNetaContable/R.ingresosNetos:0,'pct'],
-  ['Reinversión en mercancía',R=>R.reinvFlujo+R.reinvRes,'money'],['Lo que queda libre','queda','money',1],
+  ['Reinversión en mercancía (flujo, reserva y compras pagadas)',R=>R.reinvFlujo+R.reinvRes+R.comprasMerc,'money'],['Compras de mercancía facturadas',R=>R.comprasMercFacturadas,'money'],['Lo que queda libre','queda','money',1],
   ['Facturas',R=>R.nFacturas,'int'],['Unidades vendidas','unidades','int'],['Ticket promedio','ticketPromedio','money'],
   ['Inventario a costo (hoy)','inventarioCosto','money'],['Inventario a precio de venta','inventarioPrecio','money'],['Unidades en inventario','inventarioUnidades','int']
 ].map(f=> typeof f[1]==='function'? {t:f[0],fn:f[1],tipo:f[2],b:f[3]} : f[1]===''? {t:f[0],fn:f[2],tipo:f[3],b:f[4]} : {t:f[0],fn:R=>R[f[1]],tipo:f[2],b:f[3]});
@@ -5255,11 +5502,12 @@ const LIQ_LINEAS=[
   {k:'salCierre', txt:'Salidas de efectivo en los cierres de caja (no registradas como gasto)', def:true},
   {k:'difCierre', txt:'Faltantes de caja en los cierres (menos sobrantes)', def:true},
   {k:'reinvFlujo',txt:'Reinversión en mercancía (Flujo de caja)', def:true},
+  {k:'comprasMerc',txt:'Compras de mercancía a proveedores (pagos hechos en el periodo)', def:true},
   {k:'reinvRes',  txt:'Compra de mercancía pagada desde la Reserva', def:true},
   {k:'otrosFlujo',txt:'Nómina, deudas, retiros y otros repartidos en Flujo de caja', def:true},
   {k:'otrosRes',  txt:'Otras salidas de la Reserva (nómina, arriendo, deudas, retiros…)', def:true},
   {k:'comVend',   txt:'Comisiones a vendedores', def:true},
-  {k:'compProv',  txt:'Compras a proveedores pagadas en el periodo', def:false, nota:'Márcala solo si estas compras NO las registraste ya como reinversión en Flujo de caja o Reserva.'}
+  {k:'compProv',  txt:'Otras cuentas por pagar a proveedores (pagos hechos en el periodo)', def:false, nota:'Márcala si son pagos que NO registraste también como gasto diario.'}
 ];
 function liqIncluye(k){
   const cfg=(DB.config.repLiqIncluir)||{};
@@ -5400,9 +5648,13 @@ function calcularReporteFinanciero(desde, hasta, tienda){
   R.reservaSaldoFin=R.reservaSaldoIni+R.reservaEntradas-R.reservaSalidas;
 
   // proveedores
-  R.comprasPeriodo=(DB.compras||[]).filter(c=>enR(c.fecha)).map(c=>{ const parte=parteTexto((c.descripcion||'')+' '+((DB.proveedores||[]).find(p=>p.id===c.proveedorId)||{}).nombre); return {...c, parte}; }).filter(c=>c.parte>0);
-  R.compProv=S((DB.compras||[]).filter(c=>c.pagado && enR(c.fechaPago||c.fecha)),c=>(Number(c.valor)||0)*parteTexto(c.descripcion));
-  R.cxpProveedores=S((DB.compras||[]).filter(c=>!c.pagado),c=>(Number(c.valor)||0)*parteTexto(c.descripcion));
+  const parteCompra=c=>{ if(G) return 1; const t=tiendaDeCompra(c); return t? (t===tienda?1:0) : F; };
+  const pagosEnPer=c=>abonosCompra(c).filter(a=>enR(a.fecha)).reduce((s,a)=>s+(Number(a.valor)||0),0);
+  R.comprasPeriodo=(DB.compras||[]).filter(c=>enR(c.fecha)).map(c=>({...c, parte:parteCompra(c)})).filter(c=>c.parte>0);
+  R.comprasMerc=S((DB.compras||[]).filter(c=>c.tipo==='mercancia'),c=>pagosEnPer(c)*parteCompra(c));
+  R.compProv=S((DB.compras||[]).filter(c=>c.tipo!=='mercancia'),c=>pagosEnPer(c)*parteCompra(c));
+  R.comprasMercFacturadas=S(R.comprasPeriodo.filter(c=>c.tipo==='mercancia'),c=>(Number(c.valor)||0)*c.parte);
+  R.cxpProveedores=S(DB.compras||[],c=>saldoCompra(c)*parteCompra(c));
 
   // créditos con financieras
   R.creditosPendientes=DB.ventas.filter(v=>v.credito && v.credito.estado!=='pagado' && sv(v)>0);
@@ -5475,6 +5727,7 @@ function renderReporteFinanciero(R){
   const notas=[];
   if(R.cxcFinPeriodo>0) notas.push(`De lo producido, <strong>${fmt(R.cxcFinPeriodo)}</strong> todavía lo deben las financieras.`);
   if(R.ahorroFlujo>0) notas.push(`Lo enviado a "Ahorro / reserva" (${fmt(R.ahorroFlujo)}) no se descuenta porque sigue siendo tuyo; el saldo actual de la Reserva es ${fmt(R.reservaSaldoActual)}.`);
+  if(R.reinvFlujo>0 && R.comprasMerc>0 && liqIncluye('reinvFlujo') && liqIncluye('comprasMerc')) notas.push('<span class="badge gold">Ojo: tienes reinversión asignada en Flujo de caja ('+fmt(R.reinvFlujo)+') y también pagos de compras de mercancía ('+fmt(R.comprasMerc)+'). Si es la misma plata, desmarca una de las dos líneas.</span>');
   if(R.diasSinCierre.length) notas.push(`<span class="badge danger">Hay ${R.diasSinCierre.length} día(s) con ventas sin cierre de caja: ${R.diasSinCierre.slice(0,6).join(', ')}${R.diasSinCierre.length>6?'…':''}</span>`);
   document.getElementById('rep-liq-nota').innerHTML=notas.join(' ');
 
@@ -5722,8 +5975,10 @@ async function exportarReporteExcel(){
     hojas.push(['Créditos por cobrar', xHoja('Créditos pendientes con financieras (a la fecha)', 'Todas las ventas a crédito aún sin pagar', [{h:'N° venta',t:'text'},{h:'Fecha',t:'text'},{h:'Financiera',t:'text'},{h:'Cliente',t:'text'},{h:'Días transcurridos',t:'int'},{h:'Total venta',t:'money',sum:1},{h:'Comisión',t:'money',sum:1},{h:'Neto por cobrar',t:'money',sum:1}],
       R.creditosPendientes.map(v=>{ const k=R.sv(v); return [v.numero, v.fecha, v.metodo, v.cliente||'', diasEntreFechas(v.fecha, hoyISO()), (v.total||0)*k, (v.comisionValor||0)*k, netoCredito(v)*k]; }))]);
 
-    hojas.push(['Proveedores', xHoja('Compras a proveedores', 'Compras registradas en el periodo', [{h:'Fecha',t:'text'},{h:'Proveedor',t:'text'},{h:'Descripción',t:'text'},{h:'Estado',t:'text'},{h:'Fecha de pago',t:'text'},{h:'Valor',t:'money',sum:1}],
-      R.comprasPeriodo.map(c=>{ const p=DB.proveedores.find(x=>x.id===c.proveedorId); return [c.fecha, p?p.nombre:'', c.descripcion||'', c.pagado?'Pagado':'Por pagar', c.fechaPago||'', c.valor||0]; }))]);
+    hojas.push(['Compras y proveedores', xHoja('Compras a proveedores', sub+' · compras registradas en el periodo', [{h:'Fecha',t:'text'},{h:'Proveedor',t:'text'},{h:'Tienda',t:'text'},{h:'Tipo',t:'text'},{h:'Factura',t:'text'},{h:'Detalle',t:'text'},{h:'Total',t:'money',sum:1},{h:'Pagado',t:'money',sum:1},{h:'Saldo por pagar',t:'money',sum:1},{h:'Parte de este reporte',t:'pct'}],
+      R.comprasPeriodo.map(c=>{ const p=DB.proveedores.find(x=>x.id===c.proveedorId); const t=tiendaDeCompra(c); return [c.fecha, p?p.nombre:'', t?cortoTienda(t):'Compartida', c.tipo==='mercancia'?'Mercancía':'Otra', c.numeroFactura||'', c.descripcion||'', (c.valor||0)*c.parte, pagadoCompra(c)*c.parte, saldoCompra(c)*c.parte, c.parte]; }))]);
+    { const lin=[]; R.comprasPeriodo.filter(c=>c.tipo==='mercancia').forEach(c=>{ const p=DB.proveedores.find(x=>x.id===c.proveedorId); (c.lineas||[]).forEach(l=>lin.push([c.fecha, p?p.nombre:'', cortoTienda(c.tienda), c.numeroFactura||'', l.nombre, l.talla, l.color, l.nueva?'Nueva':'', l.cantidad, l.costoUnit, l.costoFinal, l.cantidad*l.costoFinal, l.costoAntes==null?'':l.costoAntes, l.costoDespues!=null?l.costoDespues:l.costoFinal])); });
+      hojas.push(['Compras detalle', xHoja('Detalle de mercancía comprada', sub+' · el costo con fletes es el que entra al inventario', [{h:'Fecha',t:'text'},{h:'Proveedor',t:'text'},{h:'Tienda',t:'text'},{h:'Factura',t:'text'},{h:'Referencia',t:'text'},{h:'Talla',t:'text'},{h:'Color',t:'text'},{h:'Nueva',t:'text'},{h:'Cantidad',t:'int',sum:1},{h:'Costo factura',t:'money'},{h:'Costo con fletes',t:'money'},{h:'Total con fletes',t:'money',sum:1},{h:'Costo promedio antes',t:'money'},{h:'Costo promedio después',t:'money'}], lin)]); }
 
     hojas.push(['Inventario valorizado', xHoja('Inventario valorizado (existencias actuales)', 'Corte: '+hoyISO(), [{h:'Tienda',t:'text'},{h:'Artículo',t:'text'},{h:'Categoría',t:'text'},{h:'Talla',t:'text'},{h:'Color',t:'text'},{h:'Stock',t:'int',sum:1},{h:'Costo unitario',t:'money'},{h:'Precio unitario',t:'money'},{h:'Total a costo',t:'money',sum:1},{h:'Total a precio',t:'money',sum:1},{h:'Utilidad potencial',t:'money',sum:1},{h:'Margen',t:'pct',formulaTotal:(r)=>`IFERROR(K${r}/J${r},0)`}],
       [...R.articulos].sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(a=>{ const st=Number(a.stock)||0, c=Number(a.costo)||0, p=Number(a.precio)||0; return [cortoTienda(tiendaDeArticulo(a)), a.nombre, a.categoria||'', a.talla||'', a.color||'', st, c, p, st*c, st*p, st*(p-c), p? (p-c)/p:0]; }))]);
