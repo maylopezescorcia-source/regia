@@ -458,7 +458,7 @@
   <div id="sidebar-foot">
     <div class="foot-line">Sesión: <strong id="rol-actual">—</strong></div>
     <div class="foot-line" id="sidebar-sync-badge"><span class="dot"></span>Solo este dispositivo</div>
-    <div class="foot-line foot-ver">Versión 2026-10-18 · reporte financiero</div>
+    <div class="foot-line foot-ver">Versión 2026-10-18 · alertas de pedidos</div>
     <button class="btn ghost sm" onclick="cerrarSesion()" aria-label="Cerrar sesión" title="Cerrar sesión"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span class="lbl">Cerrar sesión</span></button>
   </div>
 </div>
@@ -1308,7 +1308,7 @@
   <!-- ================= CONFIG ================= -->
   <!-- ================= PEDIDOS WEB ================= -->
   <div class="view" id="view-pedidosweb">
-    <div class="view-head"><div><h1>Pedidos web</h1><p>Compras hechas en tu tienda en línea. Confírmalas para facturar y descontar el inventario.</p></div></div>
+    <div class="view-head"><div><h1>Pedidos web</h1><p>Compras hechas en tu tienda en línea. Confírmalas para facturar y descontar el inventario.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn ghost" id="btn-alertas" onclick="activarAlertasPedidos()">🔔 Activar alertas</button><button class="btn ghost" onclick="sonarAlarmaPedido()">Probar sonido</button></div></div>
     <hr class="stitch head-stitch">
     <div id="pw-estado"></div>
     <div id="pw-error" class="aviso-pw" style="display:none;background:var(--danger-soft);color:var(--danger);"></div>
@@ -1939,6 +1939,11 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div id="alarma-pedido" style="display:none;position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;background:#C2377E;color:#fff;padding:14px 18px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);max-width:92vw;font-size:15px;align-items:center;gap:12px;flex-wrap:wrap;">
+  <span id="alarma-pedido-txt" style="font-weight:600;"></span>
+  <button class="btn sm" style="background:#fff;color:#C2377E;" onclick="cerrarAlarmaPedido();goTo('pedidosweb')">Ver pedido</button>
+  <button class="btn sm" style="background:transparent;color:#fff;border:1px solid #fff;" onclick="cerrarAlarmaPedido()">Cerrar</button>
+</div>
 
 <!-- ===== Área imprimible (formato tirilla) ===== -->
 <div id="print-area"></div>
@@ -6495,7 +6500,7 @@ function escucharPedidosWeb(){
   pedidosUnsub=base.collection('pedidos').orderBy('creado','desc').limit(200).onSnapshot(snap=>{
     if(!pedidosPrimeraCarga){
       snap.docChanges().forEach(ch=>{
-        if(ch.type==='added' && ch.doc.data().estado==='nuevo') toast('🛍 Nuevo pedido web de '+limpiarTexto(ch.doc.data().nombre,40)+' — revisa "Pedidos web"');
+        if(ch.type==='added' && ch.doc.data().estado==='nuevo') alarmaPedidoNuevo(ch.doc.data());
       });
     }
     pedidosPrimeraCarga=false;
@@ -6509,6 +6514,61 @@ function escucharPedidosWeb(){
     if(el){ el.style.display='block'; el.textContent= err.code==='permission-denied' ? 'Firestore no deja leer los pedidos. Inicia sesión como administrador (Configuración → Nube) y revisa que pegaste las reglas nuevas.' : 'No se pudieron leer los pedidos: '+(err.message||err.code); }
   });
 }
+/* ---------- Alarma de pedido nuevo: sonido + notificación + aviso en pantalla ---------- */
+let _audioCtxPedido=null, _tituloOriginal=document.title, _parpadeoTitulo=null;
+function sonarAlarmaPedido(){
+  try{
+    _audioCtxPedido=_audioCtxPedido||new (window.AudioContext||window.webkitAudioContext)();
+    const ctx=_audioCtxPedido; if(ctx.state==='suspended') ctx.resume();
+    const notas=[880,1175,1568, 880,1175,1568, 880,1175,1568];
+    notas.forEach((f,i)=>{
+      const t=ctx.currentTime+i*0.18+Math.floor(i/3)*0.35;
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='sine'; o.frequency.value=f; o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.35,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+0.16);
+      o.start(t); o.stop(t+0.17);
+    });
+  }catch(e){ console.warn('Sin sonido', e); }
+}
+function activarAlertasPedidos(){
+  sonarAlarmaPedido(); // el navegador solo permite sonido después de un clic
+  try{ localStorage.setItem('regia_alertas','1'); }catch(e){}
+  if(!('Notification' in window)){ toast('Alertas de sonido activadas (este navegador no permite notificaciones)'); actualizarBotonAlertas(); return; }
+  Notification.requestPermission().then(r=>{
+    toast(r==='granted'? '🔔 Alertas activadas: sonido y notificación en cada pedido nuevo' : 'Sonido activado. Para la notificación, permite "Notificaciones" en el candado de la barra de direcciones');
+    actualizarBotonAlertas();
+  });
+}
+function actualizarBotonAlertas(){
+  const b=document.getElementById('btn-alertas'); if(!b) return;
+  const ok=('Notification' in window) && Notification.permission==='granted';
+  b.textContent= ok? '🔔 Alertas activadas' : '🔔 Activar alertas';
+}
+function alarmaPedidoNuevo(p){
+  const nombre=limpiarTexto(p.nombre,40), total=fmt(p.total||0);
+  const txt='🛍 Nuevo pedido web: '+nombre+' · '+total+(p.codigo?' · '+p.codigo:'');
+  sonarAlarmaPedido();
+  const el=document.getElementById('alarma-pedido');
+  if(el){ document.getElementById('alarma-pedido-txt').textContent=txt; el.style.display='flex'; }
+  try{
+    if('Notification' in window && Notification.permission==='granted'){
+      const n=new Notification('Nuevo pedido · Regia', {body:nombre+' — '+total+'\n'+(p.items||[]).map(i=>i.cantidad+'x '+i.nombre).join(', '), tag:'pedido-'+(p.codigo||Date.now()), requireInteraction:true});
+      n.onclick=()=>{ window.focus(); goTo('pedidosweb'); cerrarAlarmaPedido(); n.close(); };
+    }
+  }catch(e){}
+  if(navigator.vibrate) try{ navigator.vibrate([300,150,300,150,300]); }catch(e){}
+  clearInterval(_parpadeoTitulo); let on=false;
+  _parpadeoTitulo=setInterval(()=>{ document.title= (on=!on)? '🛍 ¡NUEVO PEDIDO!' : _tituloOriginal; }, 1000);
+}
+function cerrarAlarmaPedido(){
+  const el=document.getElementById('alarma-pedido'); if(el) el.style.display='none';
+  clearInterval(_parpadeoTitulo); _parpadeoTitulo=null; document.title=_tituloOriginal;
+}
+document.addEventListener('click', function primerClic(){ // deja el sonido listo desde el primer clic
+  try{ _audioCtxPedido=_audioCtxPedido||new (window.AudioContext||window.webkitAudioContext)(); if(_audioCtxPedido.state==='suspended') _audioCtxPedido.resume(); }catch(e){}
+  actualizarBotonAlertas();
+  document.removeEventListener('click', primerClic);
+});
 function pedidosNuevos(){ return TIENDA_PEDIDOS.filter(p=>p.estado==='nuevo'); }
 function actualizarBadgePedidos(){
   const n=pedidosNuevos().length;
@@ -6766,6 +6826,7 @@ function guardarAjustesTienda(){
   const T=DB.tienda;
   T.abierta=g('tj-abierta').checked;
   T.whatsapp=g('tj-whatsapp').value.replace(/[^\d]/g,'');
+  if(/^3\d{9}$/.test(T.whatsapp)) T.whatsapp='57'+T.whatsapp; // celular colombiano sin indicativo
   T.aviso=g('tj-aviso').value.trim().slice(0,200);
   T.datosPago=g('tj-datospago').value.trim().slice(0,400);
   T.envioActivo=g('tj-envio-activo').checked;

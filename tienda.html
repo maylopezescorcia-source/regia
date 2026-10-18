@@ -479,11 +479,25 @@ function pintarListo(){
   const lista=p.items.map(i=>`${i.cantidad}x ${i.nombre} (${i.talla}/${i.color})`).join('\n');
   const msg=`Hola, soy ${p.nombre}. Hice el pedido ${p.codigo} en la tienda por ${fmt(p.total)}:\n${lista}\n`+(p.entrega==='envio'?`Envío a: ${p.direccion}, ${p.ciudad}\n`:'Recojo en tienda\n')+`Pago: ${medio?medio.label:p.medioPago}`;
   const wa=CFG.whatsapp? 'https://wa.me/'+CFG.whatsapp+'?text='+encodeURIComponent(msg) : '';
-  $('sheet-bag').innerHTML=cabBolsa('')+`<div class="done"><div class="ck">✓</div><h2>¡Pedido recibido!</h2><div class="cod">${esc(p.codigo)}</div>
-    <p>Guarda este código. Te escribiremos al ${esc(p.telefono)} para confirmar tu pedido.</p>
-    ${p.medioPago==='transferencia'&&CFG.datosPago?`<div class="pago"><b>Para pagar</b>${esc(CFG.datosPago)}<br><br>Total a pagar: <strong>${fmt(p.total)}</strong></div>`:`<p>Total: <strong>${fmt(p.total)}</strong></p>`}
-    ${wa?`<a class="btn wa" style="display:block;text-decoration:none;margin-top:16px" href="${wa}" target="_blank" rel="noopener">Enviar mi pedido por WhatsApp</a>`:''}
-    <button class="btn ghost" onclick="cerrarHojas()">Seguir mirando</button></div>`;
+  const pagoHtml=p.medioPago==='transferencia'&&CFG.datosPago?`<div class="pago"><b>Para pagar</b>${esc(CFG.datosPago)}<br><br>Total a pagar: <strong>${fmt(p.total)}</strong></div>`:`<p>Total: <strong>${fmt(p.total)}</strong></p>`;
+  if(wa){
+    // Paso obligatorio: el pedido se confirma enviándolo por WhatsApp a la tienda
+    $('sheet-bag').innerHTML=cabBolsa('')+`<div class="done"><div class="ck">✓</div><h2>¡Ya casi! Último paso</h2><div class="cod">${esc(p.codigo)}</div>
+      <p><strong>Tu pedido se confirma cuando nos lo envías por WhatsApp.</strong> Ya lleva escrito todo el detalle; solo pulsa enviar.</p>
+      <a class="btn wa" id="b-wa-final" style="display:block;text-decoration:none;margin-top:16px;font-size:17px;padding:16px" href="${wa}" rel="noopener">Enviar mi pedido por WhatsApp</a>
+      <p id="wa-cuenta" style="font-size:13px;margin-top:10px">Te llevamos a WhatsApp en <b>6</b> segundos…</p>
+      ${pagoHtml}
+      <button class="btn ghost" onclick="clearInterval(window.__waT);cerrarHojas()" style="font-size:13px">Lo envío después</button></div>`;
+    let s=6; clearInterval(window.__waT);
+    window.__waT=setInterval(()=>{ s--; const c=$('wa-cuenta'); if(c&&c.querySelector('b')) c.querySelector('b').textContent=s;
+      if(s<=0){ clearInterval(window.__waT); if(c) c.textContent='Si WhatsApp no se abrió, pulsa el botón verde.'; location.href=wa; } },1000);
+    $('b-wa-final').addEventListener('click',()=>clearInterval(window.__waT));
+  } else {
+    $('sheet-bag').innerHTML=cabBolsa('')+`<div class="done"><div class="ck">✓</div><h2>¡Pedido recibido!</h2><div class="cod">${esc(p.codigo)}</div>
+      <p>Guarda este código. Te escribiremos al ${esc(p.telefono)} para confirmar tu pedido.</p>
+      ${pagoHtml}
+      <button class="btn ghost" onclick="cerrarHojas()">Seguir mirando</button></div>`;
+  }
 }
 actualizarBolsaN();
 iniciar();
