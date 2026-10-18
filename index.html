@@ -6161,7 +6161,8 @@ function cargarConfigForm(){
   document.getElementById('cfg-fin-sistecredito').value=DB.config.finComisionSistecredito||0;
   document.getElementById('cfg-fin-addi').value=DB.config.finComisionAddi||0;
   if(syncStoreCode) document.getElementById('sync-store-code').value=syncStoreCode;
-  { const sg=cargarConfigSync(); if(sg && sg.adminEmail) document.getElementById('sync-admin-email').value=sg.adminEmail; }
+  { const sg=cargarConfigSync(); if(sg && sg.adminEmail) document.getElementById('sync-admin-email').value=sg.adminEmail;
+    const ta=document.getElementById('sync-firebase-config'); if(sg && sg.firebaseConfig && ta && !ta.value.trim()) ta.value=JSON.stringify(sg.firebaseConfig); }
   marcarAcentoActivo();
   actualizarEstadoSync();
 }
@@ -6234,9 +6235,11 @@ function parsearFirebaseConfig(raw){
 }
 function activarSincronizacionDesdeForm(){
   const raw=document.getElementById('sync-firebase-config').value.trim();
-  const storeCode=document.getElementById('sync-store-code').value.trim();
-  if(!raw || !storeCode){ toast('Pega la configuración de Firebase y define un código de tienda'); return; }
-  const cfg=parsearFirebaseConfig(raw);
+  const guardada=cargarConfigSync();
+  const storeCode=document.getElementById('sync-store-code').value.trim() || (guardada&&guardada.storeCode) || '';
+  if(!raw && !(guardada&&guardada.firebaseConfig)){ toast('Pega la configuración de Firebase y define un código de tienda'); return; }
+  if(!storeCode){ toast('Escribe el código de tienda'); return; }
+  const cfg=raw? parsearFirebaseConfig(raw) : guardada.firebaseConfig; // si no pegas nada, usa la conexión ya guardada
   if(!cfg || !cfg.apiKey || !cfg.projectId){ toast('No se pudo leer la configuración de Firebase. Verifica que pegaste el objeto completo (con apiKey, projectId, etc.)'); return; }
   conectarSincronizacion(cfg, storeCode, true, document.getElementById('sync-admin-email').value, document.getElementById('sync-admin-pass').value);
   document.getElementById('sync-admin-pass').value='';
