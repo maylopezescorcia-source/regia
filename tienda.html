@@ -309,7 +309,7 @@ async function abrirProducto(id){
   selTalla=null; autoTalla();
   pintarProducto(false); abrirHoja('sheet-prod');
   if(p.nFotos>0 && !fotosCache[p.id]){
-    try{ const d=await baseRef.collection('fotos').doc(p.id).get(); fotosCache[p.id]=d.exists?(d.data().imgs||[]):[]; }catch(e){ fotosCache[p.id]=[]; }
+    try{ const d=await baseRef.collection('fotos').doc(p.id).get(); const dd=d.exists?d.data():{}; fotosCache[p.id]=(dd.imgs||[]).map((src,i)=>({src,color:((dd.colores||[])[i])||''})); }catch(e){ fotosCache[p.id]=[]; }
     if(prodAbierto && prodAbierto.id===p.id) pintarProducto(true);
   }
 }
@@ -322,7 +322,8 @@ function autoTalla(){
 function varianteSel(){ const p=prodAbierto; return p&&selColor&&selTalla? p.variantes.find(v=>v.color===selColor&&v.talla===selTalla):null; }
 function pintarProducto(conservar){
   const p=prodAbierto; if(!p) return;
-  const extra=fotosCache[p.id]&&fotosCache[p.id].length? fotosCache[p.id] : [];
+  // fotos adicionales: las de "todos los colores" + las del color elegido (sin color elegido: todas)
+  const extra=(fotosCache[p.id]||[]).filter(f=>!selColor||!f.color||f.color===selColor).map(f=>f.src);
   const fc=p.fotosColor||{}, fotoColor=selColor&&fc[selColor]?fc[selColor]:'';
   const portada=fotoColor||p.thumb||''; const fotos=portada? [portada,...extra.filter(x=>x!==portada)] : extra;
   if(galIdx>=fotos.length) galIdx=0;

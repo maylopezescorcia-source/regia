@@ -89,6 +89,8 @@
   .tj-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 18px;}
   @media(max-width:700px){.tj-grid{grid-template-columns:1fr;}}
   #tp-fotos{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 10px;}
+  .tp-cel{display:flex;flex-direction:column;gap:4px;width:92px;}
+  .tp-cel select{width:92px;font-size:11px;padding:3px 4px;border-radius:6px;}
   .tp-foto{position:relative;width:92px;height:92px;border-radius:10px;overflow:hidden;border:1px solid var(--border);}
   .tp-foto img{width:100%;height:100%;object-fit:cover;}
   .tp-tag{position:absolute;left:0;right:0;bottom:0;background:rgba(27,26,33,.62);color:#fff;font-size:10px;text-align:center;padding:2px;}
@@ -1646,10 +1648,13 @@
     <h3 id="tp-titulo">Producto</h3>
     <label class="chk"><input type="checkbox" id="tp-pub"> Mostrar en la tienda</label>
     <div class="field" style="margin-top:10px;"><label>Descripción para el cliente</label><textarea id="tp-desc" rows="4" maxlength="600" style="width:100%;" placeholder="Material, ajuste, cuidados, a qué combina…"></textarea></div>
-    <div class="field"><label>Fotos de la tienda (hasta 4)</label>
+    <div class="field"><label>Fotos de la tienda (hasta 8)</label>
       <div id="tp-fotos"></div>
-      <div id="tp-add"><input type="file" id="tp-input" accept="image/*" multiple onchange="agregarFotosTienda(this)"></div>
-      <p class="pw-meta">La foto del inventario se usa como portada. Estas fotos se ven al abrir el producto.</p>
+      <div id="tp-add">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;font-size:12.5px;">Las fotos que agregues ahora son del color: <select id="tp-color-nuevas" style="width:auto;"></select></div>
+        <input type="file" id="tp-input" accept="image/*" multiple onchange="agregarFotosTienda(this)">
+      </div>
+      <p class="pw-meta">La foto del inventario de cada color es la portada. Aquí agregas las demás (espalda, detalle…). Si una foto es de un color, elígelo debajo de la foto: la tienda la muestra solo cuando la clienta escoge ese color. "Todos los colores" se ve siempre.</p>
     </div>
     <div class="modal-actions"><button class="btn ghost" onclick="cerrarModal('modal-tienda-producto')">Cancelar</button><button class="btn gold" onclick="guardarProductoTienda()">Guardar</button></div>
   </div>
@@ -7768,7 +7773,7 @@ const TIENDA_MEDIOS=[
 ];
 let fbAuth=null, TIENDA_PEDIDOS=[], pedidosUnsub=null, pedidosPrimeraCarga=true;
 let pubTimer=null, pubEnCurso=false, pubPendiente=false, ultimaPublicacionMs=0, pedFiltro='nuevo';
-let pedidoEnModal=null, tiendaGrupoEditando=null, tiendaFotosEditando=[], tiendaFiltroTxt='', tiendaFiltroEstado='todos', tiendaFiltroTienda='todas';
+let pedidoEnModal=null, tiendaGrupoEditando=null, tiendaFotosEditando=[], tiendaFotosColor=[], tiendaFiltroTxt='', tiendaFiltroEstado='todos', tiendaFiltroTienda='todas';
 
 function escH(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 // Todo lo que escribe un cliente en la tienda se limpia antes de entrar a tu sistema
@@ -8285,15 +8290,17 @@ function copiarTexto(id){
 function comprimirImagenWeb(file, cb){
   const r=new FileReader();
   r.onload=e=>{ const img=new Image(); img.onload=()=>{
-    const s=Math.min(1, 900/Math.max(img.width,img.height));
+    const s=Math.min(1, 800/Math.max(img.width,img.height));
     const c=document.createElement('canvas'); c.width=Math.round(img.width*s); c.height=Math.round(img.height*s);
-    c.getContext('2d').drawImage(img,0,0,c.width,c.height); cb(c.toDataURL('image/jpeg',0.74));
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height); cb(c.toDataURL('image/jpeg',0.7));
   }; img.src=e.target.result; };
   r.readAsDataURL(file);
 }
 async function abrirProductoTienda(gid){
   const arts=tiendaGrupos().get(gid); if(!arts) return;
-  tiendaGrupoEditando=gid; tiendaFotosEditando=[];
+  tiendaGrupoEditando=gid; tiendaFotosEditando=[]; tiendaFotosColor=[];
+  const colsSel=coloresGrupoTienda(arts);
+  document.getElementById('tp-color-nuevas').innerHTML='<option value="">Todos los colores</option>'+colsSel.map(c=>`<option value="${escH(c)}">${escH(c)}</option>`).join('');
   const g=DB.tienda.grupos[gid]||{};
   document.getElementById('tp-titulo').textContent=arts[0].nombre;
   document.getElementById('tp-desc').value=g.descripcion||'';
@@ -8303,28 +8310,34 @@ async function abrirProductoTienda(gid){
   abrirModal('modal-tienda-producto');
   const ref=tiendaRef();
   if(ref && g.nFotos>0){
-    try{ const d=await ref.collection('fotos').doc(gid).get(); if(d.exists && tiendaGrupoEditando===gid){ tiendaFotosEditando=(d.data().imgs||[]).slice(0,4); pintarFotosTienda(); } }
+    try{ const d=await ref.collection('fotos').doc(gid).get(); if(d.exists && tiendaGrupoEditando===gid){ const dd=d.data(); tiendaFotosEditando=(dd.imgs||[]).slice(0,MAX_FOTOS_TIENDA); tiendaFotosColor=tiendaFotosEditando.map((_,i)=>((dd.colores||[])[i])||''); pintarFotosTienda(); } }
     catch(e){ console.error(e); toast('No se pudieron cargar las fotos de la nube'); }
   }
 }
+const MAX_FOTOS_TIENDA=8;
+function coloresGrupoTienda(arts){ return [...new Set((arts||[]).map(a=>a.color||'Único'))].filter(c=>c!=='Único'); }
 function pintarFotosTienda(){
-  const arts=tiendaGrupos().get(tiendaGrupoEditando)||[]; const principal=(arts.find(a=>a.imagen)||{}).imagen;
-  let h='';
-  if(principal) h+=`<div class="tp-foto"><img src="${principal}"><span class="tp-tag">Foto del inventario</span></div>`;
-  h+=tiendaFotosEditando.map((src,i)=>`<div class="tp-foto"><img src="${src}"><button class="tp-x" onclick="quitarFotoTienda(${i})" aria-label="Quitar foto">×</button></div>`).join('');
-  document.getElementById('tp-fotos').innerHTML=h||'<div class="pw-meta">Aún no hay fotos. Agrega hasta 4 fotos para la tienda.</div>';
-  document.getElementById('tp-add').style.display=tiendaFotosEditando.length>=4?'none':'';
+  const arts=tiendaGrupos().get(tiendaGrupoEditando)||[]; const cols=coloresGrupoTienda(arts);
+  // portadas del inventario (una por color, o una sola si no hay colores)
+  const port=[]; const vistos=new Set();
+  arts.forEach(a=>{ if(a.imagen && !vistos.has(a.imagen)){ vistos.add(a.imagen); port.push({src:a.imagen, color:cols.length>1?(a.color||''):''}); } });
+  let h=port.map(p=>`<div class="tp-cel"><div class="tp-foto"><img src="${p.src}"><span class="tp-tag">Portada${p.color?' · '+escH(p.color):''}</span></div></div>`).join('');
+  h+=tiendaFotosEditando.map((src,i)=>`<div class="tp-cel"><div class="tp-foto"><img src="${src}"><button class="tp-x" onclick="quitarFotoTienda(${i})" aria-label="Quitar foto">×</button></div>${cols.length?`<select onchange="tiendaFotosColor[${i}]=this.value" aria-label="Color de esta foto"><option value="">Todos los colores</option>${cols.map(c=>`<option value="${escH(c)}" ${tiendaFotosColor[i]===c?'selected':''}>${escH(c)}</option>`).join('')}</select>`:''}</div>`).join('');
+  document.getElementById('tp-fotos').innerHTML=h||'<div class="pw-meta">Aún no hay fotos. Agrega hasta '+MAX_FOTOS_TIENDA+' fotos para la tienda.</div>';
+  document.getElementById('tp-add').style.display=tiendaFotosEditando.length>=MAX_FOTOS_TIENDA?'none':'';
 }
-function quitarFotoTienda(i){ tiendaFotosEditando.splice(i,1); pintarFotosTienda(); }
+function quitarFotoTienda(i){ tiendaFotosEditando.splice(i,1); tiendaFotosColor.splice(i,1); pintarFotosTienda(); }
 function agregarFotosTienda(input){
-  const files=[...input.files].slice(0,4-tiendaFotosEditando.length);
+  const files=[...input.files].slice(0,MAX_FOTOS_TIENDA-tiendaFotosEditando.length);
+  if(input.files.length>files.length) toast('Solo caben '+MAX_FOTOS_TIENDA+' fotos por producto');
+  const color=document.getElementById('tp-color-nuevas').value||'';
   let pend=files.length; if(!pend) return;
-  files.forEach(f=>comprimirImagenWeb(f, d=>{ tiendaFotosEditando.push(d); if(--pend===0){ pintarFotosTienda(); input.value=''; } }));
+  files.forEach(f=>comprimirImagenWeb(f, d=>{ tiendaFotosEditando.push(d); tiendaFotosColor.push(color); if(--pend===0){ pintarFotosTienda(); input.value=''; } }));
 }
 async function guardarProductoTienda(){
   const gid=tiendaGrupoEditando; if(!gid) return;
   const total=tiendaFotosEditando.reduce((s,x)=>s+x.length,0);
-  if(total>850000){ toast('Las fotos pesan demasiado juntas. Quita una o usa fotos más sencillas.'); return; }
+  if(total>850000){ toast('Las fotos pesan demasiado juntas ('+Math.round(total/1024)+' KB de 830 KB). Quita una o dos fotos.'); return; }
   const T=DB.tienda; const g=T.grupos[gid]||(T.grupos[gid]={});
   g.descripcion=document.getElementById('tp-desc').value.trim().slice(0,600);
   const quiere=document.getElementById('tp-pub').checked;
@@ -8334,7 +8347,7 @@ async function guardarProductoTienda(){
   const ref=tiendaRef();
   if(ref){
     try{
-      if(tiendaFotosEditando.length) await ref.collection('fotos').doc(gid).set({imgs:tiendaFotosEditando, actualizado:Date.now()});
+      if(tiendaFotosEditando.length) await ref.collection('fotos').doc(gid).set({imgs:tiendaFotosEditando, colores:tiendaFotosEditando.map((_,i)=>tiendaFotosColor[i]||''), actualizado:Date.now()});
       else await ref.collection('fotos').doc(gid).delete();
     }catch(e){ console.error(e); toast('⚠ No se pudieron subir las fotos ('+(e.code||e.message)+'). Los demás cambios sí se guardaron.'); }
   } else if(tiendaFotosEditando.length){ toast('Conecta la nube para subir las fotos de la tienda'); }
