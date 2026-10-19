@@ -176,6 +176,7 @@
   .nav-btn[data-view="gastos"]{--tile-bg:#FCE4E2;--tile-fg:#C23D3A;}
   .nav-btn[data-view="flujo"]{--tile-bg:#DDF3F1;--tile-fg:#14808A;}
   .nav-btn[data-view="reserva"]{--tile-bg:#EFE7FA;--tile-fg:#6B3FA0;}
+  .nav-btn[data-view="tesoreria"]{--tile-bg:#E3F4EC;--tile-fg:#1E7B4F;}
   .nav-btn[data-view="reportes"]{--tile-bg:#E4ECFB;--tile-fg:#2F5BC4;}
   .nav-btn[data-view="equilibrio"]{--tile-bg:#FCE7F1;--tile-fg:#C2377E;}
   .nav-btn[data-view="activos"]{--tile-bg:#FBEFD5;--tile-fg:#B7791F;}
@@ -449,6 +450,7 @@
     <button class="nav-btn" data-view="gastos" title="Gastos diarios" aria-label="Gastos diarios"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l6 6 4-4 8 8"/><path d="M15 17h6v-6"/></svg><span class="lbl">Gastos diarios</span></button>
     <button class="nav-btn" data-view="flujo" title="Flujo de caja" aria-label="Flujo de caja"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg><span class="lbl">Flujo de caja</span></button>
     <button class="nav-btn" data-view="reserva" title="Reserva" aria-label="Reserva"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9.5 12 4l9 5.5H3z"/><path d="M5 12v6M9.5 12v6M14.5 12v6M19 12v6M3 20h18"/></svg><span class="lbl">Reserva</span></button>
+    <button class="nav-btn" data-view="tesoreria" title="Tesorería" aria-label="Tesorería"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M16 14.5h2"/><path d="M7 6V4.5h10V6"/></svg><span class="lbl">Tesorería</span></button>
     <button class="nav-btn" data-view="reportes" title="Reportes" aria-label="Reportes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 20v-6M12 20V5M18 20v-9M3 20h18"/></svg><span class="lbl">Reportes</span></button>
     <button class="nav-btn" data-view="equilibrio" title="Punto de equilibrio" aria-label="Punto de equilibrio"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8" fill="currentColor"/></svg><span class="lbl">Punto de equilibrio</span></button>
     <button class="nav-btn" data-view="activos" title="Activos fijos" aria-label="Activos fijos"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 8h.01M15 8h.01M9 12h.01M15 12h.01" stroke-width="2.4"/><path d="M10 21v-4h4v4"/></svg><span class="lbl">Activos fijos</span></button>
@@ -458,7 +460,7 @@
   <div id="sidebar-foot">
     <div class="foot-line">Sesión: <strong id="rol-actual">—</strong></div>
     <div class="foot-line" id="sidebar-sync-badge"><span class="dot"></span>Solo este dispositivo</div>
-    <div class="foot-line foot-ver">Versión 2026-10-18 · compras e inventario</div>
+    <div class="foot-line foot-ver">Versión 2026-10-18 · tesorería</div>
     <button class="btn ghost sm" onclick="cerrarSesion()" aria-label="Cerrar sesión" title="Cerrar sesión"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span class="lbl">Cerrar sesión</span></button>
   </div>
 </div>
@@ -668,6 +670,12 @@
         <div class="tot-line"><span>Efectivo esperado en caja</span><span class="num" id="cc-esperado">$0</span></div>
         <div class="field"><label>Efectivo contado físicamente</label><input type="number" id="cc-contado" min="0" oninput="calcularDiferenciaCaja()"></div>
         <div class="tot-line big"><span>Diferencia</span><span class="num" id="cc-diferencia">$0</span></div>
+        <div class="row" style="margin-top:10px;">
+          <div class="field"><label>Efectivo entregado al responsable</label><input type="number" id="cc-entregado" min="0" oninput="calcularDiferenciaCaja()" placeholder="0"></div>
+          <div class="field"><label>Entregado a</label><input type="text" id="cc-entregado-a" list="cc-dl-resp" placeholder="Nombre del responsable"><datalist id="cc-dl-resp"></datalist></div>
+        </div>
+        <div class="tot-line"><span>Queda en caja como base para mañana</span><span class="num" id="cc-queda">$0</span></div>
+        <p style="font-size:11.5px;color:var(--ink-soft);margin:2px 0 0;">Lo entregado pasa a <strong>Efectivo guardado</strong> en Tesorería. Si después se consigna, regístralo allá.</p>
         <div class="field" style="margin-top:10px;"><label>Notas del cierre</label><input type="text" id="cc-notas" placeholder="Observaciones (opcional)"></div>
         <button class="btn gold" style="width:100%;margin-top:10px;" onclick="guardarCierreCaja()">Cerrar caja del día</button>
       </div>
@@ -1293,6 +1301,52 @@
     </div>
   </div>
 
+  <!-- ================= TESORERÍA ================= -->
+  <div class="view" id="view-tesoreria">
+    <div class="view-head"><div><h1>Tesorería</h1><p>Dónde está la plata del negocio: efectivo guardado, Nequi y banco. Consignaciones, préstamos a socios y saldos reales.</p></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn ghost" onclick="abrirMovTesoreria('traslado')">⇄ Consignar / trasladar</button>
+        <button class="btn ghost" onclick="abrirPrestamoSocio()">+ Préstamo a socio</button>
+        <button class="btn ghost" onclick="abrirMovTesoreria('manual')">+ Movimiento manual</button>
+        <button class="btn ghost" onclick="exportarTesoreriaExcel()">Excel</button>
+      </div></div>
+    <hr class="stitch head-stitch">
+
+    <div class="grid grid-4" style="margin-bottom:18px;" id="tes-saldos"></div>
+    <p id="tes-aviso" style="font-size:12.5px;margin:-6px 0 14px;"></p>
+
+    <div class="grid grid-2" style="margin-bottom:18px;">
+      <div class="card">
+        <h3 style="margin-bottom:4px;">Saldos iniciales</h3>
+        <p style="font-size:12px;color:var(--ink-soft);margin:0 0 10px;">Escribe cuánto había en cada lugar <strong>al empezar el día</strong> que elijas. Desde ese día el sistema suma y resta solo: ventas por transferencia, cierres de caja, compras, gastos, consignaciones y préstamos.</p>
+        <div id="tes-iniciales"></div>
+        <div class="row" style="margin-top:6px;">
+          <div class="field"><label>Las transferencias de clientes llegan a</label><select id="tes-transf-a"></select></div>
+          <div class="field"><label>Los pagos con tarjeta llegan a</label><select id="tes-tarjeta-a"></select></div>
+        </div>
+        <button class="btn gold" style="width:100%;" onclick="guardarSaldosIniciales()">Guardar saldos iniciales</button>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom:4px;">Préstamos a socios</h3>
+        <p style="font-size:12px;color:var(--ink-soft);margin:0 0 10px;">Plata que salió del negocio para un socio. Cuando la devuelva, regístralo con <strong>Registrar pago</strong> y elige a dónde entró.</p>
+        <div class="kpi-sub" style="margin-bottom:8px;">Total que deben los socios: <strong class="num" id="tes-socios-total">$0</strong></div>
+        <div style="overflow-x:auto;"><table><thead><tr><th>Fecha</th><th>Socio</th><th>Salió de</th><th class="right">Prestado</th><th class="right">Ha pagado</th><th class="right">Debe</th><th></th></tr></thead>
+        <tbody id="tbl-prestamos-socios"></tbody></table></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:10px;">Movimientos</h3>
+      <div class="toolbar">
+        <div class="field"><label>Cuenta</label><select id="tes-f-cuenta" onchange="renderMovimientosTesoreria()"></select></div>
+        <div class="field"><label>Desde</label><input type="date" id="tes-f-desde" onchange="renderMovimientosTesoreria()"></div>
+        <div class="field"><label>Hasta</label><input type="date" id="tes-f-hasta" onchange="renderMovimientosTesoreria()"></div>
+      </div>
+      <div style="overflow-x:auto;"><table><thead><tr><th>Fecha</th><th>Cuenta</th><th>Concepto</th><th class="right">Entra</th><th class="right">Sale</th><th class="right">Saldo</th><th></th></tr></thead>
+      <tbody id="tbl-mov-tesoreria"></tbody></table></div>
+    </div>
+  </div>
+
   <!-- ================= RESERVA ================= -->
   <div class="view" id="view-reserva">
     <div class="view-head"><div><h1>Reserva</h1><p>Saldo acumulado en tu reserva/ahorro, y en qué se va gastando.</p></div>
@@ -1682,7 +1736,7 @@
       <div class="field"><label>Fletes, envío u otros costos de la compra</label><input type="number" id="cm-fletes" min="0" value="0" oninput="cmPintar()"></div>
       <div class="field"><label>¿Cómo se paga?</label><select id="cm-pago" onchange="cmPintar()"><option value="credito">A crédito (queda por pagar)</option><option value="contado">Pagada de contado</option><option value="parcial">Abono parcial</option></select></div>
       <div class="field" id="cm-abono-wrap" style="display:none;"><label>Valor abonado</label><input type="number" id="cm-abono" min="0"></div>
-      <div class="field" id="cm-metodo-wrap" style="display:none;"><label>Método</label><select id="cm-metodo"><option>Transferencia</option><option>Efectivo</option></select></div>
+      <div class="field" id="cm-metodo-wrap" style="display:none;"><label>¿Con qué se pagó?</label><select id="cm-metodo"><option value="nequi">Saldo Nequi</option><option value="efectivo">Efectivo guardado</option><option value="banco">Banco</option></select></div>
     </div>
     <p style="font-size:11.5px;color:var(--ink-soft);margin:0;">Los fletes se suman al costo de cada unidad en proporción a su valor, para que la utilidad sea real.</p>
     <div class="tot-line big" style="margin-top:10px;"><span>Total de la compra</span><span class="num" id="cm-total">$0</span></div>
@@ -1704,11 +1758,69 @@
       <div class="row" style="align-items:flex-end;">
         <div class="field"><label>Fecha</label><input type="date" id="cd-fecha"></div>
         <div class="field"><label>Valor</label><input type="number" id="cd-valor" min="0"></div>
-        <div class="field"><label>Método</label><select id="cd-metodo"><option>Transferencia</option><option>Efectivo</option></select></div>
+        <div class="field"><label>¿Con qué se pagó?</label><select id="cd-metodo"><option value="nequi">Saldo Nequi</option><option value="efectivo">Efectivo guardado</option><option value="banco">Banco</option></select></div>
         <button class="btn gold" onclick="registrarPagoCompra()">Registrar pago</button>
       </div>
     </div>
     <div class="modal-actions"><button class="btn ghost" onclick="cerrarModal('modal-compra-detalle')">Cerrar</button></div>
+  </div>
+</div>
+
+
+<!-- ===== Modal: movimiento de tesorería ===== -->
+<div class="modal-bg" id="modal-mov-tes">
+  <div class="modal">
+    <h3 id="mt-titulo">Movimiento</h3>
+    <input type="hidden" id="mt-id"><input type="hidden" id="mt-modo">
+    <div class="field"><label>Fecha</label><input type="date" id="mt-fecha"></div>
+    <div id="mt-traslado">
+      <div class="row">
+        <div class="field"><label>Sale de</label><select id="mt-origen"></select></div>
+        <div class="field"><label>Entra a</label><select id="mt-destino"></select></div>
+      </div>
+      <p style="font-size:11.5px;color:var(--ink-soft);margin:-4px 0 8px;">Ej.: consignaste efectivo en Nequi → sale de Efectivo y entra a Nequi. Si el efectivo no se consigna, no registres nada: sigue en Efectivo.</p>
+    </div>
+    <div id="mt-manual">
+      <div class="row">
+        <div class="field"><label>Tipo</label><select id="mt-tipo"><option value="entrada">Entrada de plata</option><option value="salida">Salida de plata</option></select></div>
+        <div class="field"><label>Cuenta</label><select id="mt-cuenta"></select></div>
+      </div>
+    </div>
+    <div class="field"><label>Valor</label><input type="number" id="mt-valor" min="0"></div>
+    <div class="field"><label>Concepto</label><input type="text" id="mt-concepto" maxlength="120" placeholder="Ej: consignación del fin de semana"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="cerrarModal('modal-mov-tes')">Cancelar</button>
+      <button class="btn gold" onclick="guardarMovTesoreria()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal: préstamo a socio ===== -->
+<div class="modal-bg" id="modal-prestamo-socio">
+  <div class="modal">
+    <h3 id="ps-titulo">Préstamo a socio</h3>
+    <input type="hidden" id="ps-id">
+    <div id="ps-nuevo">
+      <div class="field"><label>Socio</label><input type="text" id="ps-socio" list="ps-dl-socios" placeholder="Nombre del socio"><datalist id="ps-dl-socios"></datalist></div>
+      <div class="row">
+        <div class="field"><label>Fecha</label><input type="date" id="ps-fecha"></div>
+        <div class="field"><label>¿De dónde salió la plata?</label><select id="ps-cuenta"></select></div>
+      </div>
+      <div class="field"><label>Valor prestado</label><input type="number" id="ps-valor" min="0"></div>
+      <div class="field"><label>Concepto (opcional)</label><input type="text" id="ps-concepto" maxlength="120"></div>
+    </div>
+    <div id="ps-pago" style="display:none;">
+      <div id="ps-resumen" style="margin-bottom:10px;"></div>
+      <div class="row">
+        <div class="field"><label>Fecha del pago</label><input type="date" id="ps-p-fecha"></div>
+        <div class="field"><label>¿A dónde entró la plata?</label><select id="ps-p-cuenta"></select></div>
+      </div>
+      <div class="field"><label>Valor que pagó</label><input type="number" id="ps-p-valor" min="0"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="cerrarModal('modal-prestamo-socio')">Cancelar</button>
+      <button class="btn gold" id="ps-btn" onclick="guardarPrestamoSocio()">Guardar</button>
+    </div>
   </div>
 </div>
 
@@ -1723,6 +1835,9 @@
         <option>Transporte / domicilios</option><option>Insumos / empaques</option>
         <option>Mercadeo</option><option>Mantenimiento</option><option>Otros</option>
       </select>
+    </div>
+    <div class="field"><label>¿Con qué se pagó?</label>
+      <select id="gasto-pago"><option value="caja">Con el efectivo de la caja del día (sale en el cierre)</option><option value="efectivo">Con el efectivo guardado</option><option value="nequi">Por Nequi</option><option value="banco">Por el banco</option></select>
     </div>
     <div class="field"><label>¿De qué tienda es el gasto?</label>
       <select id="gasto-tienda"><option value="compartido">Compartido (se reparte según lo que vende cada tienda)</option><option value="regia">Solo Regia by CM</option><option value="fraganza">Solo Fraganza by CM</option></select>
@@ -2144,6 +2259,11 @@ function migrarDB(db){
   (db.articulos||[]).forEach(a=>{ if(!a.tienda) a.tienda=tiendaDeArticulo(a); });
   (db.combos||[]).forEach(c=>{ if(!c.tienda){ const it=(c.items||[])[0]; const a=it&&(db.articulos||[]).find(x=>x.id===it.articuloId); c.tienda=a? a.tienda : (esPerfumeTexto(c.nombre)?'fraganza':'regia'); } });
   (db.gastos||[]).forEach(g=>{ if(!g.tienda) g.tienda='compartido'; });
+  // tesorería: cuentas de dinero y préstamos a socios
+  if(!db.tesoreria) db.tesoreria={};
+  { const T=db.tesoreria; if(!T.cuentas) T.cuentas={}; if(!T.movimientos) T.movimientos=[]; if(!T.transferenciasA) T.transferenciasA='nequi'; if(!T.tarjetaA) T.tarjetaA='banco'; }
+  if(!db.prestamosSocios) db.prestamosSocios=[];
+  if(!db.config.responsables) db.config.responsables=[];
   return db;
 }
 function guardarDB(){
@@ -2342,7 +2462,7 @@ function toast(msg){
 /* ---------------- Sesión y permisos ---------------- */
 const PERMISOS = {
   asesor:['facturar','pedidosweb','ventas','cierre','devoluciones','apartados','creditos','inventario','clientes','combos','gastos'],
-  gerencia:['dashboard','facturar','pedidosweb','tienda','ventas','cierre','devoluciones','apartados','creditos','inventario','combos','clientes','proveedores','activos','gastos','reportes','equilibrio','flujo','reserva','config']
+  gerencia:['dashboard','facturar','pedidosweb','tienda','ventas','cierre','devoluciones','apartados','creditos','inventario','combos','clientes','proveedores','activos','gastos','reportes','equilibrio','flujo','reserva','tesoreria','config']
 };
 let currentRole = null;
 
@@ -2406,6 +2526,7 @@ function goTo(view){
   if(view==='equilibrio') renderEquilibrio();
   if(view==='flujo') renderFlujoCaja();
   if(view==='reserva') renderReserva();
+  if(view==='tesoreria') renderTesoreria();
   if(view==='pedidosweb') renderPedidosWeb();
   if(view==='tienda') renderTienda();
   if(view==='config') cargarConfigForm();
@@ -2442,7 +2563,7 @@ function calcularCierreCaja(fecha){
   const efectivoTotalReal=(porMetodo.Efectivo||0)+efectivoDeMixtos+cobrosCreditoEfectivo;
   const transferenciaTotalReal=(porMetodo.Transferencia||0)+transferenciaDeMixtos;
   const totalVentas=ventasDia.reduce((s,v)=>s+v.total,0);
-  const gastosDia=DB.gastos.filter(g=>g.fecha===fecha).reduce((s,g)=>s+g.valor,0);
+  const gastosDia=DB.gastos.filter(g=>g.fecha===fecha && (g.pagadoCon||'caja')==='caja').reduce((s,g)=>s+g.valor,0);
   const ventasMercancia=ventasDia.filter(v=>!v.esAbonoApartado && !v.esAjusteDevolucion).reduce((s,v)=>s+v.total,0);
   const abonosApartados=ventasDia.filter(v=>v.esAbonoApartado).reduce((s,v)=>s+v.total,0);
   const ajustesDevolucion=ventasDia.filter(v=>v.esAjusteDevolucion).reduce((s,v)=>s+v.total,0);
@@ -2496,9 +2617,13 @@ function renderCierre(){
     document.getElementById('cc-gastos-efectivo').value=cierreDelDia.salidasEfectivo;
     document.getElementById('cc-contado').value=cierreDelDia.efectivoContado;
     document.getElementById('cc-notas').value=cierreDelDia.notas||'';
+    document.getElementById('cc-entregado').value=cierreDelDia.valorEntregado||'';
+    document.getElementById('cc-entregado-a').value=cierreDelDia.entregadoA||'';
     estado.innerHTML='<span class="badge success">Esta caja ya fue cerrada — puedes actualizarla si es necesario.</span>';
   } else {
-    document.getElementById('cc-base').value=anterior? anterior.efectivoContado : 0;
+    document.getElementById('cc-base').value=anterior? (anterior.efectivoContado-(anterior.valorEntregado||0)) : 0;
+    document.getElementById('cc-entregado').value='';
+    document.getElementById('cc-entregado-a').value=(DB.config.responsables||[])[0]||'';
     document.getElementById('cc-gastos-efectivo').value=r.gastosDia||0;
     document.getElementById('cc-contado').value='';
     document.getElementById('cc-notas').value='';
@@ -2506,6 +2631,7 @@ function renderCierre(){
       ? `<span class="badge danger">⚠ Cierre pendiente del ${pendiente} — debes cerrarlo para poder seguir facturando.</span>`
       : '<span class="badge indigo">Caja de hoy aún sin cerrar.</span>';
   }
+  { const dl=document.getElementById('cc-dl-resp'); if(dl) dl.innerHTML=(DB.config.responsables||[]).map(n=>`<option value="${escH(n)}">`).join(''); }
   calcularDiferenciaCaja();
   renderHistorialCierres();
   actualizarBloqueoFacturacion();
@@ -2517,6 +2643,8 @@ function calcularDiferenciaCaja(){
   const esperado=base+(r.efectivoTotalReal||0)-salidas;
   const contado=parseFloat(document.getElementById('cc-contado').value)||0;
   const diferencia=contado-esperado;
+  const entregado=Math.max(0,parseFloat(document.getElementById('cc-entregado')?.value)||0);
+  const qEl=document.getElementById('cc-queda'); if(qEl){ qEl.textContent=fmt(contado-entregado); qEl.style.color=(contado-entregado)<0?'var(--danger)':''; }
   document.getElementById('cc-esperado').textContent=fmt(esperado);
   const diffEl=document.getElementById('cc-diferencia');
   diffEl.textContent=fmt(diferencia);
@@ -2552,6 +2680,10 @@ function imprimirCierre(){
   html+=`<div class="ti-row ti-bold"><span>Efectivo esperado</span><span>${fmt(esperado)}</span></div>`;
   html+=linea('Efectivo contado', fmt(contado));
   html+=`<div class="ti-row ti-bold ti-lg"><span>Diferencia</span><span>${fmt(diferencia)}</span></div>`;
+  { const ent=parseFloat(document.getElementById('cc-entregado').value)||0, a=document.getElementById('cc-entregado-a').value.trim();
+    if(ent>0){ html+='<div class="ti-dash"></div>'+linea('Efectivo entregado a '+(a||'responsable'), fmt(ent)); }
+    html+=`<div class="ti-row ti-bold"><span>Queda en caja (base mañana)</span><span>${fmt(contado-ent)}</span></div>`;
+    if(ent>0) html+='<div style="margin-top:22px;border-top:1px solid #000;padding-top:4px;text-align:center;">Firma de quien recibe: '+(a||'')+'</div>'; }
   if(notas) html+=`<div style="margin-top:10px;">Notas: ${notas}</div>`;
   document.getElementById('print-report-area').innerHTML=html;
   prepararImpresion('reporte');
@@ -2583,7 +2715,9 @@ function exportarCierrePDF(){
     ['− Salidas en efectivo', fmt(salidas)],
     ['Efectivo esperado', fmt(esperado)],
     ['Efectivo contado', fmt(contado)],
-    ['Diferencia', fmt(diferencia)]
+    ['Diferencia', fmt(diferencia)],
+    ['Efectivo entregado a '+(document.getElementById('cc-entregado-a').value.trim()||'responsable'), fmt(parseFloat(document.getElementById('cc-entregado').value)||0)],
+    ['Queda en caja (base para mañana)', fmt(contado-(parseFloat(document.getElementById('cc-entregado').value)||0))]
   ];
   if(notas) rows.push(['Notas', notas]);
   generarPDF('cierre-caja-'+fecha+'.pdf', 'Cierre de caja diario', fecha, headers, rows);
@@ -2604,8 +2738,13 @@ function guardarCierreCaja(){
     totalVentas:r.totalVentas, salidasEfectivo:salidas,
     efectivoEsperado:esperado, efectivoContado:contado, diferencia:contado-esperado,
     notas:document.getElementById('cc-notas').value.trim(),
+    valorEntregado:Math.max(0,parseFloat(document.getElementById('cc-entregado').value)||0),
+    entregadoA:document.getElementById('cc-entregado-a').value.trim(),
     cerradoEn:new Date().toISOString(), cerradoPor:currentRole
   };
+  if(registro.valorEntregado>contado){ toast('No puedes entregar más efectivo del que contaste'); return; }
+  if(registro.valorEntregado>0 && !registro.entregadoA){ toast('Escribe a quién se le entregó el efectivo'); return; }
+  if(registro.entregadoA){ DB.config.responsables=[registro.entregadoA, ...(DB.config.responsables||[]).filter(n=>n!==registro.entregadoA)].slice(0,10); }
   const idxExistente=DB.cierres.findIndex(c=>c.fecha===fecha);
   if(idxExistente!==-1) DB.cierres[idxExistente]=registro; else DB.cierres.push(registro);
   guardarDB();
@@ -2670,7 +2809,9 @@ function exportarCierrePDFHistorico(){
     ['Salidas de efectivo', fmt(c.salidasEfectivo||0)],
     ['Efectivo esperado', fmt(c.efectivoEsperado||0)],
     ['Efectivo contado', fmt(c.efectivoContado||0)],
-    ['Diferencia', fmt(c.diferencia||0)]
+    ['Diferencia', fmt(c.diferencia||0)],
+    ['Efectivo entregado a '+(c.entregadoA||'responsable'), fmt(c.valorEntregado||0)],
+    ['Queda en caja (base)', fmt((c.efectivoContado||0)-(c.valorEntregado||0))]
   ];
   if(c.notas) rows.push(['Notas', c.notas]);
   generarPDF('cierre-caja-'+c.fecha+'.pdf', 'Cierre de caja diario', c.fecha, headers, rows);
@@ -4853,7 +4994,7 @@ function marcarCompraPagada(id){
   const c=DB.compras.find(x=>x.id===id); if(!c) return;
   normalizarPagoCompra(c);
   const saldo=saldoCompra(c);
-  if(saldo>0){ c.abonos.push({fecha:hoyISO(), valor:saldo, metodo:'Transferencia'}); }
+  if(saldo>0){ const cu=(prompt('¿Con qué se pagó? Escribe: nequi, efectivo o banco','nequi')||'').trim().toLowerCase(); const cuenta=['nequi','efectivo','banco'].includes(cu)?cu:'nequi'; c.abonos.push({fecha:hoyISO(), valor:saldo, cuenta, metodo:nombreCuenta(cuenta)}); }
   else { if(!confirm('¿Quitar los pagos registrados y dejarla otra vez por pagar?')) return; c.abonos=[]; }
   normalizarPagoCompra(c); guardarDB(); renderProveedores();
 }
@@ -4988,7 +5129,7 @@ function guardarCompraMercancia(){
   });
   const unid=lineas.reduce((s,l)=>s+l.cantidad,0);
   const compra={id:uid(), tipo:'mercancia', proveedorId, tienda, fecha, numeroFactura:g('cm-factura').value.trim(), descripcion:'Mercancía '+cortoTienda(tienda)+' · '+unid+' unid.', subtotal:T.sub, fletes:T.fletes, valor:T.total, lineas,
-    abonos: abono>0? [{fecha, valor:abono, metodo}] : [], pagado:false, fechaPago:null, creadoEn:new Date().toISOString()};
+    abonos: abono>0? [{fecha, valor:abono, cuenta:metodo, metodo:nombreCuenta(metodo)}] : [], pagado:false, fechaPago:null, creadoEn:new Date().toISOString()};
   normalizarPagoCompra(compra);
   DB.compras.push(compra);
   guardarDB(); cerrarModal('modal-compra'); renderProveedores(); if(typeof renderInventario==='function') renderInventario();
@@ -5021,11 +5162,211 @@ function registrarPagoCompra(){
   const valor=Math.min(saldoCompra(c), Math.max(0,parseFloat(document.getElementById('cd-valor').value)||0));
   if(valor<=0){ toast('Escribe el valor del pago'); return; }
   normalizarPagoCompra(c);
-  c.abonos.push({fecha:document.getElementById('cd-fecha').value||hoyISO(), valor, metodo:document.getElementById('cd-metodo').value});
+  const cu=document.getElementById('cd-metodo').value;
+  c.abonos.push({fecha:document.getElementById('cd-fecha').value||hoyISO(), valor, cuenta:cu, metodo:nombreCuenta(cu)});
   normalizarPagoCompra(c); guardarDB(); renderProveedores(); verCompra(c.id);
   toast(saldoCompra(c)<=0? 'Compra pagada completa' : 'Abono registrado; saldo '+fmt(saldoCompra(c)));
 }
 
+
+/* ================= TESORERÍA: dónde está la plata ================= */
+const CUENTAS_TES=[{id:'efectivo',nombre:'Efectivo guardado'},{id:'nequi',nombre:'Nequi'},{id:'banco',nombre:'Banco'}];
+function nombreCuenta(id){ const c=CUENTAS_TES.find(x=>x.id===id); return c? c.nombre : (id==='caja'?'Caja de la tienda':'—'); }
+function opcionesCuentaHTML(sel){ return CUENTAS_TES.map(c=>`<option value="${c.id}"${c.id===sel?' selected':''}>${c.nombre}</option>`).join(''); }
+function cuentaDesdeMetodo(m){ if(!m) return null; if(/efectivo/i.test(m)) return 'efectivo'; if(/nequi/i.test(m)) return 'nequi'; if(/banco|tarjeta/i.test(m)) return 'banco'; return (DB.tesoreria&&DB.tesoreria.transferenciasA)||'nequi'; }
+function inicioCuenta(id){ const c=(DB.tesoreria.cuentas||{})[id]||{}; return c.fecha||''; }
+function enCuenta(id,f){ const i=inicioCuenta(id); return !!f && (!i || f>=i); }
+function movimientosTesoreria(){
+  const T=DB.tesoreria, out=[];
+  const push=(cuenta,fecha,valor,concepto,origen,ref)=>{ valor=Number(valor)||0; if(!cuenta||!valor||!enCuenta(cuenta,fecha)) return; out.push({cuenta,fecha,valor,concepto,origen,ref,orden:0}); };
+  CUENTAS_TES.forEach(c=>{ const x=T.cuentas[c.id]; if(x && x.fecha) out.push({cuenta:c.id, fecha:x.fecha, valor:Number(x.saldoInicial)||0, concepto:'Saldo inicial', origen:'inicial', orden:-1}); });
+  // ventas que no entran a la caja física
+  DB.ventas.forEach(v=>{
+    if(v.metodo==='Transferencia') push(T.transferenciasA, v.fecha, v.total, 'Venta N.° '+v.numero+' por transferencia — '+(v.cliente||''), 'venta');
+    else if(v.metodo==='Mixto' && v.montoTransferencia) push(T.transferenciasA, v.fecha, v.montoTransferencia, 'Venta N.° '+v.numero+' (parte en transferencia)', 'venta');
+    else if(v.metodo==='Tarjeta') push(T.tarjetaA, v.fecha, v.total, 'Venta N.° '+v.numero+' con tarjeta', 'venta');
+    if(v.credito && v.credito.estado==='pagado' && v.credito.fechaPago && v.credito.metodoCobro!=='Efectivo')
+      push(v.credito.metodoCobro==='Tarjeta'? T.tarjetaA : T.transferenciasA, v.credito.fechaPago, v.credito.montoRecibido||0, 'Pago de '+(v.credito.financiera||v.metodo)+' · venta N.° '+v.numero, 'credito');
+  });
+  // cierres: efectivo que se le entrega al responsable sale de la caja y pasa a Efectivo guardado
+  DB.cierres.forEach(c=>{ if((c.valorEntregado||0)>0) push('efectivo', c.fecha, c.valorEntregado, 'Cierre '+c.fecha+': efectivo entregado a '+(c.entregadoA||'responsable'), 'cierre'); });
+  // pagos a proveedores
+  DB.compras.forEach(c=>{
+    const p=DB.proveedores.find(x=>x.id===c.proveedorId);
+    (Array.isArray(c.abonos)?c.abonos:[]).forEach(a=>{ const cu=a.cuenta||cuentaDesdeMetodo(a.metodo); if(cu) push(cu, a.fecha, -a.valor, 'Pago a '+(p?p.nombre:'proveedor')+(c.numeroFactura?' · fact. '+c.numeroFactura:''), 'compra', c.id); });
+  });
+  // gastos pagados fuera de la caja del día
+  DB.gastos.forEach(g=>{ const pc=g.pagadoCon||'caja'; if(pc!=='caja') push(pc, g.fecha, -(Number(g.valor)||0), 'Gasto: '+(g.categoria||'')+(g.descripcion?' · '+g.descripcion:''), 'gasto'); });
+  // traslados y movimientos manuales
+  (T.movimientos||[]).forEach(m=>{
+    if(m.tipo==='traslado'){ push(m.origen, m.fecha, -m.valor, (m.concepto||'Traslado')+' → '+nombreCuenta(m.destino), 'traslado', m.id); push(m.destino, m.fecha, m.valor, (m.concepto||'Traslado')+' ← '+nombreCuenta(m.origen), 'traslado', m.id); }
+    else push(m.cuenta, m.fecha, m.tipo==='salida'? -m.valor : m.valor, m.concepto||'Movimiento manual', 'manual', m.id);
+  });
+  // préstamos a socios
+  (DB.prestamosSocios||[]).forEach(p=>{
+    push(p.cuenta, p.fecha, -p.valor, 'Préstamo a '+p.socio+(p.concepto?' · '+p.concepto:''), 'prestamo', p.id);
+    (p.pagos||[]).forEach(x=>push(x.cuenta, x.fecha, x.valor, 'Pago de '+p.socio+' (préstamo)', 'prestamo', p.id));
+  });
+  return out.sort((a,b)=> a.fecha===b.fecha? a.orden-b.orden : a.fecha.localeCompare(b.fecha));
+}
+function saldosTesoreria(){
+  const s={}; CUENTAS_TES.forEach(c=>s[c.id]=0);
+  movimientosTesoreria().forEach(m=>{ s[m.cuenta]=(s[m.cuenta]||0)+m.valor; });
+  return s;
+}
+function baseCajaActual(){
+  const ult=[...DB.cierres].sort((a,b)=>b.fecha.localeCompare(a.fecha))[0];
+  return ult? {fecha:ult.fecha, valor:(Number(ult.efectivoContado)||0)-(Number(ult.valorEntregado)||0)} : {fecha:'', valor:0};
+}
+function saldoPrestamo(p){ return Math.max(0,(Number(p.valor)||0)-(p.pagos||[]).reduce((s,x)=>s+(Number(x.valor)||0),0)); }
+function renderTesoreria(){
+  const T=DB.tesoreria, S=saldosTesoreria(), caja=baseCajaActual();
+  const total=CUENTAS_TES.reduce((s,c)=>s+S[c.id],0)+caja.valor;
+  const kpi=(t,v,cl,sub)=>`<div class="card"><h3>${t}</h3><div class="kpi ${cl||''}" style="font-size:22px;">${fmt(v)}</div>${sub?`<div style="font-size:11.5px;color:var(--ink-soft);margin-top:4px;">${sub}</div>`:''}</div>`;
+  document.getElementById('tes-saldos').innerHTML=
+    kpi('Efectivo guardado', S.efectivo, '', 'En poder del responsable')+
+    kpi('Nequi', S.nequi, 'indigo')+
+    kpi('Banco', S.banco, 'indigo')+
+    kpi('Caja de la tienda', caja.valor, '', caja.fecha? 'Base que quedó en el cierre del '+caja.fecha : 'Aún no hay cierres')+
+    `<div class="card" style="grid-column:1/-1;background:var(--gold-soft);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;"><h3 style="margin:0;">Total disponible del negocio</h3><div class="kpi gold" style="font-size:26px;">${fmt(total)}</div></div>`;
+  const sinIni=CUENTAS_TES.filter(c=>!inicioCuenta(c.id));
+  const negs=CUENTAS_TES.filter(c=>S[c.id]<0);
+  document.getElementById('tes-aviso').innerHTML=(sinIni.length? `<span class="badge gold">Falta el saldo inicial de: ${sinIni.map(c=>c.nombre).join(', ')}. Mientras tanto se cuenta desde el primer movimiento.</span> `:'')+
+    (negs.length? `<span class="badge danger">${negs.map(c=>c.nombre).join(', ')} quedó en negativo: revisa el saldo inicial o si falta registrar una consignación o una entrega de efectivo.</span>`:'');
+  // saldos iniciales
+  if(!document.querySelector('#tes-iniciales :focus')){
+    document.getElementById('tes-iniciales').innerHTML=CUENTAS_TES.map(c=>{ const x=T.cuentas[c.id]||{}; return `<div class="row" style="align-items:flex-end;">
+      <div class="field" style="flex:1.3;"><label>${c.nombre}</label><input type="number" id="tes-ini-v-${c.id}" min="0" value="${x.fecha? (x.saldoInicial||0) : ''}" placeholder="$ saldo"></div>
+      <div class="field"><label>Al empezar el día</label><input type="date" id="tes-ini-f-${c.id}" value="${x.fecha||hoyISO()}"></div></div>`; }).join('');
+    document.getElementById('tes-transf-a').innerHTML=opcionesCuentaHTML(T.transferenciasA||'nequi');
+    document.getElementById('tes-tarjeta-a').innerHTML=opcionesCuentaHTML(T.tarjetaA||'banco');
+  }
+  // préstamos a socios
+  const P=[...(DB.prestamosSocios||[])].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  document.getElementById('tes-socios-total').textContent=fmt(P.reduce((s,p)=>s+saldoPrestamo(p),0));
+  document.getElementById('tbl-prestamos-socios').innerHTML= P.length? P.map(p=>{ const pag=(Number(p.valor)||0)-saldoPrestamo(p), sal=saldoPrestamo(p);
+    return `<tr><td>${p.fecha}</td><td>${escH(p.socio)}${p.concepto?`<div style="font-size:11px;color:var(--ink-soft)">${escH(p.concepto)}</div>`:''}</td><td>${nombreCuenta(p.cuenta)}</td><td class="right num">${fmt(p.valor)}</td><td class="right num">${fmt(pag)}</td>
+      <td class="right num">${sal>0?fmt(sal):'<span class="badge success">Pagó todo</span>'}</td>
+      <td class="right" style="white-space:nowrap;">${sal>0?`<button class="btn gold sm" onclick="abrirPagoSocio('${p.id}')">Registrar pago</button> `:''}<button class="btn danger sm" onclick="eliminarPrestamoSocio('${p.id}')">×</button></td></tr>`; }).join('')
+    : '<tr><td colspan="7"><div class="empty">No hay préstamos a socios.</div></td></tr>';
+  // filtros de movimientos
+  const fc=document.getElementById('tes-f-cuenta');
+  if(!fc.options.length) fc.innerHTML='<option value="todas">Todas las cuentas</option>'+opcionesCuentaHTML('');
+  if(!document.getElementById('tes-f-desde').value){ const d=new Date(); d.setDate(d.getDate()-30); document.getElementById('tes-f-desde').value=fechaISOLocal(d); }
+  renderMovimientosTesoreria();
+}
+function renderMovimientosTesoreria(){
+  const fc=document.getElementById('tes-f-cuenta').value||'todas', d=document.getElementById('tes-f-desde').value, h=document.getElementById('tes-f-hasta').value;
+  const corrido={}; const filas=[];
+  movimientosTesoreria().forEach(m=>{
+    corrido[m.cuenta]=(corrido[m.cuenta]||0)+m.valor;
+    const tot= fc==='todas'? Object.values(corrido).reduce((a,b)=>a+b,0) : corrido[fc]||0;
+    if(fc!=='todas' && m.cuenta!==fc) return;
+    if(d && m.fecha<d) return; if(h && m.fecha>h) return;
+    filas.push({...m, saldo:tot});
+  });
+  const editable=m=> (m.origen==='manual'||m.origen==='traslado')? `<button class="btn danger sm" onclick="eliminarMovTesoreria('${m.ref}')">×</button>` : '';
+  document.getElementById('tbl-mov-tesoreria').innerHTML= filas.length? filas.reverse().map(m=>`<tr><td>${m.fecha}</td><td>${nombreCuenta(m.cuenta)}</td><td>${escH(m.concepto)}</td>
+    <td class="right num" style="color:var(--success);">${m.valor>0?fmt(m.valor):''}</td><td class="right num" style="color:var(--danger);">${m.valor<0?fmt(-m.valor):''}</td><td class="right num">${fmt(m.saldo)}</td><td class="right">${editable(m)}</td></tr>`).join('')
+    : '<tr><td colspan="7"><div class="empty">Sin movimientos en este rango.</div></td></tr>';
+}
+function guardarSaldosIniciales(){
+  const T=DB.tesoreria;
+  CUENTAS_TES.forEach(c=>{
+    const v=document.getElementById('tes-ini-v-'+c.id).value, f=document.getElementById('tes-ini-f-'+c.id).value;
+    if(v==='' ){ return; }
+    T.cuentas[c.id]={saldoInicial:Math.round(parseFloat(v)||0), fecha:f||hoyISO()};
+  });
+  T.transferenciasA=document.getElementById('tes-transf-a').value;
+  T.tarjetaA=document.getElementById('tes-tarjeta-a').value;
+  guardarDB(); renderTesoreria(); toast('Saldos iniciales guardados');
+}
+function abrirMovTesoreria(modo){
+  document.getElementById('mt-modo').value=modo; document.getElementById('mt-id').value='';
+  document.getElementById('mt-titulo').textContent= modo==='traslado'? 'Consignar o trasladar dinero' : 'Movimiento manual';
+  document.getElementById('mt-traslado').style.display= modo==='traslado'?'':'none';
+  document.getElementById('mt-manual').style.display= modo==='manual'?'':'none';
+  document.getElementById('mt-origen').innerHTML=opcionesCuentaHTML('efectivo');
+  document.getElementById('mt-destino').innerHTML=opcionesCuentaHTML(DB.tesoreria.transferenciasA||'nequi');
+  document.getElementById('mt-cuenta').innerHTML=opcionesCuentaHTML('efectivo');
+  document.getElementById('mt-fecha').value=hoyISO(); document.getElementById('mt-valor').value=''; document.getElementById('mt-concepto').value= modo==='traslado'? 'Consignación de efectivo' : '';
+  abrirModal('modal-mov-tes');
+}
+function guardarMovTesoreria(){
+  const modo=document.getElementById('mt-modo').value, valor=Math.round(parseFloat(document.getElementById('mt-valor').value)||0);
+  if(valor<=0){ toast('Escribe el valor'); return; }
+  const m={id:uid(), fecha:document.getElementById('mt-fecha').value||hoyISO(), valor, concepto:document.getElementById('mt-concepto').value.trim(), creadoEn:new Date().toISOString()};
+  if(modo==='traslado'){
+    m.tipo='traslado'; m.origen=document.getElementById('mt-origen').value; m.destino=document.getElementById('mt-destino').value;
+    if(m.origen===m.destino){ toast('La cuenta de origen y la de destino deben ser distintas'); return; }
+  } else { m.tipo=document.getElementById('mt-tipo').value; m.cuenta=document.getElementById('mt-cuenta').value; }
+  DB.tesoreria.movimientos.push(m);
+  guardarDB(); cerrarModal('modal-mov-tes'); renderTesoreria(); toast('Movimiento registrado');
+}
+function eliminarMovTesoreria(id){
+  if(!confirm('¿Eliminar este movimiento?')) return;
+  DB.tesoreria.movimientos=DB.tesoreria.movimientos.filter(m=>m.id!==id);
+  guardarDB(); renderTesoreria();
+}
+/* ---- préstamos a socios ---- */
+let prestamoPagoId=null;
+function abrirPrestamoSocio(){
+  prestamoPagoId=null;
+  document.getElementById('ps-titulo').textContent='Préstamo a socio';
+  document.getElementById('ps-nuevo').style.display=''; document.getElementById('ps-pago').style.display='none';
+  document.getElementById('ps-btn').textContent='Guardar préstamo';
+  document.getElementById('ps-dl-socios').innerHTML=[...new Set((DB.prestamosSocios||[]).map(p=>p.socio))].map(s=>`<option value="${escH(s)}">`).join('');
+  document.getElementById('ps-cuenta').innerHTML=opcionesCuentaHTML('efectivo');
+  ['ps-socio','ps-valor','ps-concepto'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ps-fecha').value=hoyISO();
+  abrirModal('modal-prestamo-socio');
+}
+function abrirPagoSocio(id){
+  const p=(DB.prestamosSocios||[]).find(x=>x.id===id); if(!p) return;
+  prestamoPagoId=id;
+  document.getElementById('ps-titulo').textContent='El socio pagó — '+p.socio;
+  document.getElementById('ps-nuevo').style.display='none'; document.getElementById('ps-pago').style.display='';
+  document.getElementById('ps-btn').textContent='Registrar pago';
+  document.getElementById('ps-resumen').innerHTML=`Prestado el ${p.fecha}: <strong>${fmt(p.valor)}</strong> · ya pagó ${fmt(p.valor-saldoPrestamo(p))} · <strong>debe ${fmt(saldoPrestamo(p))}</strong>`;
+  document.getElementById('ps-p-cuenta').innerHTML=opcionesCuentaHTML(p.cuenta||'efectivo');
+  document.getElementById('ps-p-fecha').value=hoyISO(); document.getElementById('ps-p-valor').value=saldoPrestamo(p);
+  abrirModal('modal-prestamo-socio');
+}
+function guardarPrestamoSocio(){
+  if(prestamoPagoId){
+    const p=DB.prestamosSocios.find(x=>x.id===prestamoPagoId); if(!p) return;
+    const valor=Math.min(saldoPrestamo(p), Math.round(parseFloat(document.getElementById('ps-p-valor').value)||0));
+    if(valor<=0){ toast('Escribe el valor que pagó'); return; }
+    (p.pagos=p.pagos||[]).push({fecha:document.getElementById('ps-p-fecha').value||hoyISO(), valor, cuenta:document.getElementById('ps-p-cuenta').value});
+    guardarDB(); cerrarModal('modal-prestamo-socio'); renderTesoreria();
+    toast(saldoPrestamo(p)<=0? p.socio+' pagó todo el préstamo' : 'Pago registrado; aún debe '+fmt(saldoPrestamo(p)));
+    return;
+  }
+  const socio=document.getElementById('ps-socio').value.trim(), valor=Math.round(parseFloat(document.getElementById('ps-valor').value)||0);
+  if(!socio){ toast('Escribe el nombre del socio'); return; }
+  if(valor<=0){ toast('Escribe el valor prestado'); return; }
+  DB.prestamosSocios.push({id:uid(), socio, fecha:document.getElementById('ps-fecha').value||hoyISO(), valor, cuenta:document.getElementById('ps-cuenta').value, concepto:document.getElementById('ps-concepto').value.trim(), pagos:[], creadoEn:new Date().toISOString()});
+  guardarDB(); cerrarModal('modal-prestamo-socio'); renderTesoreria(); toast('Préstamo a '+socio+' registrado');
+}
+function eliminarPrestamoSocio(id){
+  if(!confirm('¿Eliminar este préstamo y sus pagos?')) return;
+  DB.prestamosSocios=DB.prestamosSocios.filter(p=>p.id!==id); guardarDB(); renderTesoreria();
+}
+async function exportarTesoreriaExcel(){
+  try{
+    await cargarXLSX();
+    const S=saldosTesoreria(), caja=baseCajaActual();
+    const resumen=CUENTAS_TES.map(c=>[c.nombre, S[c.id]]).concat([['Caja de la tienda (base del último cierre)', caja.valor]]);
+    const corrido={}; const movs=movimientosTesoreria().map(m=>{ corrido[m.cuenta]=(corrido[m.cuenta]||0)+m.valor; return [m.fecha, nombreCuenta(m.cuenta), m.concepto, m.valor>0?m.valor:0, m.valor<0?-m.valor:0, corrido[m.cuenta]]; });
+    const soc=(DB.prestamosSocios||[]).map(p=>[p.fecha, p.socio, nombreCuenta(p.cuenta), p.concepto||'', p.valor, p.valor-saldoPrestamo(p), saldoPrestamo(p)]);
+    xLibro([
+      ['Saldos', xHoja('Saldos de tesorería', 'Corte: '+hoyISO(), [{h:'Cuenta',t:'text',w:44},{h:'Saldo',t:'money',sum:1}], resumen)],
+      ['Movimientos', xHoja('Movimientos de tesorería', 'Saldo corrido por cuenta', [{h:'Fecha',t:'text'},{h:'Cuenta',t:'text'},{h:'Concepto',t:'text'},{h:'Entra',t:'money',sum:1},{h:'Sale',t:'money',sum:1},{h:'Saldo de la cuenta',t:'money'}], movs)],
+      ['Préstamos a socios', xHoja('Préstamos a socios', 'Lo que deben los socios al negocio', [{h:'Fecha',t:'text'},{h:'Socio',t:'text'},{h:'Salió de',t:'text'},{h:'Concepto',t:'text'},{h:'Prestado',t:'money',sum:1},{h:'Pagado',t:'money',sum:1},{h:'Debe',t:'money',sum:1}], soc)]
+    ], 'tesoreria-'+hoyISO()+'.xlsx');
+    toast('Excel descargado');
+  }catch(e){ console.error(e); toast('No se pudo generar el Excel (revisa tu conexión)'); }
+}
 
 /* ================= ACTIVOS FIJOS ================= */
 function calcularDepreciacionActivo(a){
@@ -5155,7 +5496,8 @@ function guardarGasto(){
   const valor=parseFloat(document.getElementById('gasto-valor').value)||0;
   if(valor<=0){ toast('Ingresa un valor válido'); return; }
   const tienda=document.getElementById('gasto-tienda').value||'compartido';
-  DB.gastos.push({id:uid(), fecha, categoria, descripcion, valor, tienda});
+  const pagadoCon=document.getElementById('gasto-pago').value||'caja';
+  DB.gastos.push({id:uid(), fecha, categoria, descripcion, valor, tienda, pagadoCon});
   guardarDB(); cerrarModal('modal-gasto'); renderGastos();
   toast('Gasto registrado');
 }
@@ -5174,7 +5516,7 @@ function renderGastos(){
   document.getElementById('gastos-total-filtrado').textContent=fmt(lista.reduce((s,g)=>s+g.valor,0));
   if(!lista.length){ tbody.innerHTML='<tr><td colspan="6"><div class="empty">No hay gastos en este rango.</div></td></tr>'; return; }
   tbody.innerHTML=lista.map(g=>`
-    <tr><td>${g.fecha}</td><td><span class="badge indigo">${g.categoria}</span></td><td><select onchange="cambiarTiendaGasto('${g.id}',this.value)" style="font-size:12px;padding:3px 6px;"><option value="compartido"${(g.tienda||'compartido')==='compartido'?' selected':''}>Compartido</option><option value="regia"${g.tienda==='regia'?' selected':''}>Regia</option><option value="fraganza"${g.tienda==='fraganza'?' selected':''}>Fraganza</option></select></td><td>${g.descripcion||'—'}</td>
+    <tr><td>${g.fecha}</td><td><span class="badge indigo">${g.categoria}</span></td><td><select onchange="cambiarTiendaGasto('${g.id}',this.value)" style="font-size:12px;padding:3px 6px;"><option value="compartido"${(g.tienda||'compartido')==='compartido'?' selected':''}>Compartido</option><option value="regia"${g.tienda==='regia'?' selected':''}>Regia</option><option value="fraganza"${g.tienda==='fraganza'?' selected':''}>Fraganza</option></select></td><td>${g.descripcion||'—'}${(g.pagadoCon||'caja')!=='caja'?` <span class="badge">${nombreCuenta(g.pagadoCon)}</span>`:''}</td>
     <td class="right num">${fmt(g.valor)}</td>
     <td class="right"><button class="btn danger sm" onclick="eliminarGasto('${g.id}')">Eliminar</button></td></tr>`).join('');
 }
@@ -5618,7 +5960,7 @@ function calcularReporteFinanciero(desde, hasta, tienda){
   // cierres de caja (caja única: se reparten según ventas)
   const cierres=(DB.cierres||[]).filter(c=>enR(c.fecha)).sort((a,b)=>a.fecha.localeCompare(b.fecha));
   R.cierres=cierres.map(c=>{
-    const gDia=DB.gastos.filter(g=>g.fecha===c.fecha).reduce((s,g)=>s+(Number(g.valor)||0),0);
+    const gDia=DB.gastos.filter(g=>g.fecha===c.fecha && (g.pagadoCon||'caja')==='caja').reduce((s,g)=>s+(Number(g.valor)||0),0);
     const sal=Number(c.salidasEfectivo)||0;
     return {...c, gastosDia:gDia, salidaNoRegistrada:Math.max(0, sal-gDia)};
   });
