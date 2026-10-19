@@ -5,6 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Regia by cm · Tienda</title>
 <meta name="description" content="Compra en línea en Regia by cm. Elige tu talla y color, haz tu pedido y te confirmamos por WhatsApp.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Regia by CM">
+<meta property="og:title" content="Regia by CM · Ropa deportiva para mujer">
+<meta property="og:description" content="Tienda en línea: elige tu talla y color, haz tu pedido y te confirmamos por WhatsApp.">
+<meta property="og:url" content="https://maylopezescorcia-source.github.io/regia/tienda.html">
+<meta property="og:image" content="https://maylopezescorcia-source.github.io/regia/regia-preview.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="es_CO">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://maylopezescorcia-source.github.io/regia/regia-preview.jpg">
+<link rel="icon" type="image/jpeg" href="regia-preview.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -250,7 +262,7 @@ function iniciar(){
   }, e=>console.error(e));
   baseRef.collection('productos').onSnapshot(snap=>{
     PRODS=snap.docs.map(d=>d.data());
-    cargado=true; revisarBolsa(); render();
+    cargado=true; revisarBolsa(); render(); abrirDesdeLink();
     if(prodAbierto){ const p=PRODS.find(x=>x.id===prodAbierto.id); if(p){ prodAbierto=p; pintarProducto(true); } }
     if($('sheet-bag').classList.contains('on') && paso==='bolsa') pintarBolsa();
   }, e=>{ console.error(e); cargado=true; $('count').textContent='No pudimos cargar el catálogo. Revisa tu conexión e intenta de nuevo.'; });
@@ -294,14 +306,32 @@ function irInicio(){ categoria='Todo'; texto=''; $('q').value=''; render(); wind
 
 /* ---------- hojas ---------- */
 function abrirHoja(id){ $(id).classList.add('on'); $('scrim').classList.add('on'); document.body.classList.add('lock'); }
-function cerrarHojas(){ ['sheet-prod','sheet-bag'].forEach(i=>$(i).classList.remove('on')); $('scrim').classList.remove('on'); document.body.classList.remove('lock'); prodAbierto=null; }
+function cerrarHojas(){ if(prodAbierto){ try{ history.replaceState(null,'',location.pathname); }catch(e){} } ['sheet-prod','sheet-bag'].forEach(i=>$(i).classList.remove('on')); $('scrim').classList.remove('on'); document.body.classList.remove('lock'); prodAbierto=null; }
 $('scrim').addEventListener('click',cerrarHojas);
+function slugDe(t){ return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+function claveLink(p){ const sl=slugDe(p.nombre); return sl && PRODS.filter(x=>slugDe(x.nombre)===sl).length===1 ? sl : p.id; }
+function linkProducto(p){ return location.origin+location.pathname+'?p='+encodeURIComponent(claveLink(p)); }
+let linkPendiente=null; try{ linkPendiente=new URLSearchParams(location.search).get('p'); }catch(e){}
+function abrirDesdeLink(){
+  if(!linkPendiente || !cargado) return;
+  const k=linkPendiente; linkPendiente=null;
+  const p=PRODS.find(x=>x.id===k) || PRODS.find(x=>slugDe(x.nombre)===slugDe(k));
+  if(p) abrirProducto(p.id); else { toast('Ese producto ya no está disponible. Mira lo que tenemos.'); try{ history.replaceState(null,'',location.pathname); }catch(e){} }
+}
+async function compartirProducto(){
+  const p=prodAbierto; if(!p) return;
+  const url=linkProducto(p), texto=p.nombre+' · '+fmt(p.precio);
+  if(navigator.share){ try{ await navigator.share({title:p.nombre, text:texto, url}); return; }catch(e){ if(e&&e.name==='AbortError') return; } }
+  try{ await navigator.clipboard.writeText(url); toast('Link copiado. Pégalo donde quieras compartirlo.'); }
+  catch(e){ prompt('Copia este link:', url); }
+}
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') cerrarHojas(); });
 
 /* ---------- producto ---------- */
 async function abrirProducto(id){
   const p=PRODS.find(x=>x.id===id); if(!p) return;
   prodAbierto=p; galIdx=0; selQty=1;
+  try{ history.replaceState(null,'',location.pathname+'?p='+encodeURIComponent(claveLink(p))); }catch(e){}
   const col=[...new Set(p.variantes.filter(v=>v.stock>0).map(v=>v.color))];
   selColor=col.length===1?col[0]:null;
   const todosColores=[...new Set(p.variantes.map(v=>v.color))];
@@ -366,6 +396,7 @@ function pintarProducto(conservar){
       ${cerrada?'<div class="cerrada" style="margin-top:12px">La tienda está cerrada por ahora.</div>':''}
       <div class="buy"><div class="qty"><button data-q="-1" aria-label="Menos" ${selQty<=1||!v?'disabled':''}>−</button><span>${selQty}</span><button data-q="1" aria-label="Más" ${!v||selQty>=disp?'disabled':''}>+</button></div>
       <button class="btn pri" id="btn-add" ${puede?'':'disabled'}>Agregar a la bolsa</button></div>
+      <button class="btn ghost" id="btn-share" style="width:100%;margin-top:10px;font-size:14px">Compartir esta prenda</button>
     </div></div>`;
 }
 $('sheet-prod').addEventListener('click',e=>{
@@ -376,6 +407,7 @@ $('sheet-prod').addEventListener('click',e=>{
   else if(g){ galIdx=+g.dataset.g; pintarProducto(); }
   else if(q){ selQty=Math.max(1,selQty+(+q.dataset.q)); pintarProducto(); }
   else if(e.target.closest('#btn-add')) agregarABolsa();
+  else if(e.target.closest('#btn-share')) compartirProducto();
 });
 function agregarABolsa(){
   const p=prodAbierto, v=varianteSel(); if(!p||!v||!CFG.abierta) return;

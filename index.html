@@ -8406,8 +8406,20 @@ function renderTienda(){
       <td class="right num">${precios.length?fmt(Math.min(...precios)):'—'}</td>
       <td class="right num">${stock}</td>
       <td class="center">${g.publicado?(sinFoto?'<span class="badge gold">Sin foto</span>':'<span class="badge success">En tienda</span>'):'<span class="badge">Oculto</span>'}</td>
-      <td class="right"><button class="btn ${g.publicado?'ghost':'gold'} sm" onclick="alternarPublicado('${escH(gid)}')">${g.publicado?'Ocultar':'Publicar'}</button> <button class="btn ghost sm" onclick="abrirProductoTienda('${escH(gid)}')">Detalles y fotos</button></td></tr>`;
+      <td class="right"><button class="btn ${g.publicado?'ghost':'gold'} sm" onclick="alternarPublicado('${escH(gid)}')">${g.publicado?'Ocultar':'Publicar'}</button> <button class="btn ghost sm" onclick="abrirProductoTienda('${escH(gid)}')">Detalles y fotos</button> <button class="btn ghost sm" onclick="copiarLinkProducto('${escH(gid)}')" title="Link directo a esta prenda para tus redes">🔗 Link</button></td></tr>`;
   }).join('') : '<tr><td colspan="6"><div class="empty">No hay productos que coincidan. Crea artículos en Inventario y luego publícalos aquí.</div></td></tr>';
+}
+function slugDe(t){ return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+function linkProductoTienda(gid){
+  const G=tiendaGrupos(), arts=G.get(gid); if(!arts) return '';
+  const t=tiendaDeArticulo(arts[0]), sl=slugDe(arts[0].nombre);
+  const mismos=[...G.entries()].filter(([g,a])=>tiendaDeArticulo(a[0])===t && (DB.tienda.grupos[g]||{}).publicado && slugDe(a[0].nombre)===sl).length;
+  return urlTienda(t)+'?p='+encodeURIComponent(sl && mismos<=1 ? sl : gid);
+}
+function copiarLinkProducto(gid){
+  const g=(DB.tienda.grupos||{})[gid]||{}; const url=linkProductoTienda(gid); if(!url) return;
+  const avisar=()=>toast(g.publicado?'Link copiado: pégalo en tu post, historia o WhatsApp':'Link copiado. Ojo: esta prenda está oculta; publícala para que el link funcione');
+  try{ navigator.clipboard.writeText(url).then(avisar).catch(()=>{ prompt('Copia este link:', url); }); }catch(e){ prompt('Copia este link:', url); }
 }
 function guardarAjustesTienda(){
   const g=id=>document.getElementById(id);
