@@ -279,7 +279,7 @@ function render(){
   }
   $('grid').innerHTML=lista.map(p=>{
     const st=stockTotal(p), agotado=st<=0;
-    const tallas=[...new Set(p.variantes.filter(v=>v.stock>0).map(v=>v.talla))].filter(t=>t!=='Única');
+    const tallas=[...new Set(p.variantes.filter(v=>v.stock>0).map(v=>v.talla))].filter(t=>t!=='Única').sort(ordenTallas);
     const nCol=[...new Set(p.variantes.filter(v=>v.stock>0).map(v=>v.color))].filter(c=>c!=='Único').length;
     return `<button class="card ${agotado?'agotado':''}" data-id="${esc(p.id)}" aria-label="${esc(p.nombre)}, ${fmt(p.precio)}">
       <div class="ph ${p.thumb?'':'vacio'}">${p.thumb?`<img src="${esc(p.thumb)}" alt="" loading="lazy">`:`<img src="${LOGO}" alt="">`}
@@ -319,13 +319,27 @@ function autoTalla(){
   if(tallas.length===1) selTalla=tallas[0];
   else if(selTalla && !p.variantes.some(v=>v.color===selColor&&v.talla===selTalla&&v.stock>0)) selTalla=null;
 }
-function varianteSel(){ const p=prodAbierto; return p&&selColor&&selTalla? p.variantes.find(v=>v.color===selColor&&v.talla===selTalla):null; }
+function varianteSel(){ const p=prodAbierto; if(!(p&&selColor&&selTalla)) return null; const m=p.variantes.filter(v=>v.color===selColor&&v.talla===selTalla).sort((a,b)=>b.stock-a.stock); return m[0]||null; }
+const ORDEN_TALLAS=['XXS','XS','S','M','L','XL','XXL','XXXL','2XL','3XL','4XL'];
+function ordenTallas(a,b){ const A=String(a).toUpperCase().trim(), B=String(b).toUpperCase().trim(); const ia=ORDEN_TALLAS.indexOf(A), ib=ORDEN_TALLAS.indexOf(B);
+  if(ia>=0&&ib>=0) return ia-ib; const na=parseFloat(A), nb=parseFloat(B); if(!isNaN(na)&&!isNaN(nb)) return na-nb; if(ia>=0) return -1; if(ib>=0) return 1; return A.localeCompare(B,'es'); }
 function pintarProducto(conservar){
   const p=prodAbierto; if(!p) return;
-  // fotos adicionales: las de "todos los colores" + las del color elegido (sin color elegido: todas)
-  const extra=(fotosCache[p.id]||[]).filter(f=>!selColor||!f.color||f.color===selColor).map(f=>f.src);
-  const fc=p.fotosColor||{}, fotoColor=selColor&&fc[selColor]?fc[selColor]:'';
-  const portada=fotoColor||p.thumb||''; const fotos=portada? [portada,...extra.filter(x=>x!==portada)] : extra;
+  const nube=fotosCache[p.id]||[], fc=p.fotosColor||{};
+  const generales=nube.filter(f=>!f.color).map(f=>f.src);
+  let fotos;
+  if(selColor){
+    // color elegido: sus fotos (frente, espalda…) + las generales
+    const propias=nube.filter(f=>f.color===selColor).map(f=>f.src);
+    const base=propias.length? propias : [fc[selColor]||p.thumb].filter(Boolean);
+    fotos=[...base, ...generales];
+  } else {
+    // sin color elegido: la portada de cada color + las generales
+    const cols=[...new Set(p.variantes.map(v=>v.color))];
+    const portadas=cols.map(c=>{ const f=nube.find(x=>x.color===c); return f?f.src:(fc[c]||''); }).filter(Boolean);
+    fotos=[...(portadas.length?portadas:[p.thumb].filter(Boolean)), ...generales];
+  }
+  fotos=fotos.filter((x,i)=>fotos.indexOf(x)===i);
   if(galIdx>=fotos.length) galIdx=0;
   const colores=[...new Set(p.variantes.map(v=>v.color))], conColor=!(colores.length===1&&colores[0]==='Único');
   const tallasAll=[...new Set(p.variantes.map(v=>v.talla))], conTalla=!(tallasAll.length===1&&tallasAll[0]==='Única');
@@ -334,7 +348,7 @@ function pintarProducto(conservar){
   const agotado=stockTotal(p)<=0;
   const cerrada=!CFG.abierta;
   const colorHtml=conColor?`<div class="opt-t">Color <span>${esc(selColor||'elige uno')}</span></div><div class="opts">${colores.map(c=>{ const hay=p.variantes.some(x=>x.color===c&&x.stock>0); const fcm=(p.fotosColor||{})[c]; return `<button class="opt${fcm?' opt-img':''}" data-color="${esc(c)}" aria-pressed="${c===selColor}" ${hay?'':'disabled'}>${fcm?`<img src="${esc(fcm)}" alt="">`:''}${esc(c)}</button>`; }).join('')}</div>`:'';
-  const tallasMostrar=conColor&&selColor? [...new Set(p.variantes.filter(x=>x.color===selColor).map(x=>x.talla))] : tallasAll;
+  const tallasMostrar=(conColor&&selColor? [...new Set(p.variantes.filter(x=>x.color===selColor).map(x=>x.talla))] : tallasAll).slice().sort(ordenTallas);
   const tallaHtml=conTalla?`<div class="opt-t">Talla <span>${esc(selTalla||'elige una')}</span></div><div class="opts">${tallasMostrar.map(t=>{ const hay=p.variantes.some(x=>(!conColor||!selColor||x.color===selColor)&&x.talla===t&&x.stock>0); return `<button class="opt" data-talla="${esc(t)}" aria-pressed="${t===selTalla}" ${hay?'':'disabled'}>${esc(t)}</button>`; }).join('')}</div>`:'';
   let nota='';
   if(agotado) nota='Esta prenda está agotada por ahora.';

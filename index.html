@@ -89,6 +89,12 @@
   .tj-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 18px;}
   @media(max-width:700px){.tj-grid{grid-template-columns:1fr;}}
   #tp-fotos{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 10px;}
+  .inv-fotos{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 8px;}
+  .inv-foto{position:relative;width:84px;height:104px;border-radius:10px;overflow:hidden;border:1px solid var(--border);background:var(--surface-2);}
+  .inv-foto img{width:100%;height:100%;object-fit:cover;}
+  .inv-foto .tp-tag{font-size:10px;}
+  .inv-foto .inv-port{position:absolute;left:4px;bottom:4px;border:0;border-radius:6px;background:rgba(255,255,255,.9);font-size:10px;padding:2px 5px;cursor:pointer;}
+  .inv-cargando{font-size:12px;color:var(--ink-soft);padding:8px 0;}
   .tp-cel{display:flex;flex-direction:column;gap:4px;width:92px;}
   .tp-cel select{width:92px;font-size:11px;padding:3px 4px;border-radius:6px;}
   .tp-foto{position:relative;width:92px;height:92px;border-radius:10px;overflow:hidden;border:1px solid var(--border);}
@@ -859,10 +865,12 @@
         <button class="btn ghost" onclick="imprimirInventario()">Imprimir existencias</button>
         <button class="btn ghost" onclick="exportarInventarioExcel()">Excel</button>
         <button class="btn ghost" onclick="exportarInventarioPDF()">PDF</button>
+        <button class="btn ghost solo-gerencia" onclick="abrirUnirReferencias()">🔗 Unir referencias repetidas</button>
         <button class="btn gold solo-gerencia" onclick="abrirModalArticulo()">+ Nuevo artículo</button>
       </div>
     </div>
     <hr class="stitch head-stitch">
+    <div id="inv-aviso-unir" class="solo-gerencia" style="display:none;background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:0 0 12px;font-size:13px;"></div>
     <div class="toolbar">
       <div class="field"><label>Tienda</label><select id="inv-tienda" onchange="renderInventario()"><option value="todas">Las dos tiendas</option><option value="regia">Regia by CM</option><option value="fraganza">Fraganza by CM</option></select></div>
       <div class="field search-box"><label>Buscar</label><input type="text" id="inv-buscar" oninput="renderInventario()" placeholder="Nombre, talla, color…"></div>
@@ -1648,13 +1656,9 @@
     <h3 id="tp-titulo">Producto</h3>
     <label class="chk"><input type="checkbox" id="tp-pub"> Mostrar en la tienda</label>
     <div class="field" style="margin-top:10px;"><label>Descripción para el cliente</label><textarea id="tp-desc" rows="4" maxlength="600" style="width:100%;" placeholder="Material, ajuste, cuidados, a qué combina…"></textarea></div>
-    <div class="field"><label>Fotos de la tienda (hasta 8)</label>
+    <div class="field"><label>Fotos en la tienda</label>
       <div id="tp-fotos"></div>
-      <div id="tp-add">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;font-size:12.5px;">Las fotos que agregues ahora son del color: <select id="tp-color-nuevas" style="width:auto;"></select></div>
-        <input type="file" id="tp-input" accept="image/*" multiple onchange="agregarFotosTienda(this)">
-      </div>
-      <p class="pw-meta">La foto del inventario de cada color es la portada. Aquí agregas las demás (espalda, detalle…). Si una foto es de un color, elígelo debajo de la foto: la tienda la muestra solo cuando la clienta escoge ese color. "Todos los colores" se ve siempre.</p>
+      <p class="pw-meta">Las fotos se suben en <b>Inventario → Editar</b> (una vez por color) y llegan solas a la tienda.</p>
     </div>
     <div class="modal-actions"><button class="btn ghost" onclick="cerrarModal('modal-tienda-producto')">Cancelar</button><button class="btn gold" onclick="guardarProductoTienda()">Guardar</button></div>
   </div>
@@ -1688,6 +1692,16 @@
   </div>
 </div>
 
+<!-- ===== Modal: unir referencias repetidas ===== -->
+<div class="modal-bg" id="modal-unir">
+  <div class="modal" style="width:560px;">
+    <h3>Unir referencias repetidas</h3>
+    <p class="pw-meta" style="margin-top:-4px;">Estas prendas tienen el mismo nombre pero están guardadas por separado, por eso en la tienda salen varias veces. Al unirlas quedan como <b>una sola prenda</b> con todas sus tallas y colores. El stock, los precios, las ventas y las fotos se conservan.</p>
+    <div id="unir-lista" style="max-height:52vh;overflow:auto;margin:10px 0;"></div>
+    <div class="modal-actions"><button class="btn ghost" onclick="cerrarModal('modal-unir')">Cancelar</button><button class="btn gold" id="unir-btn" onclick="unirReferencias()">Unir seleccionadas</button></div>
+  </div>
+</div>
+
 <!-- ===== Modal: artículo ===== -->
 <div class="modal-bg" id="modal-articulo">
   <div class="modal">
@@ -1715,6 +1729,8 @@
       </div>
     </div>
     <div class="field"><label>Stock inicial (por variante)</label><input type="number" id="art-stock" min="0" value="0"></div>
+    <label class="chk" style="margin:2px 0 8px;"><input type="checkbox" id="art-pub" checked> Mostrar en la tienda web</label>
+    <p class="pw-meta" style="margin-top:-4px;">Después pulsa <b>Editar</b> en cualquier talla de cada color para subir sus fotos (frente, espalda…).</p>
     <div class="modal-actions">
       <button class="btn ghost" onclick="cerrarModal('modal-articulo')">Cancelar</button>
       <button class="btn gold" onclick="guardarArticulo()">Guardar</button>
@@ -1752,11 +1768,12 @@
       </div>
     </div>
     <div class="field">
-      <label>Imagen de la referencia</label>
-      <input type="file" id="var-imagen-input" accept="image/*" onchange="cargarImagenVariante(this)">
-      <div id="var-imagen-preview" style="margin-top:8px;"></div>
-      <label style="display:flex;gap:8px;align-items:center;font-size:12.5px;margin-top:8px;cursor:pointer;"><input type="checkbox" id="var-imagen-color" checked style="width:auto;"> <span id="var-imagen-color-txt">Usar esta foto en todas las tallas de este color</span></label>
+      <label id="var-fotos-tit">Fotos de este color</label>
+      <div id="var-fotos" class="inv-fotos"></div>
+      <div id="var-fotos-add"><input type="file" id="var-imagen-input" accept="image/*" multiple onchange="agregarFotosVariante(this)"></div>
+      <p class="pw-meta" id="var-fotos-nota" style="margin-top:6px;">La primera es la portada. Sirven para todas las tallas de este color y se publican solas en la tienda.</p>
     </div>
+    <label class="chk" style="margin:4px 0 6px;"><input type="checkbox" id="var-pub"> Mostrar esta prenda en la tienda web</label>
     <div class="field">
       <label>Código de barras</label>
       <input type="text" id="var-codigo" placeholder="Se genera automáticamente si lo dejas vacío">
@@ -3902,8 +3919,9 @@ function duplicarArticulo(id){
   document.getElementById('art-costo').value=a.costo;
   document.getElementById('art-precio').value=a.precio;
   document.getElementById('art-stock').value=0;
-  imagenArticuloPendiente=a.imagen||null;
-  document.getElementById('art-imagen-preview').innerHTML = a.imagen? `<img src="${a.imagen}" style="max-width:120px;border-radius:8px;">` : '';
+  imagenArticuloPendiente=null;
+  document.getElementById('art-imagen-preview').innerHTML='';
+  const pd=document.getElementById('art-pub'); if(pd) pd.checked=!!((DB.tienda.grupos||{})[gidDe(a)]||{}).publicado;
   document.getElementById('art-imagen-input').value='';
   abrirModal('modal-articulo');
 }
@@ -3919,16 +3937,26 @@ function guardarArticulo(){
   if(!nombre){ toast('Escribe el nombre del artículo'); return; }
   const tallasF = tallas.length? tallas: ['Única'];
   const coloresF = colores.length? colores: ['Único'];
-  const grupoId = (grupoDuplicando && DB.articulos.some(x=>x.grupoId===grupoDuplicando && x.nombre===nombre)) ? grupoDuplicando : uid();
+  const existente = grupoPorNombre(nombre, tienda);
+  const grupoId = existente || ((grupoDuplicando && DB.articulos.some(x=>x.grupoId===grupoDuplicando && x.nombre===nombre)) ? grupoDuplicando : uid());
   grupoDuplicando=null;
+  // si la referencia ya existe, las variantes nuevas se suman a ella (y las legacy sin grupo quedan agrupadas)
+  if(existente) DB.articulos.filter(x=>gidDe(x)===existente).forEach(x=>{ x.grupoId=grupoId; });
+  let creadas=0, sumadas=0;
   tallasF.forEach(t=>{
     coloresF.forEach(c=>{
-      DB.articulos.push({id:uid(), grupoId, tienda, nombre, categoria, talla:t, color:c, costo, precio, stock, codigoBarras:generarCodigoBarras(), imagen:imagenArticuloPendiente||null});
+      const ya=DB.articulos.find(x=>x.grupoId===grupoId && normNombre(x.talla)===normNombre(t) && normNombre(x.color)===normNombre(c));
+      if(ya){ ya.stock=(Number(ya.stock)||0)+stock; sumadas++; return; }
+      const imgColor=(DB.articulos.find(x=>x.grupoId===grupoId && normNombre(x.color)===normNombre(c) && x.imagen)||{}).imagen;
+      DB.articulos.push({id:uid(), grupoId, tienda, nombre, categoria, talla:t, color:c, costo, precio, stock, codigoBarras:generarCodigoBarras(), imagen:imagenArticuloPendiente||imgColor||null});
+      creadas++;
     });
   });
+  const pubEl=document.getElementById('art-pub');
+  if(pubEl && pubEl.checked){ const T=DB.tienda; T.grupos=T.grupos||{}; const g=T.grupos[grupoId]||(T.grupos[grupoId]={}); g.publicado=true; if(!g.publicadoEn) g.publicadoEn=Date.now(); T.activada=true; }
   guardarDB();
   cerrarModal('modal-articulo');
-  toast('Artículo agregado con '+ (tallasF.length*coloresF.length) +' variante(s)');
+  toast(existente ? ('Se agregó a la referencia "'+nombre+'" que ya existía: '+creadas+' variante(s) nueva(s)'+(sumadas?', '+sumadas+' ya existían y se les sumó el stock':'')) : ('Artículo agregado con '+creadas+' variante(s)'));
   renderInventario();
 }
 function generarCodigoBarras(){
@@ -3966,6 +3994,7 @@ function imprimirInventario(){
   setTimeout(()=>window.print(), 150);
 }
 function renderInventario(){
+  avisoReferenciasRepetidas();
   const q=(document.getElementById('inv-buscar')?.value||'').toLowerCase();
   const tbody=document.getElementById('tbl-inventario');
   const fT=document.getElementById('inv-tienda')?.value||'todas';
@@ -3995,6 +4024,140 @@ function renderInventario(){
   }).join('');
 }
 let imagenVariantePendiente=null;
+const MAX_FOTOS_COLOR=4;
+// Fotos del color que se está editando: se guardan en la nube (para la tienda) y la primera también como foto del inventario
+let invF={gid:null, color:'', tienda:'regia', fotos:[], otros:{imgs:[],colores:[]}, cargando:false, cambiado:false, nube:false};
+function gidDe(a){ return a.grupoId||a.id; }
+function normNombre(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim(); }
+// referencia existente con el mismo nombre en la misma tienda (para no crear prendas repetidas)
+function grupoPorNombre(nombre, tienda){
+  const n=normNombre(nombre); const a=DB.articulos.find(x=>normNombre(x.nombre)===n && tiendaDeArticulo(x)===tienda);
+  return a? gidDe(a) : null;
+}
+function referenciasRepetidas(){
+  const m=new Map();
+  tiendaGrupos().forEach((arts,gid)=>{ const k=tiendaDeArticulo(arts[0])+'|'+normNombre(arts[0].nombre); if(!m.has(k)) m.set(k,[]); m.get(k).push(gid); });
+  return [...m.entries()].filter(([k,g])=>g.length>1).map(([k,gids])=>({clave:k, gids}));
+}
+function avisoReferenciasRepetidas(){
+  const el=document.getElementById('inv-aviso-unir'); if(!el) return;
+  const r=referenciasRepetidas();
+  el.style.display=r.length?'':'none';
+  if(r.length) el.innerHTML=`⚠ Hay <b>${r.length}</b> prenda(s) guardadas por separado con el mismo nombre (en la tienda salen repetidas). <a href="#" onclick="abrirUnirReferencias();return false;">Unirlas</a>`;
+}
+function abrirUnirReferencias(){
+  const r=referenciasRepetidas(), G=tiendaGrupos();
+  document.getElementById('unir-lista').innerHTML = r.length ? r.map((x,i)=>{
+    const arts=x.gids.flatMap(g=>G.get(g)||[]);
+    const tallas=[...new Set(arts.map(a=>a.talla))].join(', '), colores=[...new Set(arts.map(a=>a.color))].join(', ');
+    const stock=arts.reduce((s,a)=>s+(Number(a.stock)||0),0);
+    return `<label style="display:flex;gap:10px;align-items:flex-start;border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;">
+      <input type="checkbox" class="unir-chk" data-i="${i}" checked style="width:auto;margin-top:3px;">
+      <span><b>${escH(arts[0].nombre)}</b> · ${badgeTienda(tiendaDeArticulo(arts[0]))}<br>
+      <span style="font-size:12.5px;color:var(--ink-soft);">${x.gids.length} registros separados → 1 prenda · Tallas: ${escH(tallas)} · Colores: ${escH(colores)} · Stock total: ${stock}</span></span></label>`;
+  }).join('') : '<div class="empty">No hay referencias repetidas. Todo está en orden.</div>';
+  document.getElementById('unir-btn').style.display=r.length?'':'none';
+  abrirModal('modal-unir');
+}
+async function unirReferencias(){
+  const r=referenciasRepetidas(), G=tiendaGrupos(), T=DB.tienda; T.grupos=T.grupos||{};
+  const sel=[...document.querySelectorAll('.unir-chk:checked')].map(c=>r[+c.dataset.i]).filter(Boolean);
+  if(!sel.length){ toast('Marca al menos una prenda'); return; }
+  const btn=document.getElementById('unir-btn'); btn.disabled=true; btn.textContent='Uniendo…';
+  let unidas=0, fotosRecortadas=false;
+  for(const x of sel){
+    // la referencia destino: la publicada, o la que tenga más fotos/descripción
+    const puntaje=g=>{ const t=T.grupos[g]||{}; return (t.publicado?100:0)+(t.nFotos||0)*2+(t.descripcion?1:0); };
+    const gids=[...x.gids].sort((a,b)=>puntaje(b)-puntaje(a));
+    const destino=gids[0], otros=gids.slice(1);
+    const tienda=tiendaDeArticulo((G.get(destino)||[])[0]);
+    // fotos de la nube: juntarlas en la referencia destino
+    const ref=tiendaRef(tienda);
+    if(ref){
+      try{
+        const imgs=[], colores=[], porColor={};
+        for(const g of gids){
+          const d=await ref.collection('fotos').doc(g).get(); if(!d.exists) continue;
+          const dd=d.data(); const colsG=[...new Set((G.get(g)||[]).map(a=>claveColor(a.color)))];
+          (dd.imgs||[]).forEach((src,i)=>{
+            let c=(dd.colores||[])[i]; if(c===undefined||c===null) c=colsG.length===1?colsG[0]:'';
+            porColor[c]=(porColor[c]||0)+1; if(porColor[c]>MAX_FOTOS_COLOR){ fotosRecortadas=true; return; }
+            if(!imgs.includes(src)){ imgs.push(src); colores.push(c); }
+          });
+        }
+        while(imgs.reduce((s,y)=>s+y.length,0)>850000){ imgs.pop(); colores.pop(); fotosRecortadas=true; }
+        if(imgs.length) await ref.collection('fotos').doc(destino).set({imgs, colores, actualizado:Date.now()});
+        for(const g of otros){ try{ await ref.collection('fotos').doc(g).delete(); }catch(e){} }
+        (T.grupos[destino]||(T.grupos[destino]={})).nFotos=imgs.length;
+      }catch(e){ console.error(e); toast('⚠ No se pudieron juntar las fotos de '+(G.get(destino)||[{}])[0].nombre); }
+    }
+    // datos de la tienda (publicada, descripción)
+    const gd=T.grupos[destino]||(T.grupos[destino]={});
+    otros.forEach(g=>{ const o=T.grupos[g]; if(o){ if(o.publicado) gd.publicado=true; if(!gd.descripcion && o.descripcion) gd.descripcion=o.descripcion; if(o.publicadoEn && (!gd.publicadoEn || o.publicadoEn<gd.publicadoEn)) gd.publicadoEn=o.publicadoEn; } delete T.grupos[g]; });
+    // mover las variantes
+    gids.forEach(g=>(G.get(g)||[]).forEach(a=>{ a.grupoId=destino; }));
+    unidas++;
+  }
+  btn.disabled=false; btn.textContent='Unir seleccionadas';
+  guardarDB(); cerrarModal('modal-unir'); renderInventario(); if(typeof renderTienda==='function') renderTienda();
+  toast(unidas+' prenda(s) unidas. La tienda se actualiza en unos segundos.'+(fotosRecortadas?' Algunas fotos repetidas o que no cabían se dejaron por fuera.':''));
+}
+function claveColor(c){ return (c&&c.trim())? c.trim() : 'Único'; }
+function miniatura(dataUrl, cb){ const img=new Image(); img.onload=()=>{ const s=Math.min(1,400/img.width); const c=document.createElement('canvas'); c.width=Math.round(img.width*s); c.height=Math.round(img.height*s); c.getContext('2d').drawImage(img,0,0,c.width,c.height); cb(c.toDataURL('image/jpeg',0.6)); }; img.onerror=()=>cb(dataUrl); img.src=dataUrl; }
+async function cargarFotosVariante(a){
+  invF={gid:gidDe(a), color:claveColor(a.color), tienda:tiendaDeArticulo(a), fotos:[], otros:{imgs:[],colores:[]}, cargando:false, cambiado:false, nube:false};
+  const ref=tiendaRef(invF.tienda);
+  invF.nube=!!ref;
+  if(ref){
+    invF.cargando=true; pintarFotosVariante();
+    try{
+      const d=await ref.collection('fotos').doc(invF.gid).get();
+      if(d.exists){ const dd=d.data(); (dd.imgs||[]).forEach((src,i)=>{ const c=(dd.colores||[])[i]||''; if(c===invF.color) invF.fotos.push(src); else { invF.otros.imgs.push(src); invF.otros.colores.push(c); } }); }
+    }catch(e){ console.error(e); toast('No se pudieron cargar las fotos de la nube'); }
+    invF.cargando=false;
+  }
+  if(!invF.fotos.length && a.imagen) invF.fotos=[a.imagen];
+  pintarFotosVariante();
+}
+function pintarFotosVariante(){
+  const el=document.getElementById('var-fotos'); if(!el) return;
+  document.getElementById('var-fotos-tit').textContent= invF.color==='Único' ? 'Fotos de la prenda' : 'Fotos del color '+invF.color;
+  if(invF.cargando){ el.innerHTML='<div class="inv-cargando">Cargando fotos…</div>'; return; }
+  el.innerHTML=invF.fotos.map((src,i)=>`<div class="inv-foto"><img src="${src}" alt="">${i===0?'<span class="tp-tag">Portada</span>':`<button class="inv-port" onclick="portadaFotoVariante(${i})" title="Usar como portada">★ Portada</button>`}<button class="tp-x" onclick="quitarFotoVariante(${i})" aria-label="Quitar foto">×</button></div>`).join('')
+    || '<div class="inv-cargando">Sin fotos. Sube el frente, la espalda y los detalles.</div>';
+  const max=invF.nube?MAX_FOTOS_COLOR:1;
+  document.getElementById('var-fotos-add').style.display=invF.fotos.length>=max?'none':'';
+  document.getElementById('var-fotos-nota').textContent= invF.nube
+    ? 'Hasta '+MAX_FOTOS_COLOR+' fotos. La primera es la portada. Sirven para todas las tallas de este color y se publican solas en la tienda.'
+    : 'Sin conexión a la nube solo se guarda la portada. Conecta la nube para subir más fotos a la tienda.';
+}
+function agregarFotosVariante(input){
+  const max=invF.nube?MAX_FOTOS_COLOR:1;
+  const files=[...input.files].slice(0, max-invF.fotos.length);
+  if(input.files.length>files.length) toast('Caben '+max+' foto(s) por color');
+  let pend=files.length; if(!pend) return;
+  files.forEach(f=>comprimirImagenWeb(f, d=>{ invF.fotos.push(d); invF.cambiado=true; if(--pend===0){ pintarFotosVariante(); input.value=''; } }));
+}
+function quitarFotoVariante(i){ invF.fotos.splice(i,1); invF.cambiado=true; pintarFotosVariante(); }
+function portadaFotoVariante(i){ const [f]=invF.fotos.splice(i,1); invF.fotos.unshift(f); invF.cambiado=true; pintarFotosVariante(); }
+async function guardarFotosVariante(a){
+  // a = variante ya actualizada (color puede haber cambiado de nombre)
+  const color=claveColor(a.color), gid=gidDe(a);
+  const hermanos=DB.articulos.filter(x=>gidDe(x)===gid && claveColor(x.color)===color);
+  const portada=invF.fotos[0]||null;
+  const thumb=portada? await new Promise(r=>miniatura(portada,r)) : null;
+  hermanos.forEach(x=>x.imagen=thumb);
+  const ref=tiendaRef(tiendaDeArticulo(a));
+  if(!ref) return;
+  const imgs=[...invF.otros.imgs, ...invF.fotos], colores=[...invF.otros.colores, ...invF.fotos.map(()=>color)];
+  const peso=imgs.reduce((s,x)=>s+x.length,0);
+  if(peso>850000){ toast('⚠ Las fotos de esta prenda pesan demasiado juntas ('+Math.round(peso/1024)+' KB de 830 KB). Quita alguna foto.'); return false; }
+  try{
+    if(imgs.length) await ref.collection('fotos').doc(gid).set({imgs, colores, actualizado:Date.now()});
+    else await ref.collection('fotos').doc(gid).delete();
+    const T=DB.tienda; const g=T.grupos[gid]||(T.grupos[gid]={}); g.nFotos=imgs.length;
+  }catch(e){ console.error(e); toast('⚠ No se pudieron subir las fotos a la tienda ('+(e.code||e.message)+')'); }
+}
 function editarVariante(id){
   const a=DB.articulos.find(x=>x.id===id); if(!a) return;
   if(!a.codigoBarras) a.codigoBarras=generarCodigoBarras();
@@ -4008,20 +4171,11 @@ function editarVariante(id){
   document.getElementById('var-stock').value=a.stock;
   document.getElementById('var-agregar-stock').value='';
   document.getElementById('var-codigo').value=a.codigoBarras;
-  imagenVariantePendiente=a.imagen||null;
-  document.getElementById('var-imagen-preview').innerHTML = a.imagen? `<img src="${a.imagen}" style="max-width:120px;border-radius:8px;">` : '';
   document.getElementById('var-imagen-input').value='';
-  document.getElementById('var-imagen-color').checked=true;
-  document.getElementById('var-imagen-color-txt').textContent='Usar esta foto en todas las tallas del color '+(a.color||'Único');
+  document.getElementById('var-pub').checked=!!((DB.tienda.grupos||{})[gidDe(a)]||{}).publicado;
   actualizarSugerido('var');
   abrirModal('modal-variante');
-}
-function cargarImagenVariante(input){
-  const file=input.files[0]; if(!file) return;
-  comprimirImagen(file, (dataUrl)=>{
-    imagenVariantePendiente=dataUrl;
-    document.getElementById('var-imagen-preview').innerHTML=`<img src="${dataUrl}" style="max-width:120px;border-radius:8px;">`;
-  });
+  cargarFotosVariante(a);
 }
 function sumarStockVariante(){
   const actual=parseInt(document.getElementById('var-stock').value)||0;
@@ -4036,23 +4190,31 @@ function duplicarArticuloDesdeVariante(){
   cerrarModal('modal-variante');
   duplicarArticulo(id);
 }
-function guardarVariante(){
+async function guardarVariante(){
   const id=document.getElementById('var-id').value;
   const a=DB.articulos.find(x=>x.id===id); if(!a) return;
+  if(invF.cargando){ toast('Espera a que carguen las fotos'); return; }
   a.talla=document.getElementById('var-talla').value.trim();
   a.color=document.getElementById('var-color').value.trim();
   a.costo=parseFloat(document.getElementById('var-costo').value)||0;
   a.precio=parseFloat(document.getElementById('var-precio').value)||0;
   a.stock=parseInt(document.getElementById('var-stock').value)||0;
   a.codigoBarras=document.getElementById('var-codigo').value.trim()||generarCodigoBarras();
-  a.imagen=imagenVariantePendiente||null;
-  if(document.getElementById('var-imagen-color').checked){
-    DB.articulos.filter(x=>x!==a && (a.grupoId? x.grupoId===a.grupoId : x.nombre===a.nombre) && (x.color||'')===(a.color||'')).forEach(x=>x.imagen=a.imagen);
-  }
   const nuevaTienda=document.getElementById('var-tienda').value||'regia';
   DB.articulos.filter(x=>x===a || (a.grupoId? x.grupoId===a.grupoId : x.nombre===a.nombre)).forEach(x=>x.tienda=nuevaTienda);
+  // tienda web: publicar u ocultar la prenda
+  const T=DB.tienda; T.grupos=T.grupos||{}; const g=T.grupos[gidDe(a)]||(T.grupos[gidDe(a)]={});
+  const pub=document.getElementById('var-pub').checked;
+  if(pub && !g.publicadoEn) g.publicadoEn=Date.now();
+  if(pub) T.activada=true;
+  g.publicado=pub;
+  if(invF.cambiado){
+    toast('Guardando fotos…');
+    const r=await guardarFotosVariante(a);
+    if(r===false) return;
+  }
   guardarDB(); cerrarModal('modal-variante'); renderInventario();
-  toast('Variante actualizada');
+  toast(pub && tiendaRef(nuevaTienda) ? 'Guardado. La tienda se actualiza en unos segundos.' : 'Variante actualizada');
 }
 function imprimirEtiquetaVariante(){
   const id=document.getElementById('var-id').value;
@@ -5240,7 +5402,7 @@ function guardarCompraMercancia(){
   cmLineas.forEach(l=>{
     const costoFinal=Math.round(l.costoUnit*T.factor);
     if(l.nueva){
-      const a={id:uid(), grupoId:l.grupoId, tienda, nombre:l.nombre, categoria:l.categoria||'', talla:l.talla, color:l.color, costo:costoFinal, precio:l.precio, stock:l.cantidad, codigoBarras:generarCodigoBarras(), imagen:null};
+      const a={id:uid(), grupoId:grupoPorNombre(l.nombre, tienda)||l.grupoId, tienda, nombre:l.nombre, categoria:l.categoria||'', talla:l.talla, color:l.color, costo:costoFinal, precio:l.precio, stock:l.cantidad, codigoBarras:generarCodigoBarras(), imagen:null};
       DB.articulos.push(a);
       lineas.push({articuloId:a.id, nueva:true, nombre:a.nombre, talla:a.talla, color:a.color, cantidad:l.cantidad, costoUnit:l.costoUnit, costoFinal, stockAntes:0, costoAntes:null, costoDespues:costoFinal});
     } else {
@@ -8298,59 +8460,45 @@ function comprimirImagenWeb(file, cb){
 }
 async function abrirProductoTienda(gid){
   const arts=tiendaGrupos().get(gid); if(!arts) return;
-  tiendaGrupoEditando=gid; tiendaFotosEditando=[]; tiendaFotosColor=[];
-  const colsSel=coloresGrupoTienda(arts);
-  document.getElementById('tp-color-nuevas').innerHTML='<option value="">Todos los colores</option>'+colsSel.map(c=>`<option value="${escH(c)}">${escH(c)}</option>`).join('');
+  tiendaGrupoEditando=gid; tiendaFotosEditando=[]; tiendaFotosColor=[]; tiendaFotosQuitadas=false;
   const g=DB.tienda.grupos[gid]||{};
   document.getElementById('tp-titulo').textContent=arts[0].nombre;
   document.getElementById('tp-desc').value=g.descripcion||'';
   document.getElementById('tp-pub').checked=!!g.publicado;
-  document.getElementById('tp-input').value='';
   pintarFotosTienda();
   abrirModal('modal-tienda-producto');
-  const ref=tiendaRef();
+  const ref=tiendaRef(tiendaDeArticulo(arts[0]));
   if(ref && g.nFotos>0){
-    try{ const d=await ref.collection('fotos').doc(gid).get(); if(d.exists && tiendaGrupoEditando===gid){ const dd=d.data(); tiendaFotosEditando=(dd.imgs||[]).slice(0,MAX_FOTOS_TIENDA); tiendaFotosColor=tiendaFotosEditando.map((_,i)=>((dd.colores||[])[i])||''); pintarFotosTienda(); } }
+    try{ const d=await ref.collection('fotos').doc(gid).get(); if(d.exists && tiendaGrupoEditando===gid){ const dd=d.data(); tiendaFotosEditando=(dd.imgs||[]); tiendaFotosColor=tiendaFotosEditando.map((_,i)=>((dd.colores||[])[i])||''); pintarFotosTienda(); } }
     catch(e){ console.error(e); toast('No se pudieron cargar las fotos de la nube'); }
   }
 }
 const MAX_FOTOS_TIENDA=8;
 function coloresGrupoTienda(arts){ return [...new Set((arts||[]).map(a=>a.color||'Único'))].filter(c=>c!=='Único'); }
+let tiendaFotosQuitadas=false;
 function pintarFotosTienda(){
-  const arts=tiendaGrupos().get(tiendaGrupoEditando)||[]; const cols=coloresGrupoTienda(arts);
-  // portadas del inventario (una por color, o una sola si no hay colores)
-  const port=[]; const vistos=new Set();
-  arts.forEach(a=>{ if(a.imagen && !vistos.has(a.imagen)){ vistos.add(a.imagen); port.push({src:a.imagen, color:cols.length>1?(a.color||''):''}); } });
-  let h=port.map(p=>`<div class="tp-cel"><div class="tp-foto"><img src="${p.src}"><span class="tp-tag">Portada${p.color?' · '+escH(p.color):''}</span></div></div>`).join('');
-  h+=tiendaFotosEditando.map((src,i)=>`<div class="tp-cel"><div class="tp-foto"><img src="${src}"><button class="tp-x" onclick="quitarFotoTienda(${i})" aria-label="Quitar foto">×</button></div>${cols.length?`<select onchange="tiendaFotosColor[${i}]=this.value" aria-label="Color de esta foto"><option value="">Todos los colores</option>${cols.map(c=>`<option value="${escH(c)}" ${tiendaFotosColor[i]===c?'selected':''}>${escH(c)}</option>`).join('')}</select>`:''}</div>`).join('');
-  document.getElementById('tp-fotos').innerHTML=h||'<div class="pw-meta">Aún no hay fotos. Agrega hasta '+MAX_FOTOS_TIENDA+' fotos para la tienda.</div>';
-  document.getElementById('tp-add').style.display=tiendaFotosEditando.length>=MAX_FOTOS_TIENDA?'none':'';
+  const arts=tiendaGrupos().get(tiendaGrupoEditando)||[];
+  let h=tiendaFotosEditando.map((src,i)=>{ const c=tiendaFotosColor[i]; return `<div class="tp-cel"><div class="tp-foto"><img src="${src}"><button class="tp-x" onclick="quitarFotoTienda(${i})" aria-label="Quitar foto">×</button><span class="tp-tag">${c&&c!=='Único'?escH(c):'Todos'}</span></div></div>`; }).join('');
+  if(!h){ const vistos=new Set(); arts.forEach(a=>{ if(a.imagen && !vistos.has(a.imagen)){ vistos.add(a.imagen); h+=`<div class="tp-cel"><div class="tp-foto"><img src="${a.imagen}"><span class="tp-tag">${a.color&&a.color!=='Único'?escH(a.color):'Portada'}</span></div></div>`; } }); }
+  document.getElementById('tp-fotos').innerHTML=h||'<div class="pw-meta">Aún no hay fotos. Súbelas en Inventario → Editar.</div>';
 }
-function quitarFotoTienda(i){ tiendaFotosEditando.splice(i,1); tiendaFotosColor.splice(i,1); pintarFotosTienda(); }
-function agregarFotosTienda(input){
-  const files=[...input.files].slice(0,MAX_FOTOS_TIENDA-tiendaFotosEditando.length);
-  if(input.files.length>files.length) toast('Solo caben '+MAX_FOTOS_TIENDA+' fotos por producto');
-  const color=document.getElementById('tp-color-nuevas').value||'';
-  let pend=files.length; if(!pend) return;
-  files.forEach(f=>comprimirImagenWeb(f, d=>{ tiendaFotosEditando.push(d); tiendaFotosColor.push(color); if(--pend===0){ pintarFotosTienda(); input.value=''; } }));
-}
+function quitarFotoTienda(i){ tiendaFotosEditando.splice(i,1); tiendaFotosColor.splice(i,1); tiendaFotosQuitadas=true; pintarFotosTienda(); }
 async function guardarProductoTienda(){
   const gid=tiendaGrupoEditando; if(!gid) return;
-  const total=tiendaFotosEditando.reduce((s,x)=>s+x.length,0);
-  if(total>850000){ toast('Las fotos pesan demasiado juntas ('+Math.round(total/1024)+' KB de 830 KB). Quita una o dos fotos.'); return; }
   const T=DB.tienda; const g=T.grupos[gid]||(T.grupos[gid]={});
   g.descripcion=document.getElementById('tp-desc').value.trim().slice(0,600);
   const quiere=document.getElementById('tp-pub').checked;
   if(quiere && !g.publicado && !g.publicadoEn) g.publicadoEn=Date.now();
   g.publicado=quiere;
-  g.nFotos=tiendaFotosEditando.length;
-  const ref=tiendaRef();
-  if(ref){
+  const arts0=(tiendaGrupos().get(gid)||[])[0];
+  const ref=arts0? tiendaRef(tiendaDeArticulo(arts0)) : null;
+  if(ref && tiendaFotosQuitadas){
+    g.nFotos=tiendaFotosEditando.length;
     try{
       if(tiendaFotosEditando.length) await ref.collection('fotos').doc(gid).set({imgs:tiendaFotosEditando, colores:tiendaFotosEditando.map((_,i)=>tiendaFotosColor[i]||''), actualizado:Date.now()});
       else await ref.collection('fotos').doc(gid).delete();
-    }catch(e){ console.error(e); toast('⚠ No se pudieron subir las fotos ('+(e.code||e.message)+'). Los demás cambios sí se guardaron.'); }
-  } else if(tiendaFotosEditando.length){ toast('Conecta la nube para subir las fotos de la tienda'); }
+    }catch(e){ console.error(e); toast('⚠ No se pudieron quitar las fotos ('+(e.code||e.message)+'). Los demás cambios sí se guardaron.'); }
+  }
   T.activada=true;
   guardarDB(); cerrarModal('modal-tienda-producto'); renderTienda();
   toast('Producto actualizado en la tienda');
