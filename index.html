@@ -171,6 +171,7 @@
   .nav-btn[data-view="cierre"]{--tile-bg:#EFE7FA;--tile-fg:#6B3FA0;}
   .nav-btn[data-view="inventario"]{--tile-bg:#E4ECFB;--tile-fg:#2F5BC4;}
   .nav-btn[data-view="combos"]{--tile-bg:#FCE7F1;--tile-fg:#C2377E;}
+  .nav-btn[data-view="reposicion"]{--tile-bg:#FDF1DC;--tile-fg:#B5761B;}
   .nav-btn[data-view="clientes"]{--tile-bg:#E1F4EA;--tile-fg:#2B8A62;}
   .nav-btn[data-view="proveedores"]{--tile-bg:#FDE9DC;--tile-fg:#D9622B;}
   .nav-btn[data-view="gastos"]{--tile-bg:#FCE4E2;--tile-fg:#C23D3A;}
@@ -181,6 +182,8 @@
   .nav-btn[data-view="equilibrio"]{--tile-bg:#FCE7F1;--tile-fg:#C2377E;}
   .nav-btn[data-view="activos"]{--tile-bg:#FBEFD5;--tile-fg:#B7791F;}
   .nav-btn[data-view="config"]{--tile-bg:#ECEBF1;--tile-fg:#4A4755;}
+  .nav-btn[data-view="conteo"]{--tile-bg:#E4ECFB;--tile-fg:#2F5BC4;}
+  .nav-btn[data-view="auditoria"]{--tile-bg:#FBE4E4;--tile-fg:#B33A3A;}
   #sidebar-foot{padding-top:12px;border-top:1px solid var(--border);font-size:11.5px;color:var(--ink-soft);display:flex;flex-direction:column;gap:6px;}
   #sidebar-foot .foot-ver{font-size:10.5px;opacity:.75;}
   .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#C9C5D2;margin-right:7px;vertical-align:1px;}
@@ -415,10 +418,7 @@
     <h3 id="login-brand-nombre">Almacén</h3>
     <p class="login-sub">Ingresa con tu usuario y tu PIN</p>
     <div class="field"><label>Usuario</label>
-      <select id="login-rol">
-        <option value="asesor">Asesor — ventas e inventario</option>
-        <option value="gerencia">Gerencia — acceso completo</option>
-      </select>
+      <select id="login-rol" onfocus="renderLoginUsuarios()"></select>
     </div>
     <div class="field"><label>PIN</label><input type="password" id="login-pin" placeholder="••••" onkeydown="if(event.key==='Enter')iniciarSesion()"></div>
     <div id="login-error" style="color:var(--danger);font-size:12.5px;margin-bottom:10px;display:none;">PIN incorrecto, intenta de nuevo.</div>
@@ -442,6 +442,8 @@
     <button class="nav-btn" data-view="cierre" title="Cierre de caja" aria-label="Cierre de caja"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8"/><path d="M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01" stroke-width="2.4"/></svg><span class="lbl">Cierre de caja</span></button>
     <div class="nav-sec">Catálogo</div>
     <button class="nav-btn" data-view="inventario" title="Inventario" aria-label="Inventario"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg><span class="lbl">Inventario</span></button>
+    <button class="nav-btn" data-view="reposicion" title="Reposición" aria-label="Reposición"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v4h-4"/><path d="M9 12h6M12 9v6"/></svg><span class="lbl">Reposición</span></button>
+    <button class="nav-btn" data-view="conteo" title="Toma de inventario" aria-label="Toma de inventario"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7V4h3M17 4h3v3M20 17v3h-3M7 20H4v-3"/><path d="M8 8v8M11 8v8M14 8v8M17 8v8"/></svg><span class="lbl">Toma de inventario</span></button>
     <button class="nav-btn" data-view="combos" title="Combos" aria-label="Combos"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v8h14v-8M12 8v12"/><path d="M12 8H7.5a2.5 2.5 0 1 1 0-5C10 3 12 8 12 8zM12 8h4.5a2.5 2.5 0 1 0 0-5C14 3 12 8 12 8z"/></svg><span class="lbl">Combos</span></button>
     <button class="nav-btn" data-view="tienda" title="Tienda online" aria-label="Tienda online"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9l1.5-5h13L20 9"/><path d="M4 9a2.6 2.6 0 0 0 5.3 0 2.6 2.6 0 0 0 5.4 0A2.6 2.6 0 0 0 20 9"/><path d="M5.5 12v8h13v-8M10 20v-4.5h4V20"/></svg><span class="lbl">Tienda online</span></button>
     <button class="nav-btn" data-view="clientes" title="Clientes" aria-label="Clientes"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14a4.5 4.5 0 0 1 4.5 4.5"/></svg><span class="lbl">Clientes</span></button>
@@ -455,12 +457,13 @@
     <button class="nav-btn" data-view="equilibrio" title="Punto de equilibrio" aria-label="Punto de equilibrio"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8" fill="currentColor"/></svg><span class="lbl">Punto de equilibrio</span></button>
     <button class="nav-btn" data-view="activos" title="Activos fijos" aria-label="Activos fijos"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 8h.01M15 8h.01M9 12h.01M15 12h.01" stroke-width="2.4"/><path d="M10 21v-4h4v4"/></svg><span class="lbl">Activos fijos</span></button>
     <div class="nav-sec">Sistema</div>
+    <button class="nav-btn" data-view="auditoria" title="Registro de cambios" aria-label="Registro de cambios"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="8.5"/><path d="M3 5l2.5 2.5"/></svg><span class="lbl">Registro de cambios</span></button>
     <button class="nav-btn" data-view="config" title="Configuración" aria-label="Configuración"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg><span class="lbl">Configuración</span></button>
   </nav>
   <div id="sidebar-foot">
     <div class="foot-line">Sesión: <strong id="rol-actual">—</strong></div>
     <div class="foot-line" id="sidebar-sync-badge"><span class="dot"></span>Solo este dispositivo</div>
-    <div class="foot-line foot-ver">Versión 2026-10-18 · tesorería</div>
+    <div class="foot-line foot-ver">Versión 2026-10-18 · reposición</div>
     <button class="btn ghost sm" onclick="cerrarSesion()" aria-label="Cerrar sesión" title="Cerrar sesión"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span class="lbl">Cerrar sesión</span></button>
   </div>
 </div>
@@ -477,6 +480,8 @@
       <button class="btn gold" onclick="goTo('facturar')">+ Nueva venta</button>
     </div>
     <hr class="stitch head-stitch">
+    <div id="dash-recordatorio-backup"></div>
+    <div id="dash-reposicion"></div>
     <div id="dash-recordatorio-cierre"></div>
     <div id="dash-recordatorio-flujo"></div>
 
@@ -1301,6 +1306,101 @@
     </div>
   </div>
 
+  <!-- ================= REPOSICIÓN ================= -->
+  <div class="view" id="view-reposicion">
+    <div class="view-head"><div><h1>Reposición</h1><p>Qué volver a pedir, cuánto y a quién, según lo que realmente se vende. Y qué mercancía está quieta.</p></div>
+      <button class="btn ghost" onclick="exportarReposicionExcel()">Excel</button></div>
+    <hr class="stitch head-stitch">
+    <div class="toolbar">
+      <div class="field"><label>Tienda</label><select id="repo-tienda" onchange="renderReposicion()"><option value="todas">Las dos</option><option value="regia">Regia by CM</option><option value="fraganza">Fraganza by CM</option></select></div>
+      <div class="field"><label>Mostrar</label><select id="repo-estado" onchange="renderReposicion()"><option value="todas">Todo lo que hay que pedir</option><option value="urgente">Solo urgentes</option><option value="pronto">Solo "pedir pronto"</option></select></div>
+    </div>
+    <div class="grid grid-4" style="margin-bottom:18px;" id="repo-kpis"></div>
+    <h3 style="margin:0 0 10px;">Pedido sugerido</h3>
+    <div id="repo-pedidos"></div>
+    <div class="card" style="margin:6px 0 18px;">
+      <h3 style="margin-bottom:4px;">Mercancía quieta</h3>
+      <p style="font-size:12px;color:var(--ink-soft);margin:0 0 10px;">Referencias con stock que no se venden hace tiempo: plata detenida que conviene mover con promoción o combo.</p>
+      <div style="overflow-x:auto;"><table><thead><tr><th>Referencia</th><th class="center">Talla</th><th class="center">Color</th><th class="right">Unid.</th><th class="right">Sin venderse</th><th class="right">Plata detenida</th><th class="right">Precio</th><th>Idea</th></tr></thead><tbody id="repo-quietas"></tbody></table></div>
+    </div>
+    <div class="card" id="repo-ajustes" style="max-width:720px;">
+      <h3 style="margin-bottom:4px;">Ajustes del cálculo</h3>
+      <p style="font-size:12px;color:var(--ink-soft);margin:0 0 10px;"><strong>Espera:</strong> cuántas semanas tarda en llegar un pedido. <strong>Cobertura:</strong> para cuántas semanas quieres tener mercancía después de que llegue.</p>
+      <div class="row">
+        <div class="field"><label>Regia · espera (semanas)</label><input type="number" id="repo-esp-regia" min="0" step="0.5"></div>
+        <div class="field"><label>Regia · cobertura (semanas)</label><input type="number" id="repo-cob-regia" min="1" step="0.5"></div>
+        <div class="field"><label>Fraganza · espera (semanas)</label><input type="number" id="repo-esp-fraganza" min="0" step="0.5"></div>
+        <div class="field"><label>Fraganza · cobertura (semanas)</label><input type="number" id="repo-cob-fraganza" min="1" step="0.5"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Calcular con las ventas de las últimas (semanas)</label><input type="number" id="repo-ventana" min="2" max="52"></div>
+        <div class="field"><label>Considerar quieta después de (días sin venta)</label><input type="number" id="repo-quieta" min="15"></div>
+      </div>
+      <button class="btn gold" onclick="guardarAjustesRepo()">Guardar ajustes</button>
+    </div>
+  </div>
+
+  <!-- ================= TOMA DE INVENTARIO ================= -->
+  <div class="view" id="view-conteo">
+    <div class="view-head"><div><h1>Toma de inventario</h1><p>Cuenta lo que hay físicamente (con el lector de código de barras o a mano) y ajusta las diferencias con un clic.</p></div></div>
+    <hr class="stitch head-stitch">
+    <div id="ct-inicio">
+      <div class="card" style="max-width:640px;margin-bottom:18px;">
+        <h3 style="margin-bottom:10px;">Empezar un conteo</h3>
+        <div class="row">
+          <div class="field"><label>¿Qué vas a contar?</label><select id="ct-tienda"><option value="regia">Regia by CM</option><option value="fraganza">Fraganza by CM</option><option value="todas">Las dos tiendas</option></select></div>
+          <div class="field"><label>Categoría (opcional)</label><select id="ct-categoria"></select></div>
+        </div>
+        <p style="font-size:12px;color:var(--ink-soft);margin:0 0 10px;">Consejo: hazlo con la tienda cerrada o sin vender mientras cuentas. Puedes dejarlo a medias y seguir después: el conteo queda guardado.</p>
+        <button class="btn gold" onclick="iniciarConteo()">Empezar conteo</button>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom:10px;">Tomas de inventario anteriores</h3>
+        <div style="overflow-x:auto;"><table><thead><tr><th>Fecha</th><th>Qué se contó</th><th>Responsable</th><th class="right">Ref. ajustadas</th><th class="right">Faltante</th><th class="right">Sobrante</th><th></th></tr></thead><tbody id="tbl-ajustes"></tbody></table></div>
+      </div>
+    </div>
+    <div id="ct-activo" style="display:none;">
+      <p id="ct-titulo" style="font-weight:600;margin:0 0 12px;"></p>
+      <div class="card" style="margin-bottom:14px;background:var(--surface-2);">
+        <div class="row" style="align-items:flex-end;">
+          <div class="field" style="flex:3;"><label>Escanea el código de barras (o escribe y presiona Enter)</label><input type="text" id="ct-scan" onkeydown="escanearConteo(event)" placeholder="Pasa el lector aquí…" autocomplete="off" style="font-size:17px;"></div>
+          <div class="field"><label>Cantidad por lectura</label><input type="number" id="ct-cant" min="1" value="1"></div>
+          <button class="btn gold" onclick="escanearConteo()">Sumar</button>
+        </div>
+        <div id="ct-ultimo" style="min-height:22px;"></div>
+      </div>
+      <div class="grid grid-4" style="margin-bottom:14px;" id="ct-resumen"></div>
+      <div class="toolbar">
+        <div class="field search-box"><label>Buscar</label><input type="text" id="ct-filtro" oninput="renderConteo()" placeholder="Referencia, talla, color o código"></div>
+        <label class="chk" style="margin-top:22px;"><input type="checkbox" id="ct-solo-dif" onchange="renderConteo()"> Solo diferencias</label>
+        <label class="chk" style="margin-top:22px;"><input type="checkbox" id="ct-ceros" checked onchange="renderConteo()"> Lo que no se contó vale 0</label>
+      </div>
+      <div class="card" style="margin-bottom:14px;"><div style="overflow-x:auto;"><table><thead><tr><th>Referencia</th><th class="center">Talla</th><th class="center">Color</th><th class="right">Sistema</th><th class="right">Contado</th><th class="right">Diferencia</th><th class="right">Valor</th></tr></thead><tbody id="tbl-conteo"></tbody></table></div></div>
+      <div class="field"><label>Notas del conteo (opcional)</label><input type="text" id="ct-notas" maxlength="200"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn gold" onclick="aplicarAjusteInventario()">Aplicar ajuste al inventario</button>
+        <button class="btn ghost" onclick="descartarConteo()">Descartar conteo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= REGISTRO DE CAMBIOS ================= -->
+  <div class="view" id="view-auditoria">
+    <div class="view-head"><div><h1>Registro de cambios</h1><p>Quién creó, editó o eliminó cada cosa, y cuándo. No se puede borrar.</p></div>
+      <button class="btn ghost" onclick="exportarAuditoriaExcel()">Excel</button></div>
+    <hr class="stitch head-stitch">
+    <div class="toolbar">
+      <div class="field"><label>Desde</label><input type="date" id="aud-desde" onchange="renderAuditoria()"></div>
+      <div class="field"><label>Hasta</label><input type="date" id="aud-hasta" onchange="renderAuditoria()"></div>
+      <div class="field"><label>Usuario</label><select id="aud-usuario" onchange="renderAuditoria()"><option value="">Todos</option></select></div>
+      <div class="field"><label>Módulo</label><select id="aud-modulo" onchange="renderAuditoria()"><option value="">Todos</option></select></div>
+      <div class="field"><label>Acción</label><select id="aud-accion" onchange="renderAuditoria()"><option value="">Todas</option><option>Eliminó</option><option>Editó</option><option>Creó</option><option>Inició sesión</option></select></div>
+      <div class="field search-box"><label>Buscar</label><input type="text" id="aud-buscar" oninput="renderAuditoria()" placeholder="Factura, cliente, valor…"></div>
+    </div>
+    <p id="aud-total" style="font-size:12.5px;color:var(--ink-soft);"></p>
+    <div class="card"><div style="overflow-x:auto;"><table><thead><tr><th>Cuándo</th><th>Usuario</th><th>Acción</th><th>Módulo</th><th>Detalle</th></tr></thead><tbody id="tbl-auditoria"></tbody></table></div></div>
+  </div>
+
   <!-- ================= TESORERÍA ================= -->
   <div class="view" id="view-tesoreria">
     <div class="view-head"><div><h1>Tesorería</h1><p>Dónde está la plata del negocio: efectivo guardado, Nequi y banco. Consignaciones, préstamos a socios y saldos reales.</p></div>
@@ -1457,11 +1557,9 @@
       <div class="field"><label>Umbral de stock bajo</label><input type="number" id="cfg-umbral" min="0"></div>
       <hr class="stitch" style="margin:16px 0;">
       <h3 style="margin-bottom:10px;">Usuarios</h3>
-      <div class="row">
-        <div class="field"><label>PIN de Asesor</label><input type="text" id="cfg-pin-asesor" maxlength="8" placeholder="1234"></div>
-        <div class="field"><label>PIN de Gerencia</label><input type="text" id="cfg-pin-gerencia" maxlength="8" placeholder="0000"></div>
-      </div>
-      <p style="font-size:11.5px;color:var(--ink-soft);margin-top:-6px;">Asesor: ve Facturar, Ventas e Inventario (sin costos ni márgenes). Gerencia: acceso completo.</p>
+      <p style="font-size:12px;color:var(--ink-soft);margin:-4px 0 8px;">Cada persona entra con su nombre y su PIN. Asesor: vende sin ver costos ni utilidades. Gerencia: acceso completo.</p>
+      <table><thead><tr><th>Nombre</th><th>Rol</th><th>PIN</th><th></th></tr></thead><tbody id="tbl-usuarios"></tbody></table>
+      <button class="btn ghost" style="margin:8px 0 12px;" onclick="editarUsuario('')">+ Nuevo usuario</button>
       <button class="btn gold" onclick="guardarConfig()">Guardar</button>
 
       <hr class="stitch" style="margin:20px 0;">
@@ -1490,7 +1588,14 @@
     <div class="card" style="max-width:480px;margin-top:18px;">
       <h3 style="margin-bottom:10px;">Copia de seguridad</h3>
       <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:12px;">Todo el sistema se guarda solo en este navegador. Descarga una copia de seguridad periódicamente — si cambias de computador o se borra el navegador, es la única forma de recuperar tu información.</p>
-      <button class="btn gold" style="width:100%;margin-bottom:10px;" onclick="exportarBackup()">⬇ Descargar copia de seguridad</button>
+      <button class="btn gold" style="width:100%;margin-bottom:10px;" onclick="descargarCopiaCompleta()">⬇ Descargar copia de seguridad (respaldo + Excel)</button>
+      <div style="font-size:12.5px;margin-bottom:6px;">Última copia: <strong id="cfg-copia-estado">—</strong></div>
+      <div class="row" style="align-items:flex-end;">
+        <div class="field"><label class="chk" style="margin:0;"><input type="checkbox" id="cfg-copia-auto"> Descargarla sola al entrar Gerencia</label></div>
+        <div class="field"><label>Cada</label><select id="cfg-copia-frec"><option value="1">día</option><option value="3">3 días</option><option value="7">semana</option><option value="15">15 días</option></select></div>
+        <button class="btn ghost sm" onclick="guardarAjustesCopia()">Guardar</button>
+      </div>
+      <p id="cfg-tamano-base" style="font-size:12px;margin:4px 0 12px;"></p>
       <label style="display:block;">Restaurar desde un archivo de copia de seguridad</label>
       <input type="file" id="cfg-restaurar-archivo" accept=".json" style="margin-top:6px;">
       <button class="btn ghost" style="width:100%;margin-top:8px;" onclick="importarBackup()">⬆ Restaurar copia de seguridad</button>
@@ -1821,6 +1926,21 @@
       <button class="btn ghost" onclick="cerrarModal('modal-prestamo-socio')">Cancelar</button>
       <button class="btn gold" id="ps-btn" onclick="guardarPrestamoSocio()">Guardar</button>
     </div>
+  </div>
+</div>
+
+<!-- ===== Modal: usuario ===== -->
+<div class="modal-bg" id="modal-usuario">
+  <div class="modal">
+    <h3 id="usr-titulo">Nuevo usuario</h3>
+    <input type="hidden" id="usr-id">
+    <div class="field"><label>Nombre</label><input type="text" id="usr-nombre" maxlength="40" placeholder="Ej: Laura"></div>
+    <div class="row">
+      <div class="field"><label>Rol</label><select id="usr-rol"><option value="asesor">Asesor — vende, sin ver costos</option><option value="gerencia">Gerencia — acceso completo</option></select></div>
+      <div class="field"><label>PIN (4 a 8 números)</label><input type="text" id="usr-pin" maxlength="8" inputmode="numeric"></div>
+    </div>
+    <p style="font-size:11.5px;color:var(--ink-soft);margin:-4px 0 8px;">Cada persona con su propio PIN: así cada venta, cambio o eliminación queda a su nombre.</p>
+    <div class="modal-actions"><button class="btn ghost" onclick="cerrarModal('modal-usuario')">Cancelar</button><button class="btn gold" onclick="guardarUsuario()">Guardar</button></div>
   </div>
 </div>
 
@@ -2264,6 +2384,12 @@ function migrarDB(db){
   { const T=db.tesoreria; if(!T.cuentas) T.cuentas={}; if(!T.movimientos) T.movimientos=[]; if(!T.transferenciasA) T.transferenciasA='nequi'; if(!T.tarjetaA) T.tarjetaA='banco'; }
   if(!db.prestamosSocios) db.prestamosSocios=[];
   if(!db.config.responsables) db.config.responsables=[];
+  // usuarios con PIN propio (se crean a partir de los PIN que ya existían)
+  if(!Array.isArray(db.config.usuarios) || !db.config.usuarios.length){
+    db.config.usuarios=[{id:'u-gerencia', nombre:'Gerencia', rol:'gerencia', pin:String(db.config.pinGerencia||'0000'), activo:true},{id:'u-asesor', nombre:'Asesor', rol:'asesor', pin:String(db.config.pinAsesor||'1234'), activo:true}];
+  }
+  if(!db.ajustesInventario) db.ajustesInventario=[];
+  if(db.conteoActual===undefined) db.conteoActual=null;
   return db;
 }
 function guardarDB(){
@@ -2462,30 +2588,10 @@ function toast(msg){
 /* ---------------- Sesión y permisos ---------------- */
 const PERMISOS = {
   asesor:['facturar','pedidosweb','ventas','cierre','devoluciones','apartados','creditos','inventario','clientes','combos','gastos'],
-  gerencia:['dashboard','facturar','pedidosweb','tienda','ventas','cierre','devoluciones','apartados','creditos','inventario','combos','clientes','proveedores','activos','gastos','reportes','equilibrio','flujo','reserva','tesoreria','config']
+  gerencia:['dashboard','facturar','pedidosweb','tienda','ventas','cierre','devoluciones','apartados','creditos','inventario','combos','clientes','proveedores','activos','gastos','reportes','equilibrio','flujo','reserva','tesoreria','conteo','reposicion','auditoria','config']
 };
 let currentRole = null;
 
-function iniciarSesion(){
-  const rol=document.getElementById('login-rol').value;
-  const pin=document.getElementById('login-pin').value;
-  const pinValido = rol==='asesor' ? (DB.config.pinAsesor||'1234') : (DB.config.pinGerencia||'0000');
-  if(pin!==pinValido){ document.getElementById('login-error').style.display='block'; return; }
-  document.getElementById('login-error').style.display='none';
-  document.getElementById('login-pin').value='';
-  currentRole=rol;
-  sessionStorage.setItem('almacenropa_rol', rol);
-  document.getElementById('login-screen').classList.remove('active');
-  document.body.classList.add('unlocked');
-  aplicarPermisos();
-  goTo(rol==='gerencia' ? 'dashboard' : 'facturar');
-}
-function cerrarSesion(){
-  currentRole=null;
-  sessionStorage.removeItem('almacenropa_rol');
-  document.body.classList.remove('unlocked','rol-asesor','rol-gerencia');
-  document.getElementById('login-screen').classList.add('active');
-}
 function aplicarPermisos(){
   const permitido=PERMISOS[currentRole]||[];
   document.querySelectorAll('.nav-btn').forEach(b=>{
@@ -2499,7 +2605,7 @@ function aplicarPermisos(){
   });
   document.body.classList.remove('rol-asesor','rol-gerencia');
   document.body.classList.add('rol-'+currentRole);
-  document.getElementById('rol-actual').textContent = currentRole==='gerencia' ? 'Gerencia' : 'Asesor';
+  document.getElementById('rol-actual').textContent = (currentUser? currentUser.nombre+' · ' : '')+(currentRole==='gerencia' ? 'Gerencia' : 'Asesor');
 }
 
 /* ---------------- Navegación ---------------- */
@@ -2527,6 +2633,9 @@ function goTo(view){
   if(view==='flujo') renderFlujoCaja();
   if(view==='reserva') renderReserva();
   if(view==='tesoreria') renderTesoreria();
+  if(view==='conteo') renderConteo();
+  if(view==='reposicion') renderReposicion();
+  if(view==='auditoria'){ renderAuditoria(); cargarAuditoriaNube().then(renderAuditoria); }
   if(view==='pedidosweb') renderPedidosWeb();
   if(view==='tienda') renderTienda();
   if(view==='config') cargarConfigForm();
@@ -4047,6 +4156,7 @@ function renderSelectVendedor(){
   if(!vendedores.length){ campo.style.display='none'; return; }
   campo.style.display='block';
   sel.innerHTML=vendedores.map(v=>`<option value="${v}">${v}</option>`).join('');
+  if(currentUser && vendedores.includes(currentUser.nombre)) sel.value=currentUser.nombre;
 }
 function renderCarrito(){
   const cont=document.getElementById('carrito-items');
@@ -4219,7 +4329,7 @@ function guardarVenta(){
   const correo=document.getElementById('fac-correo').value.trim();
   const direccion=document.getElementById('fac-direccion').value.trim();
   const metodo=document.getElementById('fac-metodo').value;
-  const vendedor=document.getElementById('fac-vendedor-field').style.display!=='none' ? document.getElementById('fac-vendedor').value : '';
+  const vendedor=document.getElementById('fac-vendedor-field').style.display!=='none' ? document.getElementById('fac-vendedor').value : (currentUser? currentUser.nombre : '');
   const numero=DB.config.siguienteNumero||1;
   if(esCredito && !cliente){ toast('Para una venta con '+metodoSel+' escribe el nombre del cliente (así queda el crédito identificado).'); return; }
 
@@ -4241,7 +4351,7 @@ function guardarVenta(){
     cliente:cliente||'Cliente mostrador', cedula, telefonoCliente, correo, direccion, metodo, vendedor,
     montoEfectivo:metodo==='Mixto'? montoEfectivo:0, montoTransferencia:metodo==='Mixto'? montoTransferencia:0,
     items:carrito.map(it=>({...it})), subtotal, descuento, total, costoTotal,
-    comisionPct, comisionValor,
+    comisionPct, comisionValor, usuario:currentUser?currentUser.nombre:'',
     ...(esCredito? {credito:{estado:'pendiente', financiera:metodo, fechaPago:'', pagadoPor:'', metodoCobro:'', montoRecibido:0}} : {})
   };
   DB.ventas.push(venta);
@@ -5368,6 +5478,518 @@ async function exportarTesoreriaExcel(){
   }catch(e){ console.error(e); toast('No se pudo generar el Excel (revisa tu conexión)'); }
 }
 
+/* ================= USUARIOS (un PIN por persona) ================= */
+let currentUser=null; // {id, nombre, rol}
+function usuariosSistema(){ return (DB.config.usuarios||[]).filter(u=>u.activo!==false); }
+function renderLoginUsuarios(){
+  const sel=document.getElementById('login-rol'); if(!sel) return;
+  const actual=sel.value;
+  const us=usuariosSistema();
+  sel.innerHTML=us.map(u=>`<option value="${u.id}">${escH(u.nombre)} — ${u.rol==='gerencia'?'Gerencia':'Asesor'}</option>`).join('');
+  if(us.some(u=>u.id===actual)) sel.value=actual;
+}
+function iniciarSesion(){
+  renderLoginUsuarios();
+  const id=document.getElementById('login-rol').value;
+  const pin=document.getElementById('login-pin').value;
+  const u=usuariosSistema().find(x=>x.id===id);
+  if(!u || pin!==String(u.pin)){ document.getElementById('login-error').style.display='block'; return; }
+  document.getElementById('login-error').style.display='none';
+  document.getElementById('login-pin').value='';
+  currentRole=u.rol; currentUser={id:u.id, nombre:u.nombre, rol:u.rol};
+  sessionStorage.setItem('almacenropa_rol', u.rol);
+  sessionStorage.setItem('almacenropa_usuario', u.id);
+  document.getElementById('login-screen').classList.remove('active');
+  document.body.classList.add('unlocked');
+  aplicarPermisos();
+  registrarAuditoria('Inició sesión','Sesión',u.nombre,[]);
+  goTo(u.rol==='gerencia' ? 'dashboard' : 'facturar');
+  if(u.rol==='gerencia') revisarCopiaAutomatica(true);
+}
+function cerrarSesion(){
+  if(currentUser) registrarAuditoria('Cerró sesión','Sesión',currentUser.nombre,[]);
+  currentRole=null; currentUser=null;
+  sessionStorage.removeItem('almacenropa_rol'); sessionStorage.removeItem('almacenropa_usuario');
+  document.body.classList.remove('unlocked','rol-asesor','rol-gerencia');
+  renderLoginUsuarios();
+  document.getElementById('login-screen').classList.add('active');
+}
+function restaurarSesionGuardada(){
+  const uid_=sessionStorage.getItem('almacenropa_usuario');
+  const u=usuariosSistema().find(x=>x.id===uid_);
+  if(!u) return false;
+  currentRole=u.rol; currentUser={id:u.id, nombre:u.nombre, rol:u.rol};
+  document.getElementById('login-screen').classList.remove('active');
+  document.body.classList.add('unlocked');
+  aplicarPermisos();
+  goTo(u.rol==='gerencia' ? 'dashboard' : 'facturar');
+  return true;
+}
+function renderUsuariosConfig(){
+  const tb=document.getElementById('tbl-usuarios'); if(!tb) return;
+  const us=DB.config.usuarios||[];
+  tb.innerHTML=us.map(u=>`<tr><td>${escH(u.nombre)}${u.activo===false?' <span class="badge">Inactivo</span>':''}</td><td>${u.rol==='gerencia'?'<span class="badge gold">Gerencia</span>':'<span class="badge indigo">Asesor</span>'}</td><td>${'•'.repeat(String(u.pin).length)}</td>
+    <td class="right" style="white-space:nowrap;"><button class="btn ghost sm" onclick="editarUsuario('${u.id}')">Editar</button> <button class="btn ghost sm" onclick="alternarUsuario('${u.id}')">${u.activo===false?'Activar':'Desactivar'}</button></td></tr>`).join('')
+    || '<tr><td colspan="4"><div class="empty">Sin usuarios.</div></td></tr>';
+}
+function editarUsuario(id){
+  const u=(DB.config.usuarios||[]).find(x=>x.id===id);
+  document.getElementById('usr-id').value=u?u.id:'';
+  document.getElementById('usr-nombre').value=u?u.nombre:'';
+  document.getElementById('usr-rol').value=u?u.rol:'asesor';
+  document.getElementById('usr-pin').value=u?u.pin:'';
+  document.getElementById('usr-titulo').textContent=u?'Editar usuario':'Nuevo usuario';
+  abrirModal('modal-usuario');
+}
+function guardarUsuario(){
+  const id=document.getElementById('usr-id').value, nombre=document.getElementById('usr-nombre').value.trim();
+  const rol=document.getElementById('usr-rol').value, pin=document.getElementById('usr-pin').value.trim();
+  if(!nombre){ toast('Escribe el nombre'); return; }
+  if(!/^\d{4,8}$/.test(pin)){ toast('El PIN debe tener entre 4 y 8 números'); return; }
+  const us=DB.config.usuarios=DB.config.usuarios||[];
+  if(us.some(u=>u.id!==id && String(u.pin)===pin && u.activo!==false)){ toast('Ese PIN ya lo usa otra persona: cada quien debe tener el suyo'); return; }
+  if(us.some(u=>u.id!==id && u.nombre.toLowerCase()===nombre.toLowerCase())){ toast('Ya existe un usuario con ese nombre'); return; }
+  if(id){
+    const u=us.find(x=>x.id===id); if(!u) return;
+    if(u.rol==='gerencia' && rol!=='gerencia' && us.filter(x=>x.rol==='gerencia'&&x.activo!==false).length<=1){ toast('Debe quedar al menos un usuario de Gerencia'); return; }
+    Object.assign(u,{nombre,rol,pin});
+    if(currentUser && currentUser.id===id){ currentUser.nombre=nombre; }
+  } else us.push({id:uid(), nombre, rol, pin, activo:true});
+  // los asesores también quedan como vendedores para las comisiones
+  if(rol==='asesor'){ DB.config.vendedores=DB.config.vendedores||[]; if(!DB.config.vendedores.includes(nombre)) DB.config.vendedores.push(nombre); }
+  guardarDB(); cerrarModal('modal-usuario'); renderUsuariosConfig(); renderLoginUsuarios();
+  if(document.getElementById('cfg-vendedores')) document.getElementById('cfg-vendedores').value=(DB.config.vendedores||[]).join(', ');
+  toast('Usuario guardado');
+}
+function alternarUsuario(id){
+  const us=DB.config.usuarios||[]; const u=us.find(x=>x.id===id); if(!u) return;
+  if(u.activo!==false && u.rol==='gerencia' && us.filter(x=>x.rol==='gerencia'&&x.activo!==false).length<=1){ toast('Debe quedar al menos un usuario de Gerencia activo'); return; }
+  if(currentUser && currentUser.id===id && u.activo!==false){ toast('No puedes desactivar el usuario con el que estás conectada'); return; }
+  u.activo= u.activo===false; guardarDB(); renderUsuariosConfig(); renderLoginUsuarios();
+}
+
+/* ================= REGISTRO DE CAMBIOS (auditoría) ================= */
+const AUD_KEY='almacenropa_auditoria', AUD_MAX=2000;
+let AUD_LOCAL=(()=>{ try{ return JSON.parse(localStorage.getItem(AUD_KEY)||'[]'); }catch(e){ return []; } })();
+let audTimer=null, audNube=[];
+function audRefNube(){ return (syncActivo && syncStoreCode && window.firebase)? firebase.firestore().collection('stores').doc(syncStoreCode+'-auditoria') : null; }
+function registrarAuditoria(accion, modulo, registro, cambios){
+  try{
+    AUD_LOCAL.push({id:uid(), ts:Date.now(), fecha:hoyISO(), usuario:currentUser?currentUser.nombre:(currentRole||'—'), rol:currentRole||'', accion, modulo, registro:String(registro||'').slice(0,160), cambios:(cambios||[]).slice(0,20), pend:true});
+    if(AUD_LOCAL.length>AUD_MAX) AUD_LOCAL=AUD_LOCAL.slice(-AUD_MAX);
+    try{ localStorage.setItem(AUD_KEY, JSON.stringify(AUD_LOCAL)); }catch(e){}
+    clearTimeout(audTimer); audTimer=setTimeout(subirAuditoriaNube, 2500);
+  }catch(e){ console.warn('auditoría', e); }
+}
+// el registro vive en su propio documento de la nube (stores/{código}-auditoria) para no llenar la base principal
+async function subirAuditoriaNube(){
+  const ref=audRefNube(); if(!ref) return;
+  const pend=AUD_LOCAL.filter(x=>x.pend); if(!pend.length) return;
+  try{
+    await firebase.firestore().runTransaction(async tx=>{
+      const d=await tx.get(ref); const ex=d.exists? (d.data().entradas||[]) : [];
+      const ids=new Set(ex.map(x=>x.id));
+      const todos=ex.concat(pend.filter(x=>!ids.has(x.id)).map(({pend,...x})=>x)).sort((a,b)=>a.ts-b.ts).slice(-AUD_MAX);
+      tx.set(ref,{entradas:todos, actualizado:Date.now()});
+      audNube=todos;
+    });
+    pend.forEach(x=>delete x.pend);
+    try{ localStorage.setItem(AUD_KEY, JSON.stringify(AUD_LOCAL)); }catch(e){}
+  }catch(e){ console.warn('No se pudo subir el registro de cambios', e); }
+}
+async function cargarAuditoriaNube(){
+  const ref=audRefNube(); if(!ref) return;
+  try{ const d=await ref.get(); audNube=d.exists? (d.data().entradas||[]) : []; }catch(e){ console.warn(e); }
+}
+function auditoriaTodas(){ const m=new Map(); audNube.concat(AUD_LOCAL).forEach(x=>m.set(x.id,x)); return [...m.values()].sort((a,b)=>a.ts-b.ts); }
+const AUD_COLECCIONES={
+  ventas:{modulo:'Ventas', get:()=>DB.ventas, etq:v=>'Factura N.° '+v.numero+' · '+(v.cliente||'')+' · '+fmt(v.total||0)},
+  gastos:{modulo:'Gastos', get:()=>DB.gastos, etq:g=>g.fecha+' · '+(g.categoria||'')+' · '+fmt(g.valor||0)},
+  cierres:{modulo:'Cierre de caja', get:()=>DB.cierres, etq:c=>'Cierre '+c.fecha},
+  compras:{modulo:'Compras', get:()=>DB.compras, etq:c=>{ const p=(DB.proveedores||[]).find(x=>x.id===c.proveedorId); return c.fecha+' · '+(p?p.nombre:'')+' · '+fmt(c.valor||0); }},
+  articulos:{modulo:'Inventario', get:()=>DB.articulos, etq:a=>a.nombre+' '+a.talla+'/'+a.color},
+  devoluciones:{modulo:'Devoluciones', get:()=>DB.devoluciones, etq:d=>'Devolución venta N.° '+d.ventaNumero},
+  apartados:{modulo:'Apartados', get:()=>DB.apartados, etq:a=>'Apartado N.° '+a.numero+' · '+(a.cliente||'')},
+  clientes:{modulo:'Clientes', get:()=>DB.clientes, etq:c=>c.nombre},
+  activosFijos:{modulo:'Activos fijos', get:()=>DB.activosFijos, etq:a=>a.nombre},
+  combos:{modulo:'Combos', get:()=>DB.combos, etq:c=>c.nombre},
+  movTes:{modulo:'Tesorería', get:()=>DB.tesoreria.movimientos, etq:m=>(m.tipo==='traslado'?'Traslado ':'Movimiento ')+m.fecha+' · '+fmt(m.valor||0)},
+  prestamos:{modulo:'Préstamos a socios', get:()=>DB.prestamosSocios, etq:p=>p.socio+' · '+fmt(p.valor||0)},
+  reserva:{modulo:'Reserva', get:()=>DB.reservaMovimientos, etq:m=>m.fecha+' · '+(m.concepto||'')+' · '+fmt(m.valor||0)},
+  flujo:{modulo:'Flujo de caja', get:()=>DB.flujoCaja, etq:f=>'Semana '+f.semanaInicio},
+  ajustes:{modulo:'Toma de inventario', get:()=>DB.ajustesInventario, etq:a=>'Ajuste '+a.fecha+' · '+nombreTienda(a.tienda)}
+};
+const AUD_IGNORAR=new Set(['imagen','items','lineas','asignaciones','abonos','pagos','hora','creadoEn','cerradoEn','_updatedAtMs','thumb','itemsDevueltos','itemsNuevos']);
+function audValor(v){ if(v==null||v==='') return '—'; if(typeof v==='number') return Math.abs(v)>=1000? fmt(v) : String(v); if(typeof v==='boolean') return v?'Sí':'No'; if(typeof v==='object') return Array.isArray(v)? v.length+' elemento(s)' : 'datos'; return String(v).slice(0,60); }
+function audDiff(antes, despues){
+  const cambios=[]; const keys=new Set([...Object.keys(antes||{}),...Object.keys(despues||{})]);
+  keys.forEach(k=>{ if(k==='id'||k==='grupoId') return; if(AUD_IGNORAR.has(k)) { if(k!=='imagen' && JSON.stringify((antes||{})[k])!==JSON.stringify((despues||{})[k])) cambios.push({campo:k, antes:audValor((antes||{})[k]), despues:audValor((despues||{})[k])}); return; }
+    const a=(antes||{})[k], d=(despues||{})[k]; if(JSON.stringify(a)!==JSON.stringify(d) && audValor(a)!==audValor(d)) cambios.push({campo:k, antes:audValor(a), despues:audValor(d)}); });
+  return cambios;
+}
+function audFoto(claves){ const f={}; claves.forEach(k=>{ const c=AUD_COLECCIONES[k]; const arr=(c.get()||[]); f[k]=new Map(arr.map(x=>[x.id, JSON.stringify(x)])); }); return f; }
+function audComparar(claves, foto, nombreAccion){
+  claves.forEach(k=>{
+    const c=AUD_COLECCIONES[k]; const antes=foto[k]; const ahora=new Map((c.get()||[]).map(x=>[x.id, x]));
+    ahora.forEach((x,id)=>{
+      if(!antes.has(id)) registrarAuditoria('Creó', c.modulo, c.etq(x), []);
+      else if(antes.get(id)!==JSON.stringify(x)){ const a=JSON.parse(antes.get(id)); registrarAuditoria('Editó', c.modulo, c.etq(x), audDiff(a,x)); }
+    });
+    antes.forEach((json,id)=>{ if(!ahora.has(id)){ const a=JSON.parse(json); registrarAuditoria('Eliminó', c.modulo, c.etq(a), Object.entries(a).filter(([kk,v])=>kk!=='id'&&kk!=='grupoId'&&!AUD_IGNORAR.has(kk)&&v!==''&&v!=null&&typeof v!=='object').slice(0,12).map(([kk,v])=>({campo:kk, antes:audValor(v), despues:'—'}))); } });
+  });
+}
+function auditarFuncion(nombre, claves){
+  const orig=window[nombre]; if(typeof orig!=='function' || orig.__auditada) return;
+  const envuelta=function(...args){
+    let foto=null; try{ foto=audFoto(claves); }catch(e){}
+    const r=orig.apply(this,args);
+    const fin=()=>{ try{ if(foto) audComparar(claves, foto); }catch(e){ console.warn(e); } };
+    if(r && typeof r.then==='function') r.then(fin, fin); else fin();
+    return r;
+  };
+  envuelta.__auditada=true; window[nombre]=envuelta;
+}
+function instalarAuditoria(){
+  const H={
+    guardarVenta:['ventas'], eliminarVenta:['ventas'], guardarEdicionVenta:['ventas'], guardarCobroCredito:['ventas'], deshacerCobroCredito:['ventas'],
+    guardarGasto:['gastos'], eliminarGasto:['gastos'], cambiarTiendaGasto:['gastos'],
+    guardarCierreCaja:['cierres'],
+    guardarCompra:['compras'], guardarCompraMercancia:['compras'], eliminarCompra:['compras'], registrarPagoCompra:['compras'], marcarCompraPagada:['compras'],
+    guardarArticulo:['articulos'], guardarVariante:['articulos'], eliminarVariante:['articulos'],
+    procesarDevolucion:['devoluciones','ventas'],
+    guardarApartado:['apartados'], guardarAbono:['apartados'], cancelarApartado:['apartados'], guardarEdicionApartado:['apartados'], marcarApartadoEntregado:['apartados'], guardarApartadoRecuperado:['apartados'],
+    eliminarCliente:['clientes'], guardarActivo:['activosFijos'], eliminarActivo:['activosFijos'], eliminarCombo:['combos'],
+    guardarMovTesoreria:['movTes'], eliminarMovTesoreria:['movTes'], guardarPrestamoSocio:['prestamos'], eliminarPrestamoSocio:['prestamos'],
+    guardarMovReserva:['reserva'], eliminarMovReserva:['reserva'], registrarSalidaReserva:['reserva'], guardarFlujoCaja:['flujo'],
+    aplicarAjusteInventario:['ajustes']
+  };
+  Object.entries(H).forEach(([f,c])=>auditarFuncion(f,c));
+  // saldos iniciales y restauración de copias
+  const gs=window.guardarSaldosIniciales; if(gs && !gs.__auditada){ window.guardarSaldosIniciales=function(){ const a=JSON.stringify(DB.tesoreria.cuentas); gs(); const d=DB.tesoreria.cuentas; if(a!==JSON.stringify(d)){ const A=JSON.parse(a); registrarAuditoria('Editó','Tesorería','Saldos iniciales', CUENTAS_TES.map(c=>({campo:c.nombre, antes:A[c.id]?fmt(A[c.id].saldoInicial)+' ('+A[c.id].fecha+')':'—', despues:d[c.id]?fmt(d[c.id].saldoInicial)+' ('+d[c.id].fecha+')':'—'})).filter(x=>x.antes!==x.despues)); } }; window.guardarSaldosIniciales.__auditada=true; }
+}
+function renderAuditoria(){
+  const L=auditoriaTodas().reverse();
+  const d=document.getElementById('aud-desde').value, h=document.getElementById('aud-hasta').value, us=document.getElementById('aud-usuario').value, mo=document.getElementById('aud-modulo').value, q=(document.getElementById('aud-buscar').value||'').toLowerCase(), ac=document.getElementById('aud-accion').value;
+  const selU=document.getElementById('aud-usuario'), selM=document.getElementById('aud-modulo');
+  const usuarios=[...new Set(L.map(x=>x.usuario))].sort(), modulos=[...new Set(L.map(x=>x.modulo))].sort();
+  if(selU.options.length-1!==usuarios.length){ selU.innerHTML='<option value="">Todos</option>'+usuarios.map(u=>`<option${u===us?' selected':''}>${escH(u)}</option>`).join(''); }
+  if(selM.options.length-1!==modulos.length){ selM.innerHTML='<option value="">Todos</option>'+modulos.map(m=>`<option${m===mo?' selected':''}>${escH(m)}</option>`).join(''); }
+  const F=L.filter(x=>(!d||x.fecha>=d)&&(!h||x.fecha<=h)&&(!us||x.usuario===us)&&(!mo||x.modulo===mo)&&(!ac||x.accion===ac)&&(!q||(x.registro+' '+JSON.stringify(x.cambios)).toLowerCase().includes(q)));
+  const color={Eliminó:'danger',Editó:'gold',Creó:'success'};
+  document.getElementById('aud-total').textContent=F.length+' registro(s)';
+  document.getElementById('tbl-auditoria').innerHTML=F.slice(0,400).map(x=>`<tr><td style="white-space:nowrap;">${new Date(x.ts).toLocaleString('es-CO',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</td><td>${escH(x.usuario)}</td><td><span class="badge ${color[x.accion]||''}">${escH(x.accion)}</span></td><td>${escH(x.modulo)}</td><td>${escH(x.registro)}${(x.cambios||[]).length?`<div style="font-size:11.5px;color:var(--ink-soft);margin-top:3px;">${x.cambios.map(c=>`<b>${escH(c.campo)}</b>: ${escH(c.antes)} → ${escH(c.despues)}`).join(' · ')}</div>`:''}</td></tr>`).join('')
+    || '<tr><td colspan="5"><div class="empty">No hay registros con esos filtros.</div></td></tr>';
+}
+async function exportarAuditoriaExcel(){
+  try{ await cargarXLSX();
+    const rows=auditoriaTodas().reverse().map(x=>[new Date(x.ts).toLocaleString('es-CO'), x.usuario, x.rol, x.accion, x.modulo, x.registro, (x.cambios||[]).map(c=>c.campo+': '+c.antes+' → '+c.despues).join(' | ')]);
+    xLibro([['Registro de cambios', xHoja('Registro de cambios', 'Quién hizo qué y cuándo', [{h:'Fecha y hora',t:'text'},{h:'Usuario',t:'text'},{h:'Rol',t:'text'},{h:'Acción',t:'text'},{h:'Módulo',t:'text'},{h:'Registro',t:'text'},{h:'Cambios',t:'text',w:80}], rows, {totales:false})]], 'registro-cambios-'+hoyISO()+'.xlsx');
+    toast('Excel descargado');
+  }catch(e){ console.error(e); toast('No se pudo generar el Excel'); }
+}
+
+/* ================= COPIA DE SEGURIDAD AUTOMÁTICA ================= */
+function diasDesdeUltimaCopia(){ const t=Number(DB.config.ultimaCopiaTs)||0; return t? Math.floor((Date.now()-t)/86400000) : null; }
+function frecuenciaCopia(){ return Number(DB.config.copiaFrecuenciaDias)||7; }
+function copiaPendiente(){ const d=diasDesdeUltimaCopia(); return d===null || d>=frecuenciaCopia(); }
+async function descargarCopiaCompleta(silenciosa){
+  exportarBackup(); // respaldo restaurable (.json)
+  try{
+    await cargarXLSX();
+    const v=[...DB.ventas].sort((a,b)=>a.numero-b.numero).map(x=>[x.numero,x.fecha,x.cliente||'',x.vendedor||'',x.metodo||'',x.subtotal||0,x.descuento||0,x.total||0,x.costoTotal||0,(x.total||0)-(x.costoTotal||0)]);
+    const inv=DB.articulos.map(a=>[cortoTienda(tiendaDeArticulo(a)),a.nombre,a.categoria||'',a.talla,a.color,a.stock||0,a.costo||0,a.precio||0,(a.stock||0)*(a.costo||0)]);
+    const gas=DB.gastos.map(g=>[g.fecha,g.categoria||'',g.tienda||'compartido',g.pagadoCon||'caja',g.descripcion||'',g.valor||0]);
+    const com=DB.compras.map(c=>{ const p=DB.proveedores.find(x=>x.id===c.proveedorId); return [c.fecha,p?p.nombre:'',c.tienda||'',c.tipo||'',c.valor||0,pagadoCompra(c),saldoCompra(c)]; });
+    const cli=DB.clientes.map(c=>[c.nombre,c.telefono||'',c.cedula||'',c.correo||'',c.direccion||'',c.cumpleanos||'']);
+    xLibro([
+      ['Ventas', xHoja('Ventas', 'Copia completa '+hoyISO(), [{h:'N°',t:'text'},{h:'Fecha',t:'text'},{h:'Cliente',t:'text'},{h:'Vendedor',t:'text'},{h:'Método',t:'text'},{h:'Subtotal',t:'money',sum:1},{h:'Descuento',t:'money',sum:1},{h:'Total',t:'money',sum:1},{h:'Costo',t:'money',sum:1},{h:'Utilidad',t:'money',sum:1}], v)],
+      ['Inventario', xHoja('Inventario', 'Copia completa '+hoyISO(), [{h:'Tienda',t:'text'},{h:'Artículo',t:'text'},{h:'Categoría',t:'text'},{h:'Talla',t:'text'},{h:'Color',t:'text'},{h:'Stock',t:'int',sum:1},{h:'Costo',t:'money'},{h:'Precio',t:'money'},{h:'Valor a costo',t:'money',sum:1}], inv)],
+      ['Gastos', xHoja('Gastos', 'Copia completa '+hoyISO(), [{h:'Fecha',t:'text'},{h:'Categoría',t:'text'},{h:'Tienda',t:'text'},{h:'Pagado con',t:'text'},{h:'Descripción',t:'text'},{h:'Valor',t:'money',sum:1}], gas)],
+      ['Compras', xHoja('Compras', 'Copia completa '+hoyISO(), [{h:'Fecha',t:'text'},{h:'Proveedor',t:'text'},{h:'Tienda',t:'text'},{h:'Tipo',t:'text'},{h:'Total',t:'money',sum:1},{h:'Pagado',t:'money',sum:1},{h:'Saldo',t:'money',sum:1}], com)],
+      ['Clientes', xHoja('Clientes', 'Copia completa '+hoyISO(), [{h:'Nombre',t:'text'},{h:'Teléfono',t:'text'},{h:'Cédula',t:'text'},{h:'Correo',t:'text'},{h:'Dirección',t:'text'},{h:'Cumpleaños',t:'text'}], cli)]
+    ], 'copia-excel-'+hoyISO()+'.xlsx');
+  }catch(e){ console.warn('Excel de la copia no generado', e); }
+  DB.config.ultimaCopiaTs=Date.now(); guardarDB();
+  registrarAuditoria('Creó','Copia de seguridad','Copia descargada',[]);
+  pintarAvisoCopia();
+  if(!silenciosa) toast('Copia de seguridad descargada (respaldo + Excel)');
+}
+function revisarCopiaAutomatica(trasLogin){
+  pintarAvisoCopia();
+  if(trasLogin && DB.config.copiaAutomatica && copiaPendiente()){
+    toast('Descargando la copia de seguridad programada…');
+    setTimeout(()=>descargarCopiaCompleta(true), 600);
+  }
+}
+function pintarAvisoCopia(){
+  const el=document.getElementById('dash-recordatorio-backup'); if(!el) return;
+  const d=diasDesdeUltimaCopia();
+  el.innerHTML= copiaPendiente()? `<div class="card" style="background:var(--gold-soft);margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+      <div>💾 ${d===null?'Aún no has descargado ninguna copia de seguridad.':'Tu última copia de seguridad fue hace '+d+' día(s).'}</div>
+      <button class="btn gold sm" onclick="descargarCopiaCompleta()">Descargar copia ahora</button></div>` : '';
+  const st=document.getElementById('cfg-copia-estado');
+  if(st) st.textContent= d===null? 'Nunca' : (d===0?'Hoy':'Hace '+d+' día(s)')+' · '+new Date(DB.config.ultimaCopiaTs).toLocaleString('es-CO');
+}
+function guardarAjustesCopia(){
+  DB.config.copiaAutomatica=document.getElementById('cfg-copia-auto').checked;
+  DB.config.copiaFrecuenciaDias=parseInt(document.getElementById('cfg-copia-frec').value)||7;
+  guardarDB(); pintarAvisoCopia(); toast('Ajustes de copia guardados');
+}
+function pintarTamanoBase(){
+  const el=document.getElementById('cfg-tamano-base'); if(!el) return;
+  let kb=0; try{ kb=Math.round(new Blob([JSON.stringify(DB)]).size/1024); }catch(e){}
+  const pct=Math.min(100, Math.round(kb/1024*100));
+  el.innerHTML=`Tamaño de tus datos en la nube: <strong>${kb.toLocaleString('es-CO')} KB</strong> de 1.024 KB (${pct}%)`+(pct>=70? ' <span class="badge danger">Se está llenando: avísame para separar las fotos y el historial</span>' : pct>=50? ' <span class="badge gold">Va por la mitad</span>' : ' <span class="badge success">Bien</span>');
+}
+
+/* ================= TOMA DE INVENTARIO FÍSICA ================= */
+function conteoArticulos(c){ c=c||DB.conteoActual; if(!c) return []; return DB.articulos.filter(a=>(c.tienda==='todas'||tiendaDeArticulo(a)===c.tienda) && (!c.categoria || (a.categoria||'')===c.categoria)); }
+function renderConteo(){
+  const c=DB.conteoActual;
+  document.getElementById('ct-inicio').style.display= c? 'none':'';
+  document.getElementById('ct-activo').style.display= c? '':'none';
+  if(!c){
+    const cats=[...new Set(DB.articulos.map(a=>a.categoria||'').filter(Boolean))].sort();
+    document.getElementById('ct-categoria').innerHTML='<option value="">Todas las categorías</option>'+cats.map(x=>`<option>${escH(x)}</option>`).join('');
+    renderHistorialAjustes(); return;
+  }
+  document.getElementById('ct-titulo').textContent='Conteo de '+(c.tienda==='todas'?'las dos tiendas':nombreTienda(c.tienda))+(c.categoria?' · '+c.categoria:'')+' — iniciado '+new Date(c.inicio).toLocaleString('es-CO',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+' por '+(c.usuario||'');
+  const arts=conteoArticulos(c).sort((a,b)=>a.nombre.localeCompare(b.nombre)||String(a.talla).localeCompare(String(b.talla)));
+  const ceros=document.getElementById('ct-ceros').checked;
+  const q=(document.getElementById('ct-filtro').value||'').toLowerCase();
+  const soloDif=document.getElementById('ct-solo-dif').checked;
+  let uSis=0,uCon=0,vFal=0,vSob=0,nCont=0;
+  const filas=arts.map(a=>{
+    const sis=Number(a.stock)||0, contado=c.conteos[a.id];
+    const cnt= contado==null? (ceros?0:sis) : contado;
+    if(contado!=null) nCont++;
+    const dif=cnt-sis; uSis+=sis; uCon+=cnt;
+    if(dif<0) vFal+=-dif*(Number(a.costo)||0); if(dif>0) vSob+=dif*(Number(a.costo)||0);
+    return {a,sis,contado,cnt,dif};
+  });
+  document.getElementById('ct-resumen').innerHTML=
+    `<div class="card"><h3>Referencias contadas</h3><div class="kpi" style="font-size:20px;">${nCont} / ${arts.length}</div></div>`+
+    `<div class="card"><h3>Unidades sistema → contadas</h3><div class="kpi indigo" style="font-size:20px;">${uSis} → ${uCon}</div></div>`+
+    `<div class="card"><h3>Faltante (a costo)</h3><div class="kpi danger" style="font-size:20px;">${fmt(vFal)}</div></div>`+
+    `<div class="card"><h3>Sobrante (a costo)</h3><div class="kpi success" style="font-size:20px;">${fmt(vSob)}</div></div>`;
+  const vis=filas.filter(f=>(!soloDif||f.dif!==0) && (!q||(f.a.nombre+' '+f.a.talla+' '+f.a.color+' '+(f.a.codigoBarras||'')).toLowerCase().includes(q)));
+  document.getElementById('tbl-conteo').innerHTML= vis.length? vis.map(f=>`<tr style="${f.dif<0?'background:var(--danger-soft);':f.dif>0?'background:var(--success-soft);':''}">
+    <td>${escH(f.a.nombre)}${c.tienda==='todas'?' '+badgeTienda(tiendaDeArticulo(f.a)):''}<div style="font-size:11px;color:var(--ink-soft);">${escH(f.a.codigoBarras||'')}</div></td><td class="center">${escH(f.a.talla)}</td><td class="center">${escH(f.a.color)}</td>
+    <td class="right num">${f.sis}</td>
+    <td class="right"><input type="number" min="0" value="${f.contado==null?'':f.contado}" placeholder="${ceros?'0':f.sis}" style="width:76px;text-align:right;" onchange="fijarConteo('${f.a.id}',this.value)"></td>
+    <td class="right num" style="font-weight:600;color:${f.dif<0?'var(--danger)':f.dif>0?'var(--success)':'inherit'};">${f.dif>0?'+':''}${f.dif}</td>
+    <td class="right num">${f.dif? fmt(f.dif*(Number(f.a.costo)||0)) : ''}</td></tr>`).join('')
+    : '<tr><td colspan="7"><div class="empty">Nada que mostrar con ese filtro.</div></td></tr>';
+}
+function iniciarConteo(){
+  if(DB.conteoActual && !confirm('Ya hay un conteo abierto. ¿Descartarlo y empezar otro?')) return;
+  DB.conteoActual={id:uid(), inicio:Date.now(), tienda:document.getElementById('ct-tienda').value, categoria:document.getElementById('ct-categoria').value, usuario:currentUser?currentUser.nombre:'', conteos:{}};
+  guardarDB(); renderConteo(); setTimeout(()=>document.getElementById('ct-scan').focus(),50);
+}
+function escanearConteo(ev){
+  if(ev && ev.key && ev.key!=='Enter') return;
+  const inp=document.getElementById('ct-scan'); const txt=(inp.value||'').trim(); if(!txt) return;
+  const c=DB.conteoActual; if(!c) return;
+  const arts=conteoArticulos(c);
+  const a=arts.find(x=>x.codigoBarras===txt) || arts.find(x=>(x.nombre+' '+x.talla+' '+x.color).toLowerCase()===txt.toLowerCase());
+  const msg=document.getElementById('ct-ultimo');
+  if(!a){
+    const fuera=DB.articulos.find(x=>x.codigoBarras===txt);
+    msg.innerHTML= fuera? `<span class="badge danger">"${escH(fuera.nombre)}" es de ${nombreTienda(tiendaDeArticulo(fuera))} o de otra categoría: no entra en este conteo</span>` : `<span class="badge danger">Código ${escH(txt)} no encontrado</span>`;
+    try{ navigator.vibrate&&navigator.vibrate(200); }catch(e){}
+  } else {
+    const n=Math.max(1,parseInt(document.getElementById('ct-cant').value)||1);
+    c.conteos[a.id]=(Number(c.conteos[a.id])||0)+n;
+    msg.innerHTML=`<span class="badge success">✓ ${escH(a.nombre)} ${escH(a.talla)}/${escH(a.color)} → llevas ${c.conteos[a.id]}</span>`;
+    guardarDB();
+  }
+  inp.value=''; document.getElementById('ct-cant').value=1; renderConteo(); inp.focus();
+}
+function fijarConteo(id, val){
+  const c=DB.conteoActual; if(!c) return;
+  if(val===''||val==null) delete c.conteos[id]; else c.conteos[id]=Math.max(0,parseInt(val)||0);
+  guardarDB(); renderConteo();
+}
+function descartarConteo(){ if(!confirm('¿Descartar este conteo? No se ajustará nada.')) return; DB.conteoActual=null; guardarDB(); renderConteo(); }
+function aplicarAjusteInventario(){
+  const c=DB.conteoActual; if(!c) return;
+  const ceros=document.getElementById('ct-ceros').checked;
+  const lineas=[];
+  conteoArticulos(c).forEach(a=>{
+    const sis=Number(a.stock)||0, contado=c.conteos[a.id];
+    const cnt= contado==null? (ceros?0:sis) : contado;
+    if(cnt!==sis) lineas.push({articuloId:a.id, tienda:tiendaDeArticulo(a), nombre:a.nombre, talla:a.talla, color:a.color, sistema:sis, contado:cnt, diferencia:cnt-sis, costo:Number(a.costo)||0});
+  });
+  if(!lineas.length){ if(confirm('No hay diferencias: el inventario coincide. ¿Cerrar el conteo?')){ DB.conteoActual=null; guardarDB(); renderConteo(); } return; }
+  const fal=lineas.filter(l=>l.diferencia<0).reduce((s,l)=>s-l.diferencia*l.costo,0), sob=lineas.filter(l=>l.diferencia>0).reduce((s,l)=>s+l.diferencia*l.costo,0);
+  if(!confirm(`Se ajustarán ${lineas.length} referencia(s).\n\nFaltante: ${fmt(fal)}\nSobrante: ${fmt(sob)}\n\nEl stock del sistema quedará igual al conteo. ¿Aplicar?`)) return;
+  lineas.forEach(l=>{ const a=DB.articulos.find(x=>x.id===l.articuloId); if(a) a.stock=l.contado; });
+  if(!DB.ajustesInventario) DB.ajustesInventario=[];
+  DB.ajustesInventario.push({id:uid(), fecha:hoyISO(), ts:Date.now(), tienda:c.tienda, categoria:c.categoria||'', usuario:currentUser?currentUser.nombre:'', lineas, valorFaltante:fal, valorSobrante:sob, referenciasContadas:Object.keys(c.conteos).length, notas:document.getElementById('ct-notas').value.trim()});
+  DB.conteoActual=null; guardarDB(); renderConteo(); if(typeof renderInventario==='function') renderInventario();
+  toast('Inventario ajustado: faltante '+fmt(fal)+' · sobrante '+fmt(sob));
+}
+function renderHistorialAjustes(){
+  const tb=document.getElementById('tbl-ajustes'); if(!tb) return;
+  const L=[...(DB.ajustesInventario||[])].sort((a,b)=>b.ts-a.ts);
+  tb.innerHTML=L.length? L.map(a=>`<tr><td>${a.fecha}</td><td>${a.tienda==='todas'?'Las dos':cortoTienda(a.tienda)}${a.categoria?' · '+escH(a.categoria):''}</td><td>${escH(a.usuario||'')}</td><td class="right">${a.lineas.length}</td><td class="right num" style="color:var(--danger);">${fmt(a.valorFaltante)}</td><td class="right num" style="color:var(--success);">${fmt(a.valorSobrante)}</td><td class="right"><button class="btn ghost sm" onclick="exportarAjusteExcel('${a.id}')">Excel</button></td></tr>`).join('')
+    : '<tr><td colspan="7"><div class="empty">Aún no has hecho tomas de inventario.</div></td></tr>';
+}
+async function exportarAjusteExcel(id){
+  const a=(DB.ajustesInventario||[]).find(x=>x.id===id); if(!a) return;
+  try{ await cargarXLSX();
+    xLibro([['Ajuste', xHoja('Toma de inventario '+a.fecha, (a.tienda==='todas'?'Las dos tiendas':nombreTienda(a.tienda))+' · responsable: '+(a.usuario||'')+(a.notas?' · '+a.notas:''), [{h:'Tienda',t:'text'},{h:'Referencia',t:'text'},{h:'Talla',t:'text'},{h:'Color',t:'text'},{h:'Sistema',t:'int',sum:1},{h:'Contado',t:'int',sum:1},{h:'Diferencia',t:'int',sum:1},{h:'Costo unitario',t:'money'},{h:'Valor diferencia',t:'money',sum:1}],
+      a.lineas.map(l=>[cortoTienda(l.tienda), l.nombre, l.talla, l.color, l.sistema, l.contado, l.diferencia, l.costo, l.diferencia*l.costo]))]], 'toma-inventario-'+a.fecha+'.xlsx');
+  }catch(e){ toast('No se pudo generar el Excel'); }
+}
+
+/* ================= REPOSICIÓN INTELIGENTE ================= */
+function cfgRepo(){
+  const c=DB.config.reposicion=DB.config.reposicion||{};
+  if(!c.regia) c.regia={espera:1, cobertura:4};
+  if(!c.fraganza) c.fraganza={espera:2, cobertura:6};
+  if(!c.ventana) c.ventana=8; if(!c.diasQuieta) c.diasQuieta=60;
+  return c;
+}
+// unidades vendidas por artículo (los combos se reparten en sus componentes)
+function ventasPorArticulo(desde){
+  const u={}, ult={};
+  DB.ventas.forEach(v=>{
+    if(v.esAbonoApartado || v.esAjusteDevolucion) return;
+    (v.items||[]).forEach(it=>{
+      const id=String(it.articuloId||''), q=Number(it.cantidad)||0;
+      const sumar=(aid,n)=>{ if(!aid) return; if(!ult[aid]||v.fecha>ult[aid]) ult[aid]=v.fecha; if(v.fecha>=desde) u[aid]=(u[aid]||0)+n; };
+      if(id.indexOf('combo:')===0){ const c=(DB.combos||[]).find(x=>x.id===id.slice(6)); (c&&c.items||[]).forEach(ci=>sumar(ci.articuloId,(Number(ci.cantidad)||1)*q)); }
+      else sumar(id,q);
+    });
+  });
+  // apartados entregados también son ventas
+  (DB.apartados||[]).filter(a=>a.estado==='completado').forEach(a=>{ const f=a.fechaEntrega||a.fecha; (a.items||[]).forEach(it=>{ const id=it.articuloId; if(!id) return; if(!ult[id]||f>ult[id]) ult[id]=f; if(f>=desde) u[id]=(u[id]||0)+(Number(it.cantidad)||0); }); });
+  return {u, ult};
+}
+function ultimaCompraArticulo(){
+  const m={};
+  [...DB.compras].filter(c=>c.tipo==='mercancia').sort((a,b)=>a.fecha.localeCompare(b.fecha)).forEach(c=>(c.lineas||[]).forEach(l=>{ m[l.articuloId]={proveedorId:c.proveedorId, costo:l.costoUnit, fecha:c.fecha}; }));
+  return m;
+}
+function calcularReposicion(){
+  const C=cfgRepo(), hoy=hoyISO();
+  const d=fechaLocalDesdeISO(hoy); d.setDate(d.getDate()-C.ventana*7); const desde=fechaISOLocal(d);
+  const {u, ult}=ventasPorArticulo(desde), uc=ultimaCompraArticulo();
+  const res=(typeof reservadoWeb==='function')? reservadoWeb() : {};
+  return DB.articulos.map(a=>{
+    const t=tiendaDeArticulo(a), P=C[t]||{espera:1,cobertura:4};
+    const vendidas=u[a.id]||0, vel=vendidas/C.ventana; // unidades por semana
+    const disp=Math.max(0,(Number(a.stock)||0)-(res[a.id]||0));
+    const semanas= vel>0? disp/vel : Infinity;
+    const objetivo=Math.ceil(vel*(Number(P.espera)+Number(P.cobertura)));
+    const pedir= vel>0? Math.max(0, objetivo-disp) : 0;
+    const estado= vel===0? 'sinmov' : disp < vel*Number(P.espera) ? 'urgente' : pedir>0 ? 'pronto' : 'bien';
+    const ultV=ult[a.id]||'', diasSin= ultV? diasEntreFechas(ultV, hoy) : null;
+    const compra=uc[a.id];
+    const quieta= disp>0 && (diasSin===null ? (!compra || diasEntreFechas(compra.fecha,hoy)>=C.diasQuieta) : diasSin>=C.diasQuieta);
+    return {a, tienda:t, vendidas, vel, disp, semanas, objetivo, pedir, estado, ultimaVenta:ultV, diasSin, quieta,
+      proveedorId: compra? compra.proveedorId : '', costoRef: compra? compra.costo : (Number(a.costo)||0)};
+  });
+}
+const REPO_EST={urgente:{t:'Urgente',c:'danger',o:0}, pronto:{t:'Pedir pronto',c:'gold',o:1}, bien:{t:'Bien surtido',c:'success',o:2}, sinmov:{t:'Sin ventas recientes',c:'',o:3}};
+let repoCantidades={}, repoSel={};
+function renderReposicion(){
+  const C=cfgRepo();
+  if(!document.querySelector('#repo-ajustes :focus')){
+    ['regia','fraganza'].forEach(t=>{ document.getElementById('repo-esp-'+t).value=C[t].espera; document.getElementById('repo-cob-'+t).value=C[t].cobertura; });
+    document.getElementById('repo-ventana').value=C.ventana; document.getElementById('repo-quieta').value=C.diasQuieta;
+  }
+  const fT=document.getElementById('repo-tienda').value, fE=document.getElementById('repo-estado').value;
+  const L=calcularReposicion().filter(r=>fT==='todas'||r.tienda===fT);
+  const aPedir=L.filter(r=>r.pedir>0 && (fE==='todas'||r.estado===fE));
+  const q=r=> repoCantidades[r.a.id]!=null? repoCantidades[r.a.id] : r.pedir;
+  const sel=r=> repoSel[r.a.id]!=null? repoSel[r.a.id] : true;
+  const urg=L.filter(r=>r.estado==='urgente'&&r.pedir>0).length;
+  const valorPed=aPedir.filter(sel).reduce((s,r)=>s+q(r)*r.costoRef,0);
+  const quietas=L.filter(r=>r.quieta), valorQ=quietas.reduce((s,r)=>s+r.disp*(Number(r.a.costo)||0),0);
+  const kpi=(t,v,cl)=>`<div class="card"><h3>${t}</h3><div class="kpi ${cl||''}" style="font-size:21px;">${v}</div></div>`;
+  document.getElementById('repo-kpis').innerHTML=kpi('Urgentes (se acaban antes del pedido)', urg, 'danger')+kpi('Referencias para pedir', aPedir.length, 'gold')+kpi('Valor del pedido sugerido', fmt(valorPed), 'indigo')+kpi('Plata en mercancía quieta', fmt(valorQ));
+  // agrupar por tienda + proveedor
+  const grupos={};
+  aPedir.sort((x,y)=>REPO_EST[x.estado].o-REPO_EST[y.estado].o || x.semanas-y.semanas).forEach(r=>{ const k=r.tienda+'|'+(r.proveedorId||''); (grupos[k]=grupos[k]||[]).push(r); });
+  const cont=document.getElementById('repo-pedidos');
+  cont.innerHTML= Object.keys(grupos).length? Object.entries(grupos).map(([k,rows])=>{
+    const [t,pid]=k.split('|'); const p=DB.proveedores.find(x=>x.id===pid);
+    const tot=rows.filter(sel).reduce((s,r)=>s+q(r)*r.costoRef,0), uni=rows.filter(sel).reduce((s,r)=>s+q(r),0);
+    return `<div class="card" style="margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+        <h3 style="margin:0;">${badgeTienda(t)} ${p?escH(p.nombre):'<span style="color:var(--ink-soft)">Sin proveedor (aún no tiene compras registradas)</span>'}</h3>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;"><span style="font-size:13px;">${uni} unid. · <strong>${fmt(tot)}</strong></span>
+          <button class="btn gold sm" onclick="repoCrearCompra('${k}')">Convertir en compra</button>
+          <button class="btn ghost sm" onclick="repoWhatsApp('${k}')">Enviar al proveedor</button></div></div>
+      <div style="overflow-x:auto;"><table><thead><tr><th></th><th>Referencia</th><th class="center">Talla</th><th class="center">Color</th><th class="right">Vende/sem.</th><th class="right">Tiene</th><th class="right">Le alcanza</th><th>Estado</th><th class="right">Pedir</th><th class="right">Costo aprox.</th></tr></thead><tbody>`+
+      rows.map(r=>`<tr><td><input type="checkbox" ${sel(r)?'checked':''} onchange="repoSel['${r.a.id}']=this.checked;renderReposicion()"></td><td>${escH(r.a.nombre)}</td><td class="center">${escH(r.a.talla)}</td><td class="center">${escH(r.a.color)}</td>
+        <td class="right num">${r.vel.toFixed(1)}</td><td class="right num">${r.disp}</td><td class="right">${isFinite(r.semanas)? (r.semanas<1? Math.round(r.semanas*7)+' días' : r.semanas.toFixed(1)+' sem.') : '—'}</td>
+        <td><span class="badge ${REPO_EST[r.estado].c}">${REPO_EST[r.estado].t}</span></td>
+        <td class="right"><input type="number" min="0" value="${q(r)}" style="width:64px;text-align:right;" onchange="repoCantidades['${r.a.id}']=Math.max(0,parseInt(this.value)||0);renderReposicion()"></td>
+        <td class="right num">${fmt(q(r)*r.costoRef)}</td></tr>`).join('')+`</tbody></table></div></div>`;
+  }).join('') : '<div class="card"><div class="empty">Todo está bien surtido para las semanas de cobertura que definiste. 🎉</div></div>';
+  // mercancía quieta
+  document.getElementById('repo-quietas').innerHTML= quietas.length? quietas.sort((x,y)=>y.disp*(y.a.costo||0)-x.disp*(x.a.costo||0)).map(r=>`<tr><td>${escH(r.a.nombre)} ${fT==='todas'?badgeTienda(r.tienda):''}</td><td class="center">${escH(r.a.talla)}</td><td class="center">${escH(r.a.color)}</td><td class="right num">${r.disp}</td>
+      <td class="right">${r.diasSin===null?'Nunca vendida':r.diasSin+' días'}</td><td class="right num">${fmt(r.disp*(Number(r.a.costo)||0))}</td><td class="right num">${fmt(r.a.precio||0)}</td>
+      <td style="font-size:12px;color:var(--ink-soft);">${(Number(r.a.precio)||0)>(Number(r.a.costo)||0)*1.3? 'Promoción hasta '+fmt(Math.ceil((Number(r.a.costo)||0)*1.15/1000)*1000)+' aún deja ganancia' : 'Ofrécela en combo'}</td></tr>`).join('')
+    : `<tr><td colspan="8"><div class="empty">No hay mercancía quieta (más de ${C.diasQuieta} días sin venderse).</div></td></tr>`;
+}
+function guardarAjustesRepo(){
+  const C=cfgRepo();
+  ['regia','fraganza'].forEach(t=>{ C[t].espera=Math.max(0,parseFloat(document.getElementById('repo-esp-'+t).value)||0); C[t].cobertura=Math.max(1,parseFloat(document.getElementById('repo-cob-'+t).value)||1); });
+  C.ventana=Math.min(52,Math.max(2,parseInt(document.getElementById('repo-ventana').value)||8));
+  C.diasQuieta=Math.max(15,parseInt(document.getElementById('repo-quieta').value)||60);
+  repoCantidades={}; guardarDB(); renderReposicion(); toast('Ajustes de reposición guardados');
+}
+function repoFilas(k){
+  const [t,pid]=k.split('|');
+  return calcularReposicion().filter(r=>r.tienda===t && (r.proveedorId||'')===pid && r.pedir>0 && (repoSel[r.a.id]!=null? repoSel[r.a.id] : true))
+    .map(r=>({r, cant: repoCantidades[r.a.id]!=null? repoCantidades[r.a.id] : r.pedir})).filter(x=>x.cant>0);
+}
+function repoCrearCompra(k){
+  const [t,pid]=k.split('|'); const F=repoFilas(k); if(!F.length){ toast('No hay nada seleccionado para pedir'); return; }
+  if(!DB.proveedores.length){ toast('Primero crea el proveedor'); abrirModalProveedor(); return; }
+  abrirModalCompra();
+  document.getElementById('cm-tienda').value=t; cmRefrescarLista();
+  if(pid) document.getElementById('cm-proveedor').value=pid;
+  cmLineas=F.map(({r,cant})=>({articuloId:r.a.id, nombre:r.a.nombre, talla:r.a.talla, color:r.a.color, cantidad:cant, costoUnit:r.costoRef}));
+  cmPintar();
+  toast('Revisa cantidades y costos de la factura, y guarda cuando llegue la mercancía');
+}
+function repoWhatsApp(k){
+  const [t,pid]=k.split('|'); const F=repoFilas(k); if(!F.length){ toast('No hay nada seleccionado'); return; }
+  const p=DB.proveedores.find(x=>x.id===pid);
+  let m=`Hola${p?' '+p.nombre:''}, te escribo de ${nombreTienda(t)}. Quisiera hacer este pedido:\n\n`;
+  F.forEach(({r,cant})=>{ m+=`• ${cant} × ${r.a.nombre}${r.a.talla&&r.a.talla!=='Única'?' · '+r.a.talla:''}${r.a.color&&r.a.color!=='Único'&&r.a.color!=='—'?' · '+r.a.color:''}\n`; });
+  m+=`\nTotal: ${F.reduce((s,x)=>s+x.cant,0)} unidades. ¿Me confirmas disponibilidad y valor? Gracias.`;
+  const tel=String(p&&p.telefono||'').replace(/\D/g,''); const num= /^3\d{9}$/.test(tel)? '57'+tel : tel;
+  window.open('https://wa.me/'+(num||'')+'?text='+encodeURIComponent(m),'_blank');
+}
+async function exportarReposicionExcel(){
+  try{ await cargarXLSX();
+    const L=calcularReposicion();
+    const ped=L.filter(r=>r.pedir>0).map(r=>{ const p=DB.proveedores.find(x=>x.id===r.proveedorId); const q=repoCantidades[r.a.id]!=null?repoCantidades[r.a.id]:r.pedir; return [cortoTienda(r.tienda), p?p.nombre:'Sin proveedor', r.a.nombre, r.a.talla, r.a.color, REPO_EST[r.estado].t, Math.round(r.vel*10)/10, r.disp, q, r.costoRef, q*r.costoRef]; });
+    const qu=L.filter(r=>r.quieta).map(r=>[cortoTienda(r.tienda), r.a.nombre, r.a.talla, r.a.color, r.disp, r.diasSin===null?'Nunca vendida':r.diasSin, Number(r.a.costo)||0, r.disp*(Number(r.a.costo)||0), Number(r.a.precio)||0]);
+    xLibro([
+      ['Pedido sugerido', xHoja('Pedido sugerido', 'Calculado con las ventas de las últimas '+cfgRepo().ventana+' semanas · '+hoyISO(), [{h:'Tienda',t:'text'},{h:'Proveedor',t:'text'},{h:'Referencia',t:'text'},{h:'Talla',t:'text'},{h:'Color',t:'text'},{h:'Estado',t:'text'},{h:'Vende por semana',t:'text'},{h:'Tiene',t:'int',sum:1},{h:'Pedir',t:'int',sum:1},{h:'Costo unitario',t:'money'},{h:'Valor',t:'money',sum:1}], ped)],
+      ['Mercancía quieta', xHoja('Mercancía quieta', 'Más de '+cfgRepo().diasQuieta+' días sin venderse', [{h:'Tienda',t:'text'},{h:'Referencia',t:'text'},{h:'Talla',t:'text'},{h:'Color',t:'text'},{h:'Unidades',t:'int',sum:1},{h:'Días sin venta',t:'text'},{h:'Costo unitario',t:'money'},{h:'Plata detenida',t:'money',sum:1},{h:'Precio actual',t:'money'}], qu)]
+    ], 'reposicion-'+hoyISO()+'.xlsx');
+  }catch(e){ console.error(e); toast('No se pudo generar el Excel'); }
+}
+function pintarResumenReposicion(){
+  const el=document.getElementById('dash-reposicion'); if(!el) return;
+  if(currentRole!=='gerencia'){ el.innerHTML=''; return; }
+  const L=calcularReposicion(); const p=t=>L.filter(r=>r.tienda===t&&r.pedir>0);
+  const v=arr=>arr.reduce((s,r)=>s+r.pedir*r.costoRef,0);
+  const urg=L.filter(r=>r.estado==='urgente'&&r.pedir>0).length, q=L.filter(r=>r.quieta).reduce((s,r)=>s+r.disp*(Number(r.a.costo)||0),0);
+  if(!p('regia').length && !p('fraganza').length && !q){ el.innerHTML=''; return; }
+  el.innerHTML=`<div class="card" style="margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+    <div>📦 <strong>Reposición:</strong> ${p('regia').length} ref. para pedir en Regia (${fmt(v(p('regia')))}) · ${p('fraganza').length} en Fraganza (${fmt(v(p('fraganza')))})${urg?` · <span class="badge danger">${urg} urgente(s)</span>`:''}${q?` · ${fmt(q)} en mercancía quieta`:''}</div>
+    <button class="btn ghost sm" onclick="goTo('reposicion')">Ver reposición</button></div>`;
+}
+
 /* ================= ACTIVOS FIJOS ================= */
 function calcularDepreciacionActivo(a){
   const valorCompra=a.valorCompra||0;
@@ -5523,6 +6145,8 @@ function renderGastos(){
 
 /* ================= DASHBOARD ================= */
 function renderDashboard(){
+  try{ pintarAvisoCopia(); }catch(e){}
+  try{ pintarResumenReposicion(); }catch(e){}
   const hoy=hoyISO();
   const mesActual=hoy.slice(0,7);
   document.getElementById('fecha-hoy-txt').textContent=new Date().toLocaleDateString('es-CO',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
@@ -5802,7 +6426,7 @@ const FILAS_COMPARATIVO=[
   ['Comisiones de financieras','comFin','money'],['Ingresos netos','ingresosNetos','money',1],
   ['Costo de la mercancía vendida','costoVentas','money'],['Utilidad bruta','utilidadBruta','money',1],['Margen bruto',R=>R.ingresosNetos? R.utilidadBruta/R.ingresosNetos:0,'pct'],
   ['Gastos propios de la tienda','gastosDirectos','money'],['Parte de los gastos compartidos','gastosCompartidos','money'],['Total gastos','gastos','money'],
-  ['Comisiones a vendedores','comVend','money'],['Depreciación de activos','depreciacion','money'],
+  ['Comisiones a vendedores','comVend','money'],['Depreciación de activos','depreciacion','money'],['Faltantes netos de inventario','ajusteInv','money'],
   ['Utilidad operacional','utilidadOperacional','money',1],['Descuadres y salidas de caja','',R=>R.salCierre+R.difCierre,'money'],
   ['Utilidad neta','utilidadNetaContable','money',1],['Margen neto',R=>R.ingresosNetos? R.utilidadNetaContable/R.ingresosNetos:0,'pct'],
   ['Reinversión en mercancía (flujo, reserva y compras pagadas)',R=>R.reinvFlujo+R.reinvRes+R.comprasMerc,'money'],['Compras de mercancía facturadas',R=>R.comprasMercFacturadas,'money'],['Lo que queda libre','queda','money',1],
@@ -6004,7 +6628,10 @@ function calcularReporteFinanciero(desde, hasta, tienda){
   R.cxcFinPeriodo=ventas.filter(v=>v.credito && v.credito.estado!=='pagado').reduce((s,v)=>s+netoCredito(v)*sv(v),0);
   R.sv=sv; R.costoV=costoV;
 
-  R.utilidadOperacional=R.utilidadBruta-R.gastos-R.comVend-R.depreciacion;
+  // tomas de inventario: faltantes (pérdida) y sobrantes, a costo, de la tienda que corresponde
+  R.ajusteInv=0;
+  (DB.ajustesInventario||[]).filter(a=>enR(a.fecha)).forEach(a=>(a.lineas||[]).forEach(l=>{ if(G||l.tienda===tienda) R.ajusteInv+=-(l.diferencia*l.costo); }));
+  R.utilidadOperacional=R.utilidadBruta-R.gastos-R.comVend-R.depreciacion-R.ajusteInv;
   R.utilidadNetaContable=R.utilidadOperacional-R.salCierre-R.difCierre;
 
   R.liq=LIQ_LINEAS.map(l=>({...l, valor:Math.round(R[l.k]||0), incluida:liqIncluye(l.k)}));
@@ -6090,6 +6717,7 @@ function renderReporteFinanciero(R){
   if(!R.gastosPorCategoria.length) e+=fila('− Gastos diarios', 0, {ind:1});
   if(R.comVend) e+=fila('− Comisiones a vendedores', R.comVend, {ind:1});
   if(R.depreciacion) e+=fila('− Depreciación de activos fijos', R.depreciacion, {ind:1});
+  if(R.ajusteInv) e+=fila(R.ajusteInv>0?'− Faltantes de inventario (toma física)':'+ Sobrantes de inventario (toma física)', Math.abs(R.ajusteInv), {ind:1});
   e+=fila('= Utilidad operacional', R.utilidadOperacional, {b:1,top:1});
   e+=fila('− Salidas de caja en cierres no registradas como gasto', R.salCierre, {ind:1});
   e+=fila('− Faltantes de caja', R.faltantes, {ind:1});
@@ -6222,6 +6850,7 @@ function hojaResumen(R){
   lin('Total gastos diarios', R.gastos, IN, {ind:1});
   lin('(−) Comisiones a vendedores', R.comVend, IN, {ind:1});
   lin('(−) Depreciación de activos fijos', R.depreciacion, IN, {ind:1});
+  lin('(−) Faltantes netos de inventario (toma física)', R.ajusteInv, IN, {ind:1});
   lin('UTILIDAD OPERACIONAL', R.utilidadOperacional, IN, {total:1});
   lin('(−) Salidas de caja en cierres no registradas como gasto', R.salCierre, IN, {ind:1});
   lin('(−) Faltantes de caja', R.faltantes, IN, {ind:1});
@@ -6921,8 +7550,8 @@ function cargarConfigForm(){
   document.getElementById('cfg-direccion').value=DB.config.direccion||'';
   document.getElementById('cfg-telefono').value=DB.config.telefono||'';
   document.getElementById('cfg-umbral').value=DB.config.umbralStock||3;
-  document.getElementById('cfg-pin-asesor').value=DB.config.pinAsesor||'1234';
-  document.getElementById('cfg-pin-gerencia').value=DB.config.pinGerencia||'0000';
+  renderUsuariosConfig(); pintarAvisoCopia(); pintarTamanoBase();
+  { const a=document.getElementById('cfg-copia-auto'); if(a) a.checked=!!DB.config.copiaAutomatica; const f=document.getElementById('cfg-copia-frec'); if(f) f.value=String(frecuenciaCopia()); }
   document.getElementById('cfg-vendedores').value=(DB.config.vendedores||[]).join(', ');
   document.getElementById('cfg-comision').value=(DB.config.comisionPct||0)*100;
   document.getElementById('cfg-fin-sistecredito').value=DB.config.finComisionSistecredito||0;
@@ -6939,8 +7568,6 @@ function guardarConfig(){
   DB.config.direccion=document.getElementById('cfg-direccion').value.trim();
   DB.config.telefono=document.getElementById('cfg-telefono').value.trim();
   DB.config.umbralStock=parseInt(document.getElementById('cfg-umbral').value)||3;
-  DB.config.pinAsesor=document.getElementById('cfg-pin-asesor').value.trim()||'1234';
-  DB.config.pinGerencia=document.getElementById('cfg-pin-gerencia').value.trim()||'0000';
   DB.config.vendedores=document.getElementById('cfg-vendedores').value.split(',').map(s=>s.trim()).filter(Boolean);
   DB.config.comisionPct=(parseFloat(document.getElementById('cfg-comision').value)||0)/100;
   DB.config.finComisionSistecredito=Math.max(0, parseFloat(document.getElementById('cfg-fin-sistecredito').value)||0);
@@ -7800,14 +8427,10 @@ function initApp(){
   if(syncGuardado && syncGuardado.firebaseConfig && syncGuardado.storeCode){
     conectarSincronizacion(syncGuardado.firebaseConfig, syncGuardado.storeCode, false, syncGuardado.adminEmail||'');
   }
-  const savedRol=sessionStorage.getItem('almacenropa_rol');
-  if(savedRol && PERMISOS[savedRol]){
-    currentRole=savedRol;
-    document.getElementById('login-screen').classList.remove('active');
-    document.body.classList.add('unlocked');
-    aplicarPermisos();
-    goTo(savedRol==='gerencia' ? 'dashboard' : 'facturar');
-  }
+  renderLoginUsuarios();
+  instalarAuditoria();
+  restaurarSesionGuardada();
+  setTimeout(()=>{ cargarAuditoriaNube(); subirAuditoriaNube(); }, 4000);
 }
 initApp();
 </script>
