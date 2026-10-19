@@ -1750,6 +1750,7 @@
       <label>Imagen de la referencia</label>
       <input type="file" id="var-imagen-input" accept="image/*" onchange="cargarImagenVariante(this)">
       <div id="var-imagen-preview" style="margin-top:8px;"></div>
+      <label style="display:flex;gap:8px;align-items:center;font-size:12.5px;margin-top:8px;cursor:pointer;"><input type="checkbox" id="var-imagen-color" checked style="width:auto;"> <span id="var-imagen-color-txt">Usar esta foto en todas las tallas de este color</span></label>
     </div>
     <div class="field">
       <label>Código de barras</label>
@@ -3882,8 +3883,10 @@ function cargarImagenArticulo(input){
     document.getElementById('art-imagen-preview').innerHTML=`<img src="${dataUrl}" style="max-width:120px;border-radius:8px;">`;
   });
 }
+let grupoDuplicando=null;
 function duplicarArticulo(id){
   const a=DB.articulos.find(x=>x.id===id); if(!a) return;
+  grupoDuplicando=a.grupoId||null;
   document.getElementById('modal-articulo-titulo').textContent='Duplicar "'+a.nombre+'" en otro color/talla';
   document.getElementById('art-id').value='';
   document.getElementById('art-nombre').value=a.nombre;
@@ -3911,7 +3914,8 @@ function guardarArticulo(){
   if(!nombre){ toast('Escribe el nombre del artículo'); return; }
   const tallasF = tallas.length? tallas: ['Única'];
   const coloresF = colores.length? colores: ['Único'];
-  const grupoId = uid();
+  const grupoId = (grupoDuplicando && DB.articulos.some(x=>x.grupoId===grupoDuplicando && x.nombre===nombre)) ? grupoDuplicando : uid();
+  grupoDuplicando=null;
   tallasF.forEach(t=>{
     coloresF.forEach(c=>{
       DB.articulos.push({id:uid(), grupoId, tienda, nombre, categoria, talla:t, color:c, costo, precio, stock, codigoBarras:generarCodigoBarras(), imagen:imagenArticuloPendiente||null});
@@ -4002,6 +4006,8 @@ function editarVariante(id){
   imagenVariantePendiente=a.imagen||null;
   document.getElementById('var-imagen-preview').innerHTML = a.imagen? `<img src="${a.imagen}" style="max-width:120px;border-radius:8px;">` : '';
   document.getElementById('var-imagen-input').value='';
+  document.getElementById('var-imagen-color').checked=true;
+  document.getElementById('var-imagen-color-txt').textContent='Usar esta foto en todas las tallas del color '+(a.color||'Único');
   actualizarSugerido('var');
   abrirModal('modal-variante');
 }
@@ -4035,6 +4041,9 @@ function guardarVariante(){
   a.stock=parseInt(document.getElementById('var-stock').value)||0;
   a.codigoBarras=document.getElementById('var-codigo').value.trim()||generarCodigoBarras();
   a.imagen=imagenVariantePendiente||null;
+  if(document.getElementById('var-imagen-color').checked){
+    DB.articulos.filter(x=>x!==a && (a.grupoId? x.grupoId===a.grupoId : x.nombre===a.nombre) && (x.color||'')===(a.color||'')).forEach(x=>x.imagen=a.imagen);
+  }
   const nuevaTienda=document.getElementById('var-tienda').value||'regia';
   DB.articulos.filter(x=>x===a || (a.grupoId? x.grupoId===a.grupoId : x.nombre===a.nombre)).forEach(x=>x.tienda=nuevaTienda);
   guardarDB(); cerrarModal('modal-variante'); renderInventario();
@@ -7796,8 +7805,14 @@ function construirDocProducto(gid, arts){
   return {
     id:gid, nombre:arts[0].nombre||'', categoria:arts[0].categoria||'', descripcion:g.descripcion||'',
     precio:precios.length?Math.min(...precios):0, thumb:(arts.find(a=>a.imagen)||{}).imagen||'',
-    nFotos:g.nFotos||0, publicadoEn:g.publicadoEn||0, variantes
+    nFotos:g.nFotos||0, publicadoEn:g.publicadoEn||0, variantes, fotosColor:fotosPorColor(arts)
   };
+}
+// Una foto por color (la del inventario), para que la tienda cambie la imagen al elegir el color
+function fotosPorColor(arts){
+  const m={};
+  arts.forEach(a=>{ const c=a.color||'Único'; if(a.imagen && !m[c]) m[c]=a.imagen; });
+  return Object.keys(m).length>1 ? m : {};
 }
 function construirConfigPublica(t){
   const T=DB.tienda;

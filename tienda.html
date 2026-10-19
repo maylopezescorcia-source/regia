@@ -109,6 +109,10 @@
   .opt{min-width:46px;border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:9px 14px;font-size:14px;font-weight:500;transition:all .12s;}
   .opt:hover:not(:disabled){border-color:var(--ink);}
   .opt[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:#fff;}
+  .opt-img{display:flex;align-items:center;gap:8px;padding:5px 12px 5px 5px;}
+  .opt-img img{width:30px;height:38px;object-fit:cover;border-radius:7px;}
+  .opt-img:disabled img{filter:grayscale(1);opacity:.5;}
+  .card .cl{font-size:12px;color:var(--soft);margin-top:1px;}
   .opt:disabled{color:#B8B4C0;text-decoration:line-through;cursor:not-allowed;background:var(--wash);}
   .stock-note{font-size:12.5px;margin-top:10px;color:var(--soft);min-height:18px;}
   .stock-note.ultimas{color:var(--pink);font-weight:600;}
@@ -276,10 +280,11 @@ function render(){
   $('grid').innerHTML=lista.map(p=>{
     const st=stockTotal(p), agotado=st<=0;
     const tallas=[...new Set(p.variantes.filter(v=>v.stock>0).map(v=>v.talla))].filter(t=>t!=='Única');
+    const nCol=[...new Set(p.variantes.filter(v=>v.stock>0).map(v=>v.color))].filter(c=>c!=='Único').length;
     return `<button class="card ${agotado?'agotado':''}" data-id="${esc(p.id)}" aria-label="${esc(p.nombre)}, ${fmt(p.precio)}">
       <div class="ph ${p.thumb?'':'vacio'}">${p.thumb?`<img src="${esc(p.thumb)}" alt="" loading="lazy">`:`<img src="${LOGO}" alt="">`}
       ${agotado?'<span class="tag">Agotado</span>':(st<=3?'<span class="tag ultimas">Últimas unidades</span>':'')}</div>
-      <div class="nm">${esc(p.nombre)}</div><div class="pr">${fmt(p.precio)}</div>${tallas.length?`<div class="sz">${esc(tallas.join(' · '))}</div>`:''}</button>`;
+      <div class="nm">${esc(p.nombre)}</div><div class="pr">${fmt(p.precio)}</div>${tallas.length?`<div class="sz">${esc(tallas.join(' · '))}</div>`:''}${nCol>1?`<div class="cl">${nCol} colores</div>`:''}</button>`;
   }).join('');
 }
 $('cats').addEventListener('click',e=>{ const b=e.target.closest('.chip'); if(!b) return; categoria=b.dataset.c; render(); });
@@ -317,7 +322,9 @@ function autoTalla(){
 function varianteSel(){ const p=prodAbierto; return p&&selColor&&selTalla? p.variantes.find(v=>v.color===selColor&&v.talla===selTalla):null; }
 function pintarProducto(conservar){
   const p=prodAbierto; if(!p) return;
-  const fotos=fotosCache[p.id]&&fotosCache[p.id].length? fotosCache[p.id] : (p.thumb?[p.thumb]:[]);
+  const extra=fotosCache[p.id]&&fotosCache[p.id].length? fotosCache[p.id] : [];
+  const fc=p.fotosColor||{}, fotoColor=selColor&&fc[selColor]?fc[selColor]:'';
+  const portada=fotoColor||p.thumb||''; const fotos=portada? [portada,...extra.filter(x=>x!==portada)] : extra;
   if(galIdx>=fotos.length) galIdx=0;
   const colores=[...new Set(p.variantes.map(v=>v.color))], conColor=!(colores.length===1&&colores[0]==='Único');
   const tallasAll=[...new Set(p.variantes.map(v=>v.talla))], conTalla=!(tallasAll.length===1&&tallasAll[0]==='Única');
@@ -325,7 +332,7 @@ function pintarProducto(conservar){
   if(selQty>Math.max(1,disp)) selQty=Math.max(1,disp);
   const agotado=stockTotal(p)<=0;
   const cerrada=!CFG.abierta;
-  const colorHtml=conColor?`<div class="opt-t">Color <span>${esc(selColor||'elige uno')}</span></div><div class="opts">${colores.map(c=>{ const hay=p.variantes.some(x=>x.color===c&&x.stock>0); return `<button class="opt" data-color="${esc(c)}" aria-pressed="${c===selColor}" ${hay?'':'disabled'}>${esc(c)}</button>`; }).join('')}</div>`:'';
+  const colorHtml=conColor?`<div class="opt-t">Color <span>${esc(selColor||'elige uno')}</span></div><div class="opts">${colores.map(c=>{ const hay=p.variantes.some(x=>x.color===c&&x.stock>0); const fcm=(p.fotosColor||{})[c]; return `<button class="opt${fcm?' opt-img':''}" data-color="${esc(c)}" aria-pressed="${c===selColor}" ${hay?'':'disabled'}>${fcm?`<img src="${esc(fcm)}" alt="">`:''}${esc(c)}</button>`; }).join('')}</div>`:'';
   const tallasMostrar=conColor&&selColor? [...new Set(p.variantes.filter(x=>x.color===selColor).map(x=>x.talla))] : tallasAll;
   const tallaHtml=conTalla?`<div class="opt-t">Talla <span>${esc(selTalla||'elige una')}</span></div><div class="opts">${tallasMostrar.map(t=>{ const hay=p.variantes.some(x=>(!conColor||!selColor||x.color===selColor)&&x.talla===t&&x.stock>0); return `<button class="opt" data-talla="${esc(t)}" aria-pressed="${t===selTalla}" ${hay?'':'disabled'}>${esc(t)}</button>`; }).join('')}</div>`:'';
   let nota='';
@@ -349,7 +356,7 @@ function pintarProducto(conservar){
 $('sheet-prod').addEventListener('click',e=>{
   const p=prodAbierto; if(!p) return;
   const c=e.target.closest('[data-color]'), t=e.target.closest('[data-talla]'), g=e.target.closest('[data-g]'), q=e.target.closest('[data-q]');
-  if(c){ selColor=c.dataset.color; selTalla=null; autoTalla(); selQty=1; pintarProducto(); }
+  if(c){ selColor=c.dataset.color; selTalla=null; autoTalla(); selQty=1; galIdx=0; pintarProducto(); }
   else if(t){ selTalla=t.dataset.talla; selQty=1; pintarProducto(); }
   else if(g){ galIdx=+g.dataset.g; pintarProducto(); }
   else if(q){ selQty=Math.max(1,selQty+(+q.dataset.q)); pintarProducto(); }
@@ -387,7 +394,7 @@ function pintarBolsa(){
   }
   const t=totales('recoger');
   const falta=CFG.envioActivo&&CFG.envioGratisDesde>0? CFG.envioGratisDesde-t.sub : 0;
-  sh.innerHTML=cabBolsa('Mi bolsa')+`<div class="bag-b">${CART.map((l,i)=>{ const r=buscar(l); if(!r) return ''; const img=r.p.thumb;
+  sh.innerHTML=cabBolsa('Mi bolsa')+`<div class="bag-b">${CART.map((l,i)=>{ const r=buscar(l); if(!r) return ''; const img=(r.p.fotosColor||{})[r.v.color]||r.p.thumb;
     return `<div class="ln"><div class="im">${img?`<img src="${esc(img)}" alt="">`:''}</div><div class="d"><b>${esc(r.p.nombre)}</b><small>${[r.v.talla!=='Única'?'Talla '+esc(r.v.talla):'',r.v.color!=='Único'?esc(r.v.color):''].filter(Boolean).join(' · ')}</small>
       <div class="row2"><div style="display:flex;align-items:center"><div class="qty"><button data-m="${i}" data-d="-1" aria-label="Menos">−</button><span>${l.cantidad}</span><button data-m="${i}" data-d="1" aria-label="Más" ${l.cantidad>=r.v.stock?'disabled':''}>+</button></div><button class="rm" data-r="${i}">Quitar</button></div><span class="lp">${fmt(r.v.precio*l.cantidad)}</span></div></div></div>`; }).join('')}
     ${falta>0&&falta<=CFG.envioGratisDesde?`<div class="pend">Te faltan ${fmt(falta)} para envío gratis.</div>`:''}
