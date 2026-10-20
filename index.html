@@ -471,7 +471,7 @@
   <div id="sidebar-foot">
     <div class="foot-line">Sesión: <strong id="rol-actual">—</strong></div>
     <div class="foot-line" id="sidebar-sync-badge"><span class="dot"></span>Solo este dispositivo</div>
-    <div class="foot-line foot-ver" id="foot-version">Versión 2026-10-20.4</div>
+    <div class="foot-line foot-ver" id="foot-version">Versión 2026-10-20.5</div>
     <button class="btn ghost sm" onclick="cerrarSesion()" aria-label="Cerrar sesión" title="Cerrar sesión"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span class="lbl">Cerrar sesión</span></button>
   </div>
 </div>
@@ -2337,7 +2337,7 @@ function logoTienda(id, imprimir){ return id==='fraganza' ? (imprimir? LOGO_FRAG
 function badgeTienda(id){ return id==='fraganza'? '<span class="badge" style="background:#F3E6D3;color:#7A4E1D;">Fraganza</span>' : '<span class="badge" style="background:#EFE7FA;color:#6B3FA0;">Regia</span>'; }
 function opcionesTiendaHTML(sel, conGrupo){ return (conGrupo?`<option value="grupo"${sel==='grupo'?' selected':''}>Grupo (las dos)</option>`:'')+TIENDAS.map(t=>`<option value="${t.id}"${sel===t.id?' selected':''}>${t.nombre}</option>`).join(''); }
 let DB = cargarDB();
-const APP_VERSION='2026-10-20.4';
+const APP_VERSION='2026-10-20.5';
 document.addEventListener('DOMContentLoaded',()=>{ const el=document.getElementById('foot-version'); if(el) el.textContent='Versión '+APP_VERSION; });
 let firebaseApp=null, firestoreRef=null, syncStoreCode=null, syncActivo=false, aplicandoSnapshotRemoto=false;
 
@@ -4124,7 +4124,8 @@ async function cargarFotosVariante(a){
     }catch(e){ console.error(e); toast('No se pudieron cargar las fotos de la nube'); }
     invF.cargando=false;
   }
-  if(!invF.fotos.length && imagenDe(a)) invF.fotos=[imagenDe(a)];
+  if(!invF.fotos.length && imagenDe(a)){ invF.fotos=[imagenDe(a)]; invF.miniLocal=invF.fotos[0]; }
+  invF.sinNubeAlAbrir=!ref;
   pintarFotosVariante();
 }
 function pintarFotosVariante(){
@@ -4137,6 +4138,7 @@ function pintarFotosVariante(){
   document.getElementById('var-fotos-add').style.display=invF.fotos.length>=max?'none':'';
   const nota=document.getElementById('var-fotos-nota');
   if(invF.nube){ nota.style.color=''; nota.textContent='Hasta '+MAX_FOTOS_COLOR+' fotos. La primera es la portada. Sirven para todas las tallas de este color y se publican solas en la tienda.'; }
+  else if(cargarConfigSync()){ nota.style.color='var(--ink-soft)'; nota.innerHTML='⏳ Conectando con la nube… espera unos segundos y se habilitan las demás fotos.'; }
   else { nota.style.color='var(--danger)'; nota.innerHTML='⚠ <b>Este equipo no está conectado a la nube</b>, por eso las fotos no llegan a la tienda ni a tus otros equipos. <a href="#" onclick="cerrarModal(\'modal-variante\');goTo(\'config\');setTimeout(()=>document.getElementById(\'sync-admin-pass\')?.focus(),300);return false;">Conectar ahora</a>'; }
 }
 let invFProcesando=0;
@@ -4170,6 +4172,19 @@ async function guardarFotosVariante(gid, color, tienda){
   const thumb=portada? await new Promise(r=>miniatura(portada,r)) : null;
   const ref=tiendaRef(tienda);
   if(!ref) return {ok:true, thumb, nFotos:null};
+  if(invF.sinNubeAlAbrir){
+    // la ventana se abrió antes de conectar: se traen las fotos que ya estaban en la nube para no borrarlas
+    try{
+      const d=await conLimite(ref.collection('fotos').doc(gid).get(), 30000);
+      invF.otros={imgs:[],colores:[]}; const propias=[];
+      if(d.exists){ const dd=d.data(); (dd.imgs||[]).forEach((src,i)=>{ const c=(dd.colores||[])[i]||''; if(c===color) propias.push(src); else { invF.otros.imgs.push(src); invF.otros.colores.push(c); } }); }
+      const nuevas=invF.fotos.filter(f=>f!==invF.miniLocal);
+      invF.fotos=[...nuevas, ...propias.filter(f=>!nuevas.includes(f))];
+      if(!invF.fotos.length && invF.miniLocal) invF.fotos=[invF.miniLocal];
+      invF.fotos=invF.fotos.slice(0, MAX_FOTOS_COLOR);
+      invF.sinNubeAlAbrir=false;
+    }catch(e){ console.error(e); alert('No se pudieron revisar las fotos que ya hay en la nube ('+(e.code||e.message)+'). Revisa tu conexión y pulsa Guardar otra vez.'); return {ok:false}; }
+  }
   let imgs=[...invF.otros.imgs, ...invF.fotos]; const colores=[...invF.otros.colores, ...invF.fotos.map(()=>color)];
   const LIM=850000, peso=()=>imgs.reduce((s,x)=>s+x.length,0);
   // si pesan mucho juntas, se reducen solas (primero un poco, luego más) en vez de rechazar el guardado
@@ -7933,6 +7948,12 @@ async function conectarSincronizacion(firebaseConfigObj, storeCode, esConexionMa
     }, err=>{ console.error('Escucha de la nube', err); mostrarAvisoSync('⚠ Se perdió la conexión con la nube. Lo que registres se guarda en este equipo y se sube al reconectar.'); });
     syncActivo=true;
     if(pendienteSync()) programarSync(200);
+    try{
+      if(document.getElementById('modal-variante')?.classList.contains('active') && invF.sinNubeAlAbrir){
+        const a=DB.articulos.find(x=>x.id===document.getElementById('var-id').value);
+        if(a && !invF.cambiado) cargarFotosVariante(a); else { invF.nube=true; pintarFotosVariante(); }
+      }
+    }catch(e){ console.error(e); }
     guardarConfigSyncLocal({firebaseConfig:firebaseConfigObj, storeCode, adminEmail});
     actualizarEstadoSync();
     escucharPedidosWeb();
