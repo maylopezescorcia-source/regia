@@ -2337,6 +2337,7 @@ function logoTienda(id, imprimir){ return id==='fraganza' ? (imprimir? LOGO_FRAG
 function badgeTienda(id){ return id==='fraganza'? '<span class="badge" style="background:#F3E6D3;color:#7A4E1D;">Fraganza</span>' : '<span class="badge" style="background:#EFE7FA;color:#6B3FA0;">Regia</span>'; }
 function opcionesTiendaHTML(sel, conGrupo){ return (conGrupo?`<option value="grupo"${sel==='grupo'?' selected':''}>Grupo (las dos)</option>`:'')+TIENDAS.map(t=>`<option value="${t.id}"${sel===t.id?' selected':''}>${t.nombre}</option>`).join(''); }
 let DB = cargarDB();
+const APP_VERSION='2026-10-20.2';
 let firebaseApp=null, firestoreRef=null, syncStoreCode=null, syncActivo=false, aplicandoSnapshotRemoto=false;
 
 function cargarDB(){
@@ -4084,8 +4085,8 @@ async function unirReferencias(){
           });
         }
         while(imgs.reduce((s,y)=>s+y.length,0)>850000){ imgs.pop(); colores.pop(); fotosRecortadas=true; }
-        if(imgs.length) await ref.collection('fotos').doc(destino).set({imgs, colores, actualizado:Date.now()});
-        for(const g of otros){ try{ await ref.collection('fotos').doc(g).delete(); }catch(e){} }
+        if(imgs.length) await ref.collection('fotos').doc(destino).set({imgs, colores, actualizado:Date.now(), v:3});
+        for(const g of otros){ try{ await ref.collection('fotos').doc(g).set({imgs:[], colores:[], actualizado:Date.now(), v:3}); }catch(e){} }
         (T.grupos[destino]||(T.grupos[destino]={})).nFotos=imgs.length;
       }catch(e){ console.error(e); toast('⚠ No se pudieron juntar las fotos de '+(G.get(destino)||[{}])[0].nombre); }
     }
@@ -4177,8 +4178,7 @@ async function guardarFotosVariante(gid, color, tienda){
   }
   if(peso()>LIM){ alert('Las fotos de esta prenda pesan demasiado juntas ('+Math.round(peso()/1024)+' KB de 830 KB), incluso reducidas. Quita una foto de este color o de otro color de la misma prenda y vuelve a guardar.'); return {ok:false}; }
   try{
-    if(imgs.length) await conLimite(ref.collection('fotos').doc(gid).set({imgs, colores, actualizado:Date.now()}), 45000);
-    else await conLimite(ref.collection('fotos').doc(gid).delete(), 45000);
+    await conLimite(ref.collection('fotos').doc(gid).set({imgs, colores, actualizado:Date.now(), v:3}), 45000);
   }catch(e){ console.error(e); alert('No se pudieron subir las fotos a la tienda ('+(e.code||e.message)+').\n\nNo se cerró la ventana: revisa tu conexión y pulsa Guardar otra vez.'); return {ok:false}; }
   return {ok:true, thumb, nFotos:imgs.length};
 }
@@ -7892,18 +7892,24 @@ async function conectarSincronizacion(firebaseConfigObj, storeCode, esConexionMa
     syncStoreCode=storeCode;
     // NUNCA se reemplaza a ciegas: lo de este equipo y lo de la nube se UNEN (ventas, gastos, clientes… de los dos lados se conservan)
     // Formato repartido (v2): los datos van en varios documentos, así no hay límite de 1 MB
-    let remoto=await leerNube(null), base=leerBase();
+    let remoto=await leerNube(null), base=leerBase(), legado=null, legadoMs=0;
+    if(remoto) delete remoto._partesIdx;
+    let viejo=null; try{ viejo=await firestoreRef.get(); }catch(e){ console.error(e); }
     if(!remoto){
       // primera vez con el formato repartido: se trae lo que había en el documento anterior
-      const viejo=await firestoreRef.get();
-      if(viejo.exists) remoto=migrarDB(viejo.data());
+      if(viejo && viejo.exists){ remoto=migrarDB(viejo.data()); remoto._legadoMs=remoto._updatedAtMs||0; }
       base=leerBaseVieja();
-    } else if(!base) base=leerBaseVieja();
+    } else {
+      if(!base) base=leerBaseVieja();
+      // si un equipo con la versión anterior siguió guardando en el documento viejo, se rescata lo que agregó
+      if(viejo && viejo.exists){ const vd=viejo.data(); legadoMs=vd._updatedAtMs||0; if(legadoMs>(remoto._legadoMs||0)) legado=migrarDB(vd); }
+    }
     if(remoto){
-      const unido=fusionar(base, DB, remoto, '', base? 'local' : 'remoto');
+      let unido=fusionar(base, DB, remoto, '', base? 'local' : 'remoto');
+      if(legado){ unido=fusionar(null, unido, legado, '', 'local'); unido._legadoMs=legadoMs; }
       guardarBase(remoto);
       aplicarDatosUnidos(unido, false);
-      if(!igualSinMs(unido, remoto) || !(await existeNubeV2())) marcarPendiente(true);
+      if(legado || !igualSinMs(unido, remoto) || !(await existeNubeV2())) marcarPendiente(true);
     } else {
       marcarPendiente(true);
     }
@@ -8149,6 +8155,26 @@ function ocultarAvisoSync(){ const el=document.getElementById('aviso-sync'); if(
 window.addEventListener('online', ()=>{ if(syncActivo) programarSync(300); });
 // si hay cambios sin subir, avisar antes de cerrar la página
 window.addEventListener('beforeunload', e=>{ if(syncActivo && pendienteSync()){ try{ sincronizarAhora(); }catch(x){} e.preventDefault(); e.returnValue=''; return ''; } });
+/* ---------- Aviso de versión nueva: todos los equipos deben usar la misma versión ---------- */
+async function revisarVersionNueva(){
+  try{
+    if(!/^https?:/.test(location.protocol)) return;
+    const r=await fetch(location.pathname+'?v='+Date.now(), {cache:'no-store'}); if(!r.ok) return;
+    const t=await r.text(); const m=t.match(/const APP_VERSION='([^']+)'/);
+    if(m && m[1]!==APP_VERSION){
+      let el=document.getElementById('aviso-version');
+      if(!el){ el=document.createElement('div'); el.id='aviso-version'; el.style.cssText='position:fixed;left:0;right:0;top:0;z-index:10000;background:#6B3FA0;color:#fff;padding:12px 16px;font-size:14.5px;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;box-shadow:0 4px 16px rgba(0,0,0,.2);'; document.body.appendChild(el); }
+      el.innerHTML='<span>Hay una versión nueva del sistema. Actualiza para que tus cambios se guarden bien.</span><button onclick="actualizarVersion()" style="background:#fff;color:#6B3FA0;border:0;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer">Actualizar ahora</button>';
+    }
+  }catch(e){}
+}
+async function actualizarVersion(){
+  try{ if(syncActivo && pendienteSync()) await sincronizarAhora(); }catch(e){}
+  location.replace(location.pathname+'?v='+Date.now());
+}
+setTimeout(revisarVersionNueva, 8000);
+setInterval(revisarVersionNueva, 5*60*1000);
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') revisarVersionNueva(); });
 function desconectarSincronizacion(){
   syncActivo=false;
   firestoreRef=null;
@@ -8228,7 +8254,7 @@ function construirDocProducto(gid, arts){
   return {
     id:gid, nombre:arts[0].nombre||'', categoria:arts[0].categoria||'', descripcion:g.descripcion||'',
     precio:precios.length?Math.min(...precios):0, thumb:(arts.find(a=>a.imagen)||{}).imagen||'',
-    nFotos:g.nFotos||0, fotosV:g.fotosV||0, publicadoEn:g.publicadoEn||0, variantes, fotosColor:fotosPorColor(arts)
+    nFotos:g.nFotos||0, fotosV:g.fotosV||0, publicadoEn:g.publicadoEn||0, variantes, fotosColor:fotosPorColor(arts), v:3
   };
 }
 // Una foto por color (la del inventario), para que la tienda cambie la imagen al elegir el color
@@ -8245,7 +8271,7 @@ function construirConfigPublica(t){
     medios:TIENDA_MEDIOS.filter(m=>(T.medios||[]).includes(m.id)).map(m=>({id:m.id,label:m.label})),
     datosPago:T.datosPago||'', envioActivo:!!T.envioActivo, retiroEnTienda:!!T.retiroEnTienda,
     costoEnvio:Number(T.costoEnvio)||0, envioGratisDesde:Number(T.envioGratisDesde)||0,
-    direccionTienda:DB.config.direccion||''
+    direccionTienda:DB.config.direccion||'', v:3
   };
 }
 function claveHashes(t){ return 'regia_pubhash_'+codigoNubeTienda(t); }
@@ -8279,7 +8305,7 @@ async function publicarTienda(forzar){
       nuevos[gid]=h;
       if(forzar||hashes[gid]!==h) ops.push({t:'set', ref:base.collection('productos').doc(gid), data:doc});
     });
-    Object.keys(hashes).forEach(k=>{ if(k!=='_cfg' && !(k in nuevos)) ops.push({t:'del', ref:base.collection('productos').doc(k)}); });
+    Object.keys(hashes).forEach(k=>{ if(k!=='_cfg' && !(k in nuevos)) ops.push({t:'set', ref:base.collection('productos').doc(k), data:{id:k, oculto:true, nombre:'', variantes:[], v:3}}); });
     // en lotes pequeños (límite de tamaño por escritura)
     let lote=firebase.firestore().batch(), nLote=0, bytes=0;
     const cerrarLote=async()=>{ if(nLote){ await lote.commit(); lote=firebase.firestore().batch(); nLote=0; bytes=0; } };
@@ -8321,7 +8347,7 @@ async function repararCatalogoNube(){
       const queridos=new Set();
       tiendaGrupos().forEach((arts,gid)=>{ if(DB.tienda.grupos[gid]?.publicado && tiendaDeArticulo(arts[0])===tId) queridos.add(gid); });
       const b=firebase.firestore().batch(); let n=0;
-      snap.docs.forEach(d=>{ if(!queridos.has(d.id)){ b.delete(d.ref); n++; } });
+      snap.docs.forEach(d=>{ if(!queridos.has(d.id) && !d.data().oculto){ b.set(d.ref, {id:d.id, oculto:true, nombre:'', variantes:[], v:3}); n++; } });
       if(n) await b.commit();
       borrados+=n;
       guardarHashes({}, tId);
@@ -8773,8 +8799,7 @@ async function guardarProductoTienda(){
   let nFotos=null;
   if(ref && tiendaFotosQuitadas){
     try{
-      if(tiendaFotosEditando.length) await conLimite(ref.collection('fotos').doc(gid).set({imgs:tiendaFotosEditando, colores:tiendaFotosEditando.map((_,i)=>tiendaFotosColor[i]||''), actualizado:Date.now()}), 45000);
-      else await conLimite(ref.collection('fotos').doc(gid).delete(), 45000);
+      await conLimite(ref.collection('fotos').doc(gid).set({imgs:tiendaFotosEditando, colores:tiendaFotosEditando.map((_,i)=>tiendaFotosColor[i]||''), actualizado:Date.now(), v:3}), 45000);
       nFotos=tiendaFotosEditando.length;
     }catch(e){ console.error(e); toast('⚠ No se pudieron quitar las fotos ('+(e.code||e.message)+'). Los demás cambios sí se guardaron.'); }
   }
@@ -8800,23 +8825,29 @@ service cloud.firestore {
       return request.auth != null && request.auth.token.email == '${e}';
     }
 
-    // Tu sistema completo (solo tú)
-    match /stores/{codigo} {
-      allow read, write: if esAdmin();
+    // Solo la versión actual del sistema puede escribir (una versión vieja abierta en otro equipo no daña nada)
+    function versionActual() {
+      return request.resource.data.get('v', 0) >= 3;
     }
 
-    // Catálogo público de la tienda: todos leen, solo tú escribes
+    // Tu sistema completo (solo tú). El documento del formato anterior queda de solo lectura.
+    match /stores/{codigo} {
+      allow read: if esAdmin();
+      allow write: if esAdmin() && (codigo.matches('.*__v2.*') || codigo.matches('.*-auditoria'));
+    }
+
+    // Catálogo público de la tienda: todos leen, solo tú escribes (nunca se borra: se oculta)
     match /tiendas/{codigo}/config/{doc} {
       allow read: if true;
-      allow write: if esAdmin();
+      allow create, update: if esAdmin() && versionActual();
     }
     match /tiendas/{codigo}/productos/{doc} {
       allow read: if true;
-      allow write: if esAdmin();
+      allow create, update: if esAdmin() && versionActual();
     }
     match /tiendas/{codigo}/fotos/{doc} {
       allow read: if true;
-      allow write: if esAdmin();
+      allow create, update: if esAdmin() && versionActual();
     }
 
     // Pedidos: cualquiera puede crear uno (con formato válido), solo tú los ves y gestionas

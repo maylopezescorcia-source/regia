@@ -258,7 +258,7 @@ function iniciar(){
     aplicarConfig(); render();
   }, e=>console.error(e));
   baseRef.collection('productos').onSnapshot(snap=>{
-    PRODS=snap.docs.map(d=>d.data());
+    PRODS=snap.docs.map(d=>d.data()).filter(p=>p && !p.oculto && Array.isArray(p.variantes) && p.nombre);
     cargado=true; revisarBolsa(); render(); abrirDesdeLink();
     if(prodAbierto){ const p=PRODS.find(x=>x.id===prodAbierto.id); if(p){ prodAbierto=p; pintarProducto(true); } }
     if($('sheet-bag').classList.contains('on') && paso==='bolsa') pintarBolsa();
