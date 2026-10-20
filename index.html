@@ -471,7 +471,7 @@
   <div id="sidebar-foot">
     <div class="foot-line">Sesión: <strong id="rol-actual">—</strong></div>
     <div class="foot-line" id="sidebar-sync-badge"><span class="dot"></span>Solo este dispositivo</div>
-    <div class="foot-line foot-ver" id="foot-version">Versión 2026-10-20.3</div>
+    <div class="foot-line foot-ver" id="foot-version">Versión 2026-10-20.4</div>
     <button class="btn ghost sm" onclick="cerrarSesion()" aria-label="Cerrar sesión" title="Cerrar sesión"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span class="lbl">Cerrar sesión</span></button>
   </div>
 </div>
@@ -2337,7 +2337,7 @@ function logoTienda(id, imprimir){ return id==='fraganza' ? (imprimir? LOGO_FRAG
 function badgeTienda(id){ return id==='fraganza'? '<span class="badge" style="background:#F3E6D3;color:#7A4E1D;">Fraganza</span>' : '<span class="badge" style="background:#EFE7FA;color:#6B3FA0;">Regia</span>'; }
 function opcionesTiendaHTML(sel, conGrupo){ return (conGrupo?`<option value="grupo"${sel==='grupo'?' selected':''}>Grupo (las dos)</option>`:'')+TIENDAS.map(t=>`<option value="${t.id}"${sel===t.id?' selected':''}>${t.nombre}</option>`).join(''); }
 let DB = cargarDB();
-const APP_VERSION='2026-10-20.3';
+const APP_VERSION='2026-10-20.4';
 document.addEventListener('DOMContentLoaded',()=>{ const el=document.getElementById('foot-version'); if(el) el.textContent='Versión '+APP_VERSION; });
 let firebaseApp=null, firestoreRef=null, syncStoreCode=null, syncActivo=false, aplicandoSnapshotRemoto=false;
 
@@ -4135,9 +4135,9 @@ function pintarFotosVariante(){
     || '<div class="inv-cargando">Sin fotos. Sube el frente, la espalda y los detalles.</div>';
   const max=invF.nube?MAX_FOTOS_COLOR:1;
   document.getElementById('var-fotos-add').style.display=invF.fotos.length>=max?'none':'';
-  document.getElementById('var-fotos-nota').textContent= invF.nube
-    ? 'Hasta '+MAX_FOTOS_COLOR+' fotos. La primera es la portada. Sirven para todas las tallas de este color y se publican solas en la tienda.'
-    : 'Sin conexión a la nube solo se guarda la portada. Conecta la nube para subir más fotos a la tienda.';
+  const nota=document.getElementById('var-fotos-nota');
+  if(invF.nube){ nota.style.color=''; nota.textContent='Hasta '+MAX_FOTOS_COLOR+' fotos. La primera es la portada. Sirven para todas las tallas de este color y se publican solas en la tienda.'; }
+  else { nota.style.color='var(--danger)'; nota.innerHTML='⚠ <b>Este equipo no está conectado a la nube</b>, por eso las fotos no llegan a la tienda ni a tus otros equipos. <a href="#" onclick="cerrarModal(\'modal-variante\');goTo(\'config\');setTimeout(()=>document.getElementById(\'sync-admin-pass\')?.focus(),300);return false;">Conectar ahora</a>'; }
 }
 let invFProcesando=0;
 function agregarFotosVariante(input){
