@@ -2413,6 +2413,7 @@ function migrarDB(db){
   }
   if(!db.ajustesInventario) db.ajustesInventario=[];
   if(db.conteoActual===undefined) db.conteoActual=null;
+  try{ deduplicarImagenes(db); }catch(e){}
   return db;
 }
 function guardarDB(){
@@ -2424,15 +2425,8 @@ function guardarDB(){
     toast('⚠ El almacenamiento de este navegador está lleno (posiblemente por fotos de productos). El cambio no quedó guardado localmente — intenta borrar alguna imagen de un artículo.');
   }
   if(typeof programarPublicacion==='function') programarPublicacion();
-  if(syncActivo && firestoreRef && !aplicandoSnapshotRemoto){
-    let tamano;
-    try{ tamano=new Blob([JSON.stringify(DB)]).size; }catch(err){ console.error('Error midiendo tamaño de datos', err); return; }
-    if(tamano>900000){
-      toast('⚠ Los datos ya casi llegan al límite de la nube (imágenes muy pesadas). Este cambio no se pudo sincronizar.');
-      return;
-    }
-    firestoreRef.set(DB).catch(err=>{ console.error('Error sincronizando', err); toast('⚠ No se pudo sincronizar con la nube (revisa tu conexión)'); });
-  }
+  if(syncActivo && firestoreRef && !aplicandoSnapshotRemoto) programarSync();
+  else if(!syncActivo && cargarConfigSync()) marcarPendiente(true); // sin conexión: queda pendiente y se une al reconectar
 }
 
 /* ---------------- Exportar a Excel (CSV) ---------------- */
@@ -3900,7 +3894,8 @@ function comprimirImagen(file, callback){
 }
 function cargarImagenArticulo(input){
   const file=input.files[0]; if(!file) return;
-  comprimirImagen(file, (dataUrl)=>{
+  comprimirImagenWeb(file, (dataUrl, motivo)=>{
+    if(!dataUrl){ input.value=''; toast('⚠ No se pudo usar esa foto: '+motivo+'. Tómale captura de pantalla o guárdala como JPG y vuelve a subirla.'); return; }
     imagenArticuloPendiente=dataUrl;
     document.getElementById('art-imagen-preview').innerHTML=`<img src="${dataUrl}" style="max-width:120px;border-radius:8px;">`;
   });
@@ -3948,7 +3943,10 @@ function guardarArticulo(){
       const ya=DB.articulos.find(x=>x.grupoId===grupoId && normNombre(x.talla)===normNombre(t) && normNombre(x.color)===normNombre(c));
       if(ya){ ya.stock=(Number(ya.stock)||0)+stock; sumadas++; return; }
       const imgColor=(DB.articulos.find(x=>x.grupoId===grupoId && normNombre(x.color)===normNombre(c) && x.imagen)||{}).imagen;
-      DB.articulos.push({id:uid(), grupoId, tienda, nombre, categoria, talla:t, color:c, costo, precio, stock, codigoBarras:generarCodigoBarras(), imagen:imagenArticuloPendiente||imgColor||null});
+      // la foto se guarda una sola vez por color (las otras tallas la toman de ahí) para no llenar la nube
+      const yaTieneFotoColor=DB.articulos.some(x=>x.grupoId===grupoId && normNombre(x.color)===normNombre(c) && x.imagen);
+      const img=yaTieneFotoColor? null : (imagenArticuloPendiente||imgColor||null);
+      DB.articulos.push({id:uid(), grupoId, tienda, nombre, categoria, talla:t, color:c, costo, precio, stock, codigoBarras:generarCodigoBarras(), imagen:img});
       creadas++;
     });
   });
@@ -4006,7 +4004,7 @@ function renderInventario(){
     const margen = a.precio>0 ? (((a.precio-a.costo)/a.precio)*100).toFixed(0) : '0';
     const bajo = a.stock<= (DB.config.umbralStock||3);
     return `<tr>
-      <td>${a.imagen? `<img src="${a.imagen}" style="width:34px;height:34px;object-fit:cover;border-radius:6px;">` : '<div style="width:34px;height:34px;border-radius:6px;background:var(--surface-2);"></div>'}</td>
+      <td>${imagenDe(a)? `<img src="${imagenDe(a)}" style="width:34px;height:34px;object-fit:cover;border-radius:6px;">` : '<div style="width:34px;height:34px;border-radius:6px;background:var(--surface-2);"></div>'}</td>
       <td>${a.nombre}</td>
       <td>${badgeTienda(tiendaDeArticulo(a))}</td>
       <td>${a.categoria||'—'}</td>
@@ -4103,7 +4101,15 @@ async function unirReferencias(){
   toast(unidas+' prenda(s) unidas. La tienda se actualiza en unos segundos.'+(fotosRecortadas?' Algunas fotos repetidas o que no cabían se dejaron por fuera.':''));
 }
 function claveColor(c){ return (c&&c.trim())? c.trim() : 'Único'; }
-function miniatura(dataUrl, cb){ const img=new Image(); img.onload=()=>{ const s=Math.min(1,400/img.width); const c=document.createElement('canvas'); c.width=Math.round(img.width*s); c.height=Math.round(img.height*s); c.getContext('2d').drawImage(img,0,0,c.width,c.height); cb(c.toDataURL('image/jpeg',0.6)); }; img.onerror=()=>cb(dataUrl); img.src=dataUrl; }
+// La foto de una variante: la propia o la de otra talla del mismo color
+function imagenDe(a){ if(!a) return null; if(a.imagen) return a.imagen; const g=gidDe(a), c=claveColor(a.color); const x=DB.articulos.find(y=>y.imagen && gidDe(y)===g && claveColor(y.color)===c); return x?x.imagen:null; }
+// Deja la foto en una sola variante por color (antes se copiaba en todas las tallas y llenaba la nube)
+function deduplicarImagenes(db){
+  const vistos=new Set(); let n=0;
+  (db.articulos||[]).forEach(a=>{ if(!a.imagen) return; const k=(a.grupoId||a.id)+'|'+claveColor(a.color); if(vistos.has(k)){ a.imagen=null; n++; } else vistos.add(k); });
+  return n;
+}
+function miniatura(dataUrl, cb){ const img=new Image(); img.onload=()=>{ const s=Math.min(1,440/Math.max(img.width,img.height)); const c=document.createElement('canvas'); c.width=Math.round(img.width*s); c.height=Math.round(img.height*s); c.getContext('2d').drawImage(img,0,0,c.width,c.height); cb(c.toDataURL('image/jpeg',0.6)); }; img.onerror=()=>cb(dataUrl); img.src=dataUrl; }
 async function cargarFotosVariante(a){
   invF={gid:gidDe(a), color:claveColor(a.color), tienda:tiendaDeArticulo(a), fotos:[], otros:{imgs:[],colores:[]}, cargando:false, cambiado:false, nube:false};
   const ref=tiendaRef(invF.tienda);
@@ -4116,7 +4122,7 @@ async function cargarFotosVariante(a){
     }catch(e){ console.error(e); toast('No se pudieron cargar las fotos de la nube'); }
     invF.cargando=false;
   }
-  if(!invF.fotos.length && a.imagen) invF.fotos=[a.imagen];
+  if(!invF.fotos.length && imagenDe(a)) invF.fotos=[imagenDe(a)];
   pintarFotosVariante();
 }
 function pintarFotosVariante(){
@@ -4131,32 +4137,50 @@ function pintarFotosVariante(){
     ? 'Hasta '+MAX_FOTOS_COLOR+' fotos. La primera es la portada. Sirven para todas las tallas de este color y se publican solas en la tienda.'
     : 'Sin conexión a la nube solo se guarda la portada. Conecta la nube para subir más fotos a la tienda.';
 }
+let invFProcesando=0;
 function agregarFotosVariante(input){
   const max=invF.nube?MAX_FOTOS_COLOR:1;
-  const files=[...input.files].slice(0, max-invF.fotos.length);
+  const files=[...input.files].slice(0, Math.max(0, max-invF.fotos.length-invFProcesando));
   if(input.files.length>files.length) toast('Caben '+max+' foto(s) por color');
-  let pend=files.length; if(!pend) return;
-  files.forEach(f=>comprimirImagenWeb(f, d=>{ invF.fotos.push(d); invF.cambiado=true; if(--pend===0){ pintarFotosVariante(); input.value=''; } }));
+  input.value='';
+  if(!files.length) return;
+  const gid=invF.gid, color=invF.color, fallos=[];
+  invFProcesando+=files.length; pintarEstadoFotos();
+  files.forEach(f=>comprimirImagenWeb(f, (d,motivo)=>{
+    invFProcesando--;
+    if(invF.gid===gid && invF.color===color){ if(d){ invF.fotos.push(d); invF.cambiado=true; } else fallos.push(motivo); }
+    if(invFProcesando<=0){ invFProcesando=0; pintarFotosVariante();
+      if(fallos.length) toast('⚠ '+fallos.length+' foto(s) no se pudieron cargar: '+fallos[0]+'. Tómale captura de pantalla o guárdala como JPG y súbela otra vez.');
+    } else pintarEstadoFotos();
+  }));
+}
+function pintarEstadoFotos(){
+  const el=document.getElementById('var-fotos'); if(!el) return;
+  pintarFotosVariante();
+  if(invFProcesando>0) el.insertAdjacentHTML('beforeend','<div class="inv-cargando">Procesando '+invFProcesando+' foto(s)…</div>');
 }
 function quitarFotoVariante(i){ invF.fotos.splice(i,1); invF.cambiado=true; pintarFotosVariante(); }
 function portadaFotoVariante(i){ const [f]=invF.fotos.splice(i,1); invF.fotos.unshift(f); invF.cambiado=true; pintarFotosVariante(); }
-async function guardarFotosVariante(a){
-  // a = variante ya actualizada (color puede haber cambiado de nombre)
-  const color=claveColor(a.color), gid=gidDe(a);
-  const hermanos=DB.articulos.filter(x=>gidDe(x)===gid && claveColor(x.color)===color);
+function conLimite(promesa, ms){ return Promise.race([promesa, new Promise((_,rej)=>setTimeout(()=>rej({code:'tiempo agotado: revisa tu conexión a internet'}), ms))]); }
+// Sube las fotos del color a la nube. Devuelve {ok, thumb, nFotos} o {ok:false}. No modifica DB (eso se hace después, sobre los datos vigentes).
+async function guardarFotosVariante(gid, color, tienda){
   const portada=invF.fotos[0]||null;
   const thumb=portada? await new Promise(r=>miniatura(portada,r)) : null;
-  hermanos.forEach(x=>x.imagen=thumb);
-  const ref=tiendaRef(tiendaDeArticulo(a));
-  if(!ref) return;
-  const imgs=[...invF.otros.imgs, ...invF.fotos], colores=[...invF.otros.colores, ...invF.fotos.map(()=>color)];
-  const peso=imgs.reduce((s,x)=>s+x.length,0);
-  if(peso>850000){ toast('⚠ Las fotos de esta prenda pesan demasiado juntas ('+Math.round(peso/1024)+' KB de 830 KB). Quita alguna foto.'); return false; }
+  const ref=tiendaRef(tienda);
+  if(!ref) return {ok:true, thumb, nFotos:null};
+  let imgs=[...invF.otros.imgs, ...invF.fotos]; const colores=[...invF.otros.colores, ...invF.fotos.map(()=>color)];
+  const LIM=850000, peso=()=>imgs.reduce((s,x)=>s+x.length,0);
+  // si pesan mucho juntas, se reducen solas (primero un poco, luego más) en vez de rechazar el guardado
+  for(const [lado,cal] of [[800,0.66],[700,0.6],[600,0.55],[520,0.5]]){
+    if(peso()<=LIM) break;
+    imgs=await Promise.all(imgs.map(x=>recomprimirDataUrl(x,lado,cal)));
+  }
+  if(peso()>LIM){ alert('Las fotos de esta prenda pesan demasiado juntas ('+Math.round(peso()/1024)+' KB de 830 KB), incluso reducidas. Quita una foto de este color o de otro color de la misma prenda y vuelve a guardar.'); return {ok:false}; }
   try{
-    if(imgs.length) await ref.collection('fotos').doc(gid).set({imgs, colores, actualizado:Date.now()});
-    else await ref.collection('fotos').doc(gid).delete();
-    const T=DB.tienda; const g=T.grupos[gid]||(T.grupos[gid]={}); g.nFotos=imgs.length;
-  }catch(e){ console.error(e); toast('⚠ No se pudieron subir las fotos a la tienda ('+(e.code||e.message)+')'); }
+    if(imgs.length) await conLimite(ref.collection('fotos').doc(gid).set({imgs, colores, actualizado:Date.now()}), 45000);
+    else await conLimite(ref.collection('fotos').doc(gid).delete(), 45000);
+  }catch(e){ console.error(e); alert('No se pudieron subir las fotos a la tienda ('+(e.code||e.message)+').\n\nNo se cerró la ventana: revisa tu conexión y pulsa Guardar otra vez.'); return {ok:false}; }
+  return {ok:true, thumb, nFotos:imgs.length};
 }
 function editarVariante(id){
   const a=DB.articulos.find(x=>x.id===id); if(!a) return;
@@ -4190,29 +4214,50 @@ function duplicarArticuloDesdeVariante(){
   cerrarModal('modal-variante');
   duplicarArticulo(id);
 }
+let guardandoVariante=false;
 async function guardarVariante(){
+  if(guardandoVariante) return;
   const id=document.getElementById('var-id').value;
-  const a=DB.articulos.find(x=>x.id===id); if(!a) return;
+  const a0=DB.articulos.find(x=>x.id===id); if(!a0) return;
   if(invF.cargando){ toast('Espera a que carguen las fotos'); return; }
-  a.talla=document.getElementById('var-talla').value.trim();
-  a.color=document.getElementById('var-color').value.trim();
-  a.costo=parseFloat(document.getElementById('var-costo').value)||0;
-  a.precio=parseFloat(document.getElementById('var-precio').value)||0;
-  a.stock=parseInt(document.getElementById('var-stock').value)||0;
-  a.codigoBarras=document.getElementById('var-codigo').value.trim()||generarCodigoBarras();
-  const nuevaTienda=document.getElementById('var-tienda').value||'regia';
-  DB.articulos.filter(x=>x===a || (a.grupoId? x.grupoId===a.grupoId : x.nombre===a.nombre)).forEach(x=>x.tienda=nuevaTienda);
-  // tienda web: publicar u ocultar la prenda
-  const T=DB.tienda; T.grupos=T.grupos||{}; const g=T.grupos[gidDe(a)]||(T.grupos[gidDe(a)]={});
-  const pub=document.getElementById('var-pub').checked;
-  if(pub && !g.publicadoEn) g.publicadoEn=Date.now();
-  if(pub) T.activada=true;
-  g.publicado=pub;
+  if(invFProcesando>0){ toast('Espera a que terminen de procesarse las fotos'); return; }
+  // 1) leer el formulario
+  const f={ talla:document.getElementById('var-talla').value.trim(), color:document.getElementById('var-color').value.trim(),
+    costo:parseFloat(document.getElementById('var-costo').value)||0, precio:parseFloat(document.getElementById('var-precio').value)||0,
+    stock:parseInt(document.getElementById('var-stock').value)||0, codigoBarras:document.getElementById('var-codigo').value.trim()||generarCodigoBarras(),
+    tienda:document.getElementById('var-tienda').value||'regia', pub:document.getElementById('var-pub').checked };
+  const gid=gidDe(a0), colorViejo=claveColor(a0.color), colorNuevo=claveColor(f.color);
+  // 2) subir fotos (puede tardar); no se toca DB mientras tanto
+  let fotos=null;
   if(invF.cambiado){
-    toast('Guardando fotos…');
-    const r=await guardarFotosVariante(a);
-    if(r===false) return;
+    guardandoVariante=true;
+    const btn=document.querySelector('#modal-variante .btn.gold, #modal-variante button[onclick*="guardarVariante"]');
+    const txt=btn?btn.textContent:''; if(btn){ btn.disabled=true; btn.textContent='Guardando fotos…'; }
+    try{ fotos=await guardarFotosVariante(gid, colorNuevo, f.tienda); }
+    finally{ guardandoVariante=false; if(btn){ btn.disabled=false; btn.textContent=txt; } }
+    if(!fotos.ok) return;
   }
+  // 3) aplicar todo sobre los datos vigentes (si llegó una sincronización mientras se subían las fotos, no se pierde nada)
+  const a=DB.articulos.find(x=>x.id===id); if(!a){ toast('⚠ Esta variante ya no existe (se borró desde otro equipo)'); return; }
+  const grupoTienda=a.grupoId? DB.articulos.filter(x=>x.grupoId===a.grupoId) : DB.articulos.filter(x=>x===a||x.nombre===a.nombre);
+  Object.assign(a,{talla:f.talla,color:f.color,costo:f.costo,precio:f.precio,stock:f.stock,codigoBarras:f.codigoBarras});
+  grupoTienda.forEach(x=>x.tienda=f.tienda);
+  if(fotos){
+    const hermanos=DB.articulos.filter(x=>gidDe(x)===gid && (claveColor(x.color)===colorNuevo || (x===a)));
+    hermanos.forEach((x,i)=>{ x.imagen= i===0? fotos.thumb : null; });
+  } else if(colorViejo!==colorNuevo && !a.imagen){
+    // cambió el color: conserva la foto que tenía el color anterior
+    const prev=DB.articulos.find(x=>x!==a && x.imagen && gidDe(x)===gid && claveColor(x.color)===colorViejo);
+    if(prev && !DB.articulos.some(x=>x!==a && gidDe(x)===gid && claveColor(x.color)===colorNuevo && x.imagen)) a.imagen=prev.imagen;
+  }
+  // tienda web: publicar u ocultar la prenda
+  const T=DB.tienda; T.grupos=T.grupos||{}; const g=T.grupos[gid]||(T.grupos[gid]={});
+  if(f.pub && !g.publicadoEn) g.publicadoEn=Date.now();
+  if(f.pub) T.activada=true;
+  g.publicado=f.pub;
+  if(fotos && fotos.nFotos!==null){ g.nFotos=fotos.nFotos; g.fotosV=Date.now(); }
+  const pub=f.pub, nuevaTienda=f.tienda;
+  invF.cambiado=false;
   guardarDB(); cerrarModal('modal-variante'); renderInventario();
   toast(pub && tiendaRef(nuevaTienda) ? 'Guardado. La tienda se actualiza en unos segundos.' : 'Variante actualizada');
 }
@@ -4235,6 +4280,8 @@ function imprimirEtiquetaVariante(){
 }
 function eliminarVariante(){
   const id=document.getElementById('var-id').value;
+  const del=DB.articulos.find(x=>x.id===id);
+  if(del && del.imagen){ const h=DB.articulos.find(x=>x!==del && gidDe(x)===gidDe(del) && claveColor(x.color)===claveColor(del.color)); if(h && !h.imagen) h.imagen=del.imagen; }
   DB.articulos = DB.articulos.filter(x=>x.id!==id);
   guardarDB(); cerrarModal('modal-variante'); renderInventario();
   toast('Variante eliminada');
@@ -7778,7 +7825,12 @@ function importarBackup(){
       if(!nuevo.config || !nuevo.articulos){ toast('El archivo no parece ser una copia de seguridad válida'); return; }
       localStorage.setItem(DB_KEY, JSON.stringify(nuevo));
       DB=cargarDB();
-      guardarDB();
+      DB._updatedAtMs=Date.now();
+      try{ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }catch(e){}
+      if(syncActivo && firestoreRef){
+        // restaurar = reemplazar a propósito lo que hay en la nube
+        firestoreRef.set(DB).then(()=>{ guardarBase(DB); marcarPendiente(false); }).catch(err=>{ console.error(err); mostrarAvisoSync('⚠ La copia se restauró en este equipo pero no se pudo subir a la nube ('+(err.code||err.message)+').'); });
+      }
       toast('Copia de seguridad restaurada');
       goTo(currentRole==='gerencia' ? 'dashboard' : 'facturar');
     }catch(err){
@@ -7839,40 +7891,33 @@ async function conectarSincronizacion(firebaseConfigObj, storeCode, esConexionMa
     firestoreRef=firebase.firestore().collection('stores').doc(storeCode);
     syncStoreCode=storeCode;
     const snap=await firestoreRef.get();
+    // NUNCA se reemplaza a ciegas: lo de este equipo y lo de la nube se UNEN (ventas, gastos, clientes… de los dos lados se conservan)
     if(snap.exists){
-      let descargar=true;
-      if(esConexionManual){
-        descargar=confirm('Ya hay datos guardados en la nube para este código de tienda. ¿Descargarlos a este dispositivo? (Aceptar = descargar de la nube. Cancelar = subir los datos de este dispositivo y reemplazar los de la nube)');
-      }
-      if(descargar){
-        aplicandoSnapshotRemoto=true;
-        DB=migrarDB(snap.data());
-        localStorage.setItem(DB_KEY, JSON.stringify(DB));
-        aplicandoSnapshotRemoto=false;
-      } else {
-        await firestoreRef.set(DB);
-      }
+      const remoto=migrarDB(snap.data());
+      const base=leerBase();
+      const unido=fusionar(base, DB, remoto, '', base? 'local' : 'remoto');
+      guardarBase(remoto);
+      aplicarDatosUnidos(unido, false);
+      if(!igualSinMs(unido, remoto)) marcarPendiente(true);
     } else {
-      await firestoreRef.set(DB);
+      marcarPendiente(true);
     }
     if(syncUnsub){ try{ syncUnsub(); }catch(e){} }
     syncUnsub=firestoreRef.onSnapshot(doc=>{
       if(!doc.exists || aplicandoSnapshotRemoto) return;
-      const nuevo=migrarDB(doc.data());
-      if((nuevo._updatedAtMs||0) < (DB._updatedAtMs||0)) return; // ignorar eco viejo/atrasado que pisaría cambios más recientes
-      aplicandoSnapshotRemoto=true;
-      DB=nuevo;
-      localStorage.setItem(DB_KEY, JSON.stringify(DB));
-      const hayModalAbierto=document.querySelector('.modal-bg.active');
-      const enfocadoEnCampo=document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
-      if(!hayModalAbierto && !enfocadoEnCampo){
-        const vistaActiva=document.querySelector('.nav-btn.active')?.dataset.view;
-        if(vistaActiva) goTo(vistaActiva);
-      }
-      toast('🔄 Datos actualizados desde otro dispositivo');
-      aplicandoSnapshotRemoto=false;
-    });
+      if(doc.metadata && doc.metadata.hasPendingWrites) return; // es el eco de lo que este equipo acaba de guardar
+      if(syncEnCurso){ syncOtraVez=true; return; } // se está subiendo: al terminar se vuelve a unir con lo último de la nube (evita contar dos veces)
+      const remoto=migrarDB(doc.data());
+      const base=leerBase();
+      if(base && (remoto._updatedAtMs||0)===(base._updatedAtMs||0) && igualSinMs(remoto, base)) return; // ya lo teníamos
+      const unido=fusionar(base, DB, remoto, '', 'local');
+      guardarBase(remoto);
+      const cambio=!igualSinMs(unido, DB);
+      if(cambio){ aplicarDatosUnidos(unido, true); toast('🔄 Datos actualizados desde otro dispositivo'); }
+      if(!igualSinMs(unido, remoto)) programarSync(); // este equipo tenía cambios sin subir: se suben unidos
+    }, err=>{ console.error('Escucha de la nube', err); mostrarAvisoSync('⚠ Se perdió la conexión con la nube. Lo que registres se guarda en este equipo y se sube al reconectar.'); });
     syncActivo=true;
+    if(pendienteSync()) programarSync(200);
     guardarConfigSyncLocal({firebaseConfig:firebaseConfigObj, storeCode, adminEmail});
     actualizarEstadoSync();
     escucharPedidosWeb();
@@ -7894,6 +7939,137 @@ async function conectarSincronizacion(firebaseConfigObj, storeCode, esConexionMa
     toast('⚠ No se pudo conectar — revisa el mensaje que apareció');
   }
 }
+/* ---------- Motor de sincronización: une cambios en vez de reemplazar ----------
+   Cada equipo guarda la "base" (la última versión de la nube que ya conoce). Al sincronizar se compara
+   base / este equipo / nube: lo que se agregó, editó o borró en cualquiera de los dos lados se conserva.
+   La escritura se hace en una transacción: si otro equipo guardó al mismo tiempo, se vuelve a unir. */
+const clonar=x=>x===undefined?undefined:JSON.parse(JSON.stringify(x));
+const igualJSON=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+function igualSinMs(a,b){ const x=Object.assign({},a), y=Object.assign({},b); delete x._updatedAtMs; delete y._updatedAtMs; return igualJSON(x,y); }
+function claveBase(){ return 'almacenropa_base_'+(syncStoreCode||''); }
+function leerBase(){ try{ return JSON.parse(localStorage.getItem(claveBase())||'null'); }catch(e){ return null; } }
+function guardarBase(b){ try{ localStorage.setItem(claveBase(), JSON.stringify(b)); }catch(e){ console.error('No se pudo guardar la base de sincronización', e); } }
+function marcarPendiente(v){ try{ if(v) localStorage.setItem('almacenropa_sync_pend', String(Date.now())); else localStorage.removeItem('almacenropa_sync_pend'); }catch(e){} actualizarEstadoSync(); }
+function pendienteSync(){ try{ return !!localStorage.getItem('almacenropa_sync_pend'); }catch(e){ return false; } }
+function esColeccionIds(arr){ if(!Array.isArray(arr)) return false; const vistos=new Set(); return arr.every(x=>{ if(!(x && typeof x==='object' && !Array.isArray(x) && x.id!=null && x.id!=='')) return false; const k=String(x.id); if(vistos.has(k)) return false; vistos.add(k); return true; }); }
+// números que varios equipos pueden mover a la vez: se suman las diferencias (2 ventas en 2 equipos = 2 unidades menos)
+const CAMPOS_SUMABLES=/^(stock|siguiente[A-Za-z]*|saldo[A-Za-z]*|totalAbonado)$/;
+function fusionar(b, l, r, clave, prefiere){
+  prefiere=prefiere||'local';
+  // stock y consecutivos: si los dos equipos los movieron, se suman ambos movimientos (aunque queden iguales)
+  if(typeof l==='number' && typeof r==='number' && typeof b==='number' && CAMPOS_SUMABLES.test(clave||'') && l!==b && r!==b) return b+(l-b)+(r-b);
+  const hayBase=b!==undefined && b!==null;
+  if(igualJSON(l,r)){
+    // iguales: si los dos cambiaron lo mismo desde la base, se revisa por dentro (p. ej. 2 ventas que dejaron el mismo stock)
+    if(!hayBase || igualJSON(b,l) || l===null || typeof l!=='object') return clonar(l);
+  } else {
+    if(hayBase && igualJSON(b,l)) return clonar(r);
+    if(hayBase && igualJSON(b,r)) return clonar(l);
+  }
+  // listas de registros con id (ventas, gastos, clientes, artículos…): se unen registro por registro
+  if(Array.isArray(l) && Array.isArray(r) && esColeccionIds(l) && esColeccionIds(r) && (l.length||r.length)){
+    const bArr=Array.isArray(b)&&esColeccionIds(b)? b : [];
+    const B=new Map(bArr.map(x=>[String(x.id),x])), L=new Map(l.map(x=>[String(x.id),x])), Rm=new Map(r.map(x=>[String(x.id),x]));
+    const out=[];
+    const orden=[...L.keys(), ...[...Rm.keys()].filter(k=>!L.has(k))];
+    orden.forEach(k=>{
+      const bi=B.get(k), li=L.get(k), ri=Rm.get(k);
+      if(li && ri){ out.push(fusionar(bi,li,ri,'',prefiere)); return; }
+      const solo=li||ri;
+      if(bi===undefined){ out.push(clonar(solo)); return; }        // es nuevo en un lado: se conserva
+      if(!igualJSON(bi,solo)) out.push(clonar(solo));              // se borró en un lado pero se editó en el otro: se conserva
+      // si no: se borró en un lado y nadie lo cambió en el otro → queda borrado
+    });
+    return out;
+  }
+  // objetos: campo por campo
+  if(l && r && typeof l==='object' && typeof r==='object' && !Array.isArray(l) && !Array.isArray(r)){
+    const bo=(b && typeof b==='object' && !Array.isArray(b))? b : {};
+    const out={};
+    new Set([...Object.keys(l), ...Object.keys(r)]).forEach(k=>{
+      let v;
+      if((k in l) && (k in r)) v=fusionar(bo[k], l[k], r[k], k, prefiere);
+      else { const solo=(k in l)? l[k] : r[k]; v=(k in bo && igualJSON(bo[k],solo))? undefined : clonar(solo); }
+      if(v!==undefined) out[k]=v;
+    });
+    return out;
+  }
+  if(typeof l==='number' && typeof r==='number'){
+    if(clave==='_updatedAtMs') return Math.max(l,r);
+    if(typeof b==='number' && CAMPOS_SUMABLES.test(clave||'')) return b+(l-b)+(r-b);
+  }
+  return clonar(prefiere==='remoto'? r : l);
+}
+// Reemplaza el contenido de DB conservando el mismo objeto
+function aplicarDatosUnidos(nuevo, repintar){
+  aplicandoSnapshotRemoto=true;
+  try{
+    const m=migrarDB(nuevo);
+    Object.keys(DB).forEach(k=>delete DB[k]); Object.assign(DB, m);
+    try{ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }catch(e){ console.error(e); }
+    if(repintar){
+      const hayModalAbierto=document.querySelector('.modal-bg.active');
+      const enfocadoEnCampo=document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
+      if(!hayModalAbierto && !enfocadoEnCampo){ const vistaActiva=document.querySelector('.nav-btn.active')?.dataset.view; if(vistaActiva) goTo(vistaActiva); }
+    }
+  } finally { aplicandoSnapshotRemoto=false; }
+}
+let syncTimer=null, syncEnCurso=false, syncOtraVez=false, syncFallos=0;
+function programarSync(ms){
+  marcarPendiente(true);
+  if(!syncActivo || !firestoreRef) return;
+  clearTimeout(syncTimer); syncTimer=setTimeout(sincronizarAhora, ms==null? 800 : ms);
+}
+async function sincronizarAhora(){
+  if(!syncActivo || !firestoreRef) return;
+  if(syncEnCurso){ syncOtraVez=true; return; }
+  syncEnCurso=true;
+  const enviado=clonar(DB);
+  try{
+    let resultado=null;
+    await firebase.firestore().runTransaction(async tx=>{
+      const snap=await tx.get(firestoreRef);
+      const remoto=snap.exists? migrarDB(snap.data()) : null;
+      const base=leerBase();
+      const m= remoto? fusionar(base, enviado, remoto, '', 'local') : clonar(enviado);
+      if(remoto && igualSinMs(m, remoto)){ resultado=remoto; return; } // nada nuevo que subir
+      m._updatedAtMs=Math.max(Date.now(), ((remoto&&remoto._updatedAtMs)||0)+1);
+      const tam=new Blob([JSON.stringify(m)]).size;
+      if(tam>1000000) throw {code:'demasiado-grande', tam};
+      tx.set(firestoreRef, m);
+      resultado=m;
+    });
+    guardarBase(resultado);
+    // lo que se haya registrado aquí mientras se subía, se conserva encima
+    const final=fusionar(enviado, DB, resultado, '', 'local');
+    if(!igualSinMs(final, DB)) aplicarDatosUnidos(final, true);
+    else { DB._updatedAtMs=resultado._updatedAtMs; try{ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }catch(e){} }
+    if(igualSinMs(final, resultado)) marcarPendiente(false); else syncOtraVez=true;
+    syncFallos=0; ocultarAvisoSync();
+  }catch(e){
+    console.error('Error sincronizando', e);
+    syncFallos++;
+    let msg;
+    if(e && e.code==='demasiado-grande') msg='⚠ Los datos ya no caben en la nube ('+Math.round(e.tam/1024)+' KB de 1.000 KB). Lo nuevo queda guardado SOLO en este equipo. Escríbeme para separar las fotos y el historial antes de seguir.';
+    else if(e && e.code==='permission-denied') msg='⚠ La nube rechazó el guardado (permiso). Entra de nuevo con tu correo de administrador en Configuración. Lo registrado queda en este equipo y se sube al reconectar.';
+    else msg='⚠ Sin conexión con la nube. Lo que registres queda guardado en este equipo y se sube solo cuando vuelva el internet. No borres los datos del navegador.';
+    mostrarAvisoSync(msg);
+    if(!(e && e.code==='demasiado-grande')){ clearTimeout(syncTimer); syncTimer=setTimeout(sincronizarAhora, Math.min(60000, 4000*Math.pow(2, Math.min(syncFallos,4)))); }
+  }finally{
+    syncEnCurso=false;
+    if(syncOtraVez){ syncOtraVez=false; programarSync(300); }
+  }
+}
+function mostrarAvisoSync(msg){
+  let el=document.getElementById('aviso-sync');
+  if(!el){ el=document.createElement('div'); el.id='aviso-sync'; el.style.cssText='position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:9999;max-width:min(560px,calc(100vw - 32px));background:#7A1F1F;color:#fff;padding:12px 16px;border-radius:12px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.25);display:flex;gap:12px;align-items:flex-start;'; document.body.appendChild(el); }
+  el.innerHTML='<span style="flex:1">'+escH(msg)+'</span><button onclick="sincronizarAhora()" style="background:#fff;color:#7A1F1F;border:0;border-radius:8px;padding:6px 10px;font-weight:600;cursor:pointer;flex-shrink:0">Reintentar</button>';
+  el.style.display='flex';
+}
+function ocultarAvisoSync(){ const el=document.getElementById('aviso-sync'); if(el) el.style.display='none'; }
+window.addEventListener('online', ()=>{ if(syncActivo) programarSync(300); });
+// si hay cambios sin subir, avisar antes de cerrar la página
+window.addEventListener('beforeunload', e=>{ if(syncActivo && pendienteSync()){ try{ sincronizarAhora(); }catch(x){} e.preventDefault(); e.returnValue=''; return ''; } });
 function desconectarSincronizacion(){
   syncActivo=false;
   firestoreRef=null;
@@ -7917,12 +8093,13 @@ function marcarAcentoActivo(){
 }
 function actualizarEstadoSync(){
   const el=document.getElementById('sync-estado-texto'); if(!el) return;
+  const pend=typeof pendienteSync==='function' && pendienteSync();
   el.textContent = syncActivo
-    ? ('✅ Conectado — sincronizando en tiempo real con el código "'+syncStoreCode+'"')
+    ? (pend? '⏳ Conectado — subiendo cambios de este equipo…' : '✅ Conectado — sincronizando en tiempo real con el código "'+syncStoreCode+'"')
     : 'No conectado. Los datos solo se guardan en este dispositivo.';
   el.style.color = syncActivo ? 'var(--success)' : 'var(--ink-soft)';
   const badge=document.getElementById('sidebar-sync-badge');
-  if(badge) badge.innerHTML = syncActivo ? '<span class="dot on"></span>Sincronizado en la nube' : '<span class="dot"></span>Solo este dispositivo';
+  if(badge) badge.innerHTML = syncActivo ? (pend? '<span class="dot"></span>Subiendo cambios…' : '<span class="dot on"></span>Sincronizado en la nube') : '<span class="dot"></span>Solo este dispositivo';
 }
 
 /* ================= TIENDA ONLINE (catálogo público + pedidos web) ================= */
@@ -7972,7 +8149,7 @@ function construirDocProducto(gid, arts){
   return {
     id:gid, nombre:arts[0].nombre||'', categoria:arts[0].categoria||'', descripcion:g.descripcion||'',
     precio:precios.length?Math.min(...precios):0, thumb:(arts.find(a=>a.imagen)||{}).imagen||'',
-    nFotos:g.nFotos||0, publicadoEn:g.publicadoEn||0, variantes, fotosColor:fotosPorColor(arts)
+    nFotos:g.nFotos||0, fotosV:g.fotosV||0, publicadoEn:g.publicadoEn||0, variantes, fotosColor:fotosPorColor(arts)
   };
 }
 // Una foto por color (la del inventario), para que la tienda cambie la imagen al elegir el color
@@ -8461,14 +8638,27 @@ function copiarTexto(id){
 }
 
 /* ---------- Detalles y fotos de un producto ---------- */
-function comprimirImagenWeb(file, cb){
-  const r=new FileReader();
-  r.onload=e=>{ const img=new Image(); img.onload=()=>{
-    const s=Math.min(1, 800/Math.max(img.width,img.height));
-    const c=document.createElement('canvas'); c.width=Math.round(img.width*s); c.height=Math.round(img.height*s);
-    c.getContext('2d').drawImage(img,0,0,c.width,c.height); cb(c.toDataURL('image/jpeg',0.7));
-  }; img.src=e.target.result; };
-  r.readAsDataURL(file);
+// Comprime una foto. cb(dataUrl) si sale bien; cb(null, motivo) si el navegador no la puede abrir (p. ej. HEIC de iPhone)
+function comprimirImagenWeb(file, cb, lado, calidad){
+  let listo=false; const fin=(d,m)=>{ if(listo) return; listo=true; clearTimeout(t); cb(d,m); };
+  const t=setTimeout(()=>fin(null,'tardó demasiado en abrirse'), 30000);
+  const img=new Image(); let url=null;
+  img.onload=()=>{
+    try{
+      const s=Math.min(1, (lado||900)/Math.max(img.width,img.height));
+      const c=document.createElement('canvas'); c.width=Math.max(1,Math.round(img.width*s)); c.height=Math.max(1,Math.round(img.height*s));
+      const ctx=c.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.width,c.height); ctx.drawImage(img,0,0,c.width,c.height);
+      if(url) URL.revokeObjectURL(url);
+      fin(c.toDataURL('image/jpeg',calidad||0.72));
+    }catch(e){ fin(null,'no se pudo procesar'); }
+  };
+  img.onerror=()=>{ if(url) URL.revokeObjectURL(url); fin(null, /hei[cf]/i.test(file.type+' '+file.name)?'es formato HEIC (iPhone)':'el formato no es compatible'); };
+  try{ url=URL.createObjectURL(file); img.src=url; }
+  catch(e){ const r=new FileReader(); r.onload=e2=>{ img.src=e2.target.result; }; r.onerror=()=>fin(null,'no se pudo leer'); r.readAsDataURL(file); }
+}
+// Vuelve a comprimir una foto ya cargada (dataUrl) a un tamaño menor
+function recomprimirDataUrl(src, lado, calidad){
+  return new Promise(res=>{ const img=new Image(); img.onload=()=>{ try{ const s=Math.min(1, lado/Math.max(img.width,img.height)); const c=document.createElement('canvas'); c.width=Math.max(1,Math.round(img.width*s)); c.height=Math.max(1,Math.round(img.height*s)); const ctx=c.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.width,c.height); ctx.drawImage(img,0,0,c.width,c.height); res(c.toDataURL('image/jpeg',calidad)); }catch(e){ res(src); } }; img.onerror=()=>res(src); img.src=src; });
 }
 async function abrirProductoTienda(gid){
   const arts=tiendaGrupos().get(gid); if(!arts) return;
@@ -8497,20 +8687,24 @@ function pintarFotosTienda(){
 function quitarFotoTienda(i){ tiendaFotosEditando.splice(i,1); tiendaFotosColor.splice(i,1); tiendaFotosQuitadas=true; pintarFotosTienda(); }
 async function guardarProductoTienda(){
   const gid=tiendaGrupoEditando; if(!gid) return;
-  const T=DB.tienda; const g=T.grupos[gid]||(T.grupos[gid]={});
-  g.descripcion=document.getElementById('tp-desc').value.trim().slice(0,600);
+  const desc=document.getElementById('tp-desc').value.trim().slice(0,600);
   const quiere=document.getElementById('tp-pub').checked;
-  if(quiere && !g.publicado && !g.publicadoEn) g.publicadoEn=Date.now();
-  g.publicado=quiere;
   const arts0=(tiendaGrupos().get(gid)||[])[0];
   const ref=arts0? tiendaRef(tiendaDeArticulo(arts0)) : null;
+  let nFotos=null;
   if(ref && tiendaFotosQuitadas){
-    g.nFotos=tiendaFotosEditando.length;
     try{
-      if(tiendaFotosEditando.length) await ref.collection('fotos').doc(gid).set({imgs:tiendaFotosEditando, colores:tiendaFotosEditando.map((_,i)=>tiendaFotosColor[i]||''), actualizado:Date.now()});
-      else await ref.collection('fotos').doc(gid).delete();
+      if(tiendaFotosEditando.length) await conLimite(ref.collection('fotos').doc(gid).set({imgs:tiendaFotosEditando, colores:tiendaFotosEditando.map((_,i)=>tiendaFotosColor[i]||''), actualizado:Date.now()}), 45000);
+      else await conLimite(ref.collection('fotos').doc(gid).delete(), 45000);
+      nFotos=tiendaFotosEditando.length;
     }catch(e){ console.error(e); toast('⚠ No se pudieron quitar las fotos ('+(e.code||e.message)+'). Los demás cambios sí se guardaron.'); }
   }
+  // se aplica sobre los datos vigentes (por si llegó una sincronización mientras se esperaba la nube)
+  const T=DB.tienda; T.grupos=T.grupos||{}; const g=T.grupos[gid]||(T.grupos[gid]={});
+  g.descripcion=desc;
+  if(quiere && !g.publicado && !g.publicadoEn) g.publicadoEn=Date.now();
+  g.publicado=quiere;
+  if(nFotos!==null){ g.nFotos=nFotos; g.fotosV=Date.now(); }
   T.activada=true;
   guardarDB(); cerrarModal('modal-tienda-producto'); renderTienda();
   toast('Producto actualizado en la tienda');

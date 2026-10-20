@@ -264,7 +264,7 @@ function iniciar(){
   baseRef.collection('productos').onSnapshot(snap=>{
     PRODS=snap.docs.map(d=>d.data());
     cargado=true; revisarBolsa(); render(); abrirDesdeLink();
-    if(prodAbierto){ const p=PRODS.find(x=>x.id===prodAbierto.id); if(p){ prodAbierto=p; pintarProducto(true); } }
+    if(prodAbierto){ const p=PRODS.find(x=>x.id===prodAbierto.id); if(p){ prodAbierto=p; pintarProducto(true); cargarFotosProducto(p); } }
     if($('sheet-bag').classList.contains('on') && paso==='bolsa') pintarBolsa();
   }, e=>{ console.error(e); cargado=true; $('count').textContent='No pudimos cargar el catálogo. Revisa tu conexión e intenta de nuevo.'; });
 }
@@ -339,10 +339,16 @@ async function abrirProducto(id){
   if(todosColores.length===1) selColor=todosColores[0];
   selTalla=null; autoTalla();
   pintarProducto(false); abrirHoja('sheet-prod');
-  if(p.nFotos>0 && !fotosCache[p.id]){
-    try{ const d=await baseRef.collection('fotos').doc(p.id).get(); const dd=d.exists?d.data():{}; fotosCache[p.id]=(dd.imgs||[]).map((src,i)=>({src,color:((dd.colores||[])[i])||''})); }catch(e){ fotosCache[p.id]=[]; }
-    if(prodAbierto && prodAbierto.id===p.id) pintarProducto(true);
-  }
+  await cargarFotosProducto(p);
+}
+// Trae las fotos de la nube; si la prenda cambió de fotos (fotosV), las vuelve a pedir
+async function cargarFotosProducto(p){
+  const k=p.id+'|'+(p.fotosV||0)+'|'+(p.nFotos||0);
+  if(!(p.nFotos>0) || fotosCache[p.id+'_k']===k) return;
+  fotosCache[p.id+'_k']=k;
+  try{ const d=await baseRef.collection('fotos').doc(p.id).get(); const dd=d.exists?d.data():{}; fotosCache[p.id]=(dd.imgs||[]).map((src,i)=>({src,color:((dd.colores||[])[i])||''})); }
+  catch(e){ console.error(e); delete fotosCache[p.id+'_k']; }
+  if(prodAbierto && prodAbierto.id===p.id) pintarProducto(true);
 }
 function autoTalla(){
   const p=prodAbierto; if(!p) return;
