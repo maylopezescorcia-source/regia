@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Regia by cm · Tienda</title>
-<meta name="description" content="Compra en línea en Regia by cm. Elige tu talla y color, haz tu pedido y te confirmamos por WhatsApp.">
+<title>Regia by CM · Ropa deportiva para mujer en Malambo</title>
+<meta name="description" content="Sets, enterizos, leggins y tops deportivos para mujer. Compra en línea, paga a cuotas con Addi o Sistecrédito, o recoge en C.C. Plaza Malambo.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Regia by CM">
 <meta property="og:title" content="Regia by CM · Ropa deportiva para mujer">
-<meta property="og:description" content="Tienda en línea: elige tu talla y color, haz tu pedido y te confirmamos por WhatsApp.">
+<meta property="og:description" content="Sets, enterizos, leggins y tops que estilizan tu figura. Elige talla y color, y te confirmamos por WhatsApp.">
 <meta property="og:url" content="https://maylopezescorcia-source.github.io/regia/tienda.html">
 <meta property="og:image" content="https://maylopezescorcia-source.github.io/regia/regia-preview.jpg">
 <meta property="og:image:width" content="1200">
@@ -16,12 +16,19 @@
 <meta property="og:locale" content="es_CO">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://maylopezescorcia-source.github.io/regia/regia-preview.jpg">
-<link rel="icon" type="image/jpeg" href="regia-preview.jpg">
+<link rel="canonical" href="https://maylopezescorcia-source.github.io/regia/tienda.html">
+<link rel="icon" type="image/png" sizes="48x48" href="regia-favicon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="regia-icon.png">
+<link rel="apple-touch-icon" href="regia-apple-icon.png">
+<meta name="theme-color" content="#6B3FA0">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"ClothingStore","name":"Regia by CM","url":"https://maylopezescorcia-source.github.io/regia/tienda.html","image":"https://maylopezescorcia-source.github.io/regia/regia-preview.jpg","telephone":"+57 312 855 6822","address":{"@type":"PostalAddress","streetAddress":"Centro Comercial Plaza Malambo","addressLocality":"Malambo","addressRegion":"Atlántico","addressCountry":"CO"},"paymentAccepted":"Efectivo, Nequi, Daviplata, transferencia, Addi, Sistecrédito","currenciesAccepted":"COP"}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="tienda-config.js" onerror="window.__sinConfig=true"></script>
+<script>window.MK_TIENDA='regia';</script>
+<script src="tienda-marketing.js"></script>
 <style>
   :root{
     --ink:#1B1A21; --soft:#6E6A78; --line:#E9E6EF; --wash:#F7F5FA; --paper:#fff;
@@ -216,12 +223,25 @@
     <button class="brand" onclick="irInicio()" aria-label="Ir al inicio"><img id="logo-top" alt="Regia by cm"></button>
     <label class="search"><span class="sr">Buscar</span>
       <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <input id="q" type="search" placeholder="Buscar prendas" autocomplete="off">
+      <input id="q" type="search" placeholder="Buscar sets, leggins, tops…" autocomplete="off">
     </label>
     <button class="bag" id="btn-bag" aria-label="Abrir mi bolsa"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg><span class="n" id="bag-n" hidden>0</span></button>
   </div>
   <nav class="cats" id="cats" aria-label="Categorías"></nav>
 </header>
+
+<section class="mk-hero" id="mk-hero" aria-label="Bienvenida">
+  <div class="mk-hero-in">
+    <div class="mk-hero-tx">
+      <p class="mk-kicker">Ropa deportiva para mujer · Malambo</p>
+      <h1>Entrena, sal y siéntete <em>Regia</em></h1>
+      <p class="mk-sub">Sets, enterizos, leggins y tops que estilizan tu figura. Elige tu talla y color, y te confirmamos tu pedido por WhatsApp.</p>
+      <div class="mk-cta"><a class="btn pri" href="#main">Ver la colección</a><a class="btn ghost mk-wa-link" href="#" target="_blank" rel="noopener" hidden><svg viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" d="M16 3a13 13 0 0 0-11.2 19.6L3 29l6.6-1.7A13 13 0 1 0 16 3zm0 23.7c-2 0-4-.5-5.7-1.6l-.4-.2-3.9 1 1-3.8-.3-.4A10.7 10.7 0 1 1 16 26.7zm5.9-8c-.3-.2-1.9-.9-2.2-1-.3-.1-.5-.2-.7.2l-1 1.2c-.2.2-.4.2-.7.1a8.8 8.8 0 0 1-4.4-3.8c-.3-.6.3-.5 1-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4s-1.2 1.1-1.2 2.8 1.2 3.2 1.4 3.5c.2.2 2.3 3.6 5.7 5 2.1.9 2.9 1 4 .8.6-.1 1.9-.8 2.2-1.5.3-.8.3-1.4.2-1.5l-.6-.3z"/></svg>Escríbenos</a></div>
+    </div>
+    <div class="mk-hero-ph" id="mk-hero-ph"></div>
+  </div>
+</section>
+<div class="mk-trust" id="mk-trust" hidden></div>
 
 <main id="main">
   <div id="cerrada" class="cerrada" hidden></div>
@@ -244,6 +264,10 @@ const CFGT=window.TIENDA_CONFIG||null;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=n=>'$'+Math.round(n||0).toLocaleString('es-CO');
+const MKF=(fn,...a)=>{ try{ return window.MK&&MK[fn]?MK[fn](...a):undefined; }catch(e){ console.warn(e); } };
+const nom=n=>window.MK?MK.nombre(n):n;
+const catDe=p=>window.MK?MK.catLabel(p.categoria):p.categoria;
+const itemsBolsa=()=>CART.map(l=>{ const r=buscar(l); return r?{id:r.p.id,nombre:r.p.nombre,precio:r.v.precio,cantidad:l.cantidad}:null; }).filter(Boolean);
 $('logo-top').src=LOGO; $('logo-foot').src=LOGO;
 
 let CFG={nombre:'Regia by cm',abierta:true,medios:[],envioActivo:true,retiroEnTienda:true,costoEnvio:0,envioGratisDesde:0};
@@ -275,6 +299,7 @@ function iniciar(){
   }, e=>console.error(e));
   baseRef.collection('productos').onSnapshot(snap=>{
     PRODS=snap.docs.map(d=>d.data()).filter(p=>p && !p.oculto && Array.isArray(p.variantes) && p.nombre);
+    MKF('normalizar',PRODS);
     cargado=true; revisarBolsa(); render(); abrirDesdeLink();
     if(prodAbierto){ const p=PRODS.find(x=>x.id===prodAbierto.id); if(p){ prodAbierto=p; pintarProducto(true); cargarFotosProducto(p); } }
     if($('sheet-bag').classList.contains('on') && paso==='bolsa') pintarBolsa();
@@ -283,8 +308,7 @@ function iniciar(){
 function aplicarConfig(){
   const av=$('aviso'); av.hidden=!CFG.aviso; av.textContent=CFG.aviso||'';
   const c=$('cerrada'); c.hidden=!!CFG.abierta; c.textContent='La tienda está cerrada por el momento. Puedes mirar el catálogo y volver pronto.';
-  document.title=(CFG.nombre||'Tienda')+' · Tienda';
-  $('foot-txt').textContent=(CFG.nombre||'')+(CFG.direccionTienda?' · '+CFG.direccionTienda:'');
+  if(window.MK) MKF('config',CFG); else $('foot-txt').textContent=(CFG.nombre||'')+(CFG.direccionTienda?' · '+CFG.direccionTienda:'');
 }
 
 /* ---------- catálogo ---------- */
@@ -292,25 +316,27 @@ function stockTotal(p){ return p.variantes.reduce((s,v)=>s+v.stock,0); }
 function pintarEsqueleto(){ $('grid').innerHTML=Array.from({length:8}).map(()=>'<div class="card skeleton"><div class="ph"></div><div class="nm">&nbsp;</div></div>').join(''); }
 function render(){
   if(!cargado) return;
-  const cats=['Todo',...[...new Set(PRODS.map(p=>p.categoria).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'))];
+  MKF('setProds',PRODS);
+  const cats=['Todo',...[...new Set(PRODS.map(catDe).filter(Boolean))].sort((a,b)=>window.MK?MK.ordenCats(a,b):a.localeCompare(b,'es'))];
   if(!cats.includes(categoria)) categoria='Todo';
   $('cats').innerHTML=cats.length>2?cats.map(c=>`<button class="chip" aria-pressed="${c===categoria}" data-c="${esc(c)}">${esc(c)}</button>`).join(''):'';
   const q=texto.trim().toLowerCase();
-  let lista=PRODS.filter(p=>(categoria==='Todo'||p.categoria===categoria) && (!q||(p.nombre+' '+(p.categoria||'')+' '+(p.descripcion||'')).toLowerCase().includes(q)));
+  let lista=PRODS.filter(p=>(categoria==='Todo'||catDe(p)===categoria) && (!q||(p.nombre+' '+(p.categoria||'')+' '+catDe(p)+' '+(p.descripcion||'')).toLowerCase().includes(q)));
   lista.sort((a,b)=>{ const sa=stockTotal(a)>0?0:1, sb=stockTotal(b)>0?0:1; return sa-sb || (b.publicadoEn||0)-(a.publicadoEn||0) || a.nombre.localeCompare(b.nombre,'es'); });
-  $('count').textContent=lista.length? (lista.length+(lista.length===1?' prenda':' prendas')) : '';
+  $('count').textContent=lista.length? (window.MK?MK.palabra(lista.length):(lista.length+(lista.length===1?' prenda':' prendas'))) : '';
   if(!lista.length){
-    $('grid').innerHTML=`<div class="vacio-msg" style="grid-column:1/-1"><h2>${PRODS.length?'No encontramos nada con eso':'Pronto tendremos prendas nuevas'}</h2><p>${PRODS.length?'Prueba con otra palabra o mira todas las categorías.':'Estamos subiendo el catálogo. Vuelve en un rato.'}</p></div>`; return;
+    $('grid').innerHTML=`<div class="vacio-msg" style="grid-column:1/-1"><h2>${PRODS.length?'No encontramos nada con eso':'Pronto tendremos prendas nuevas'}</h2><p>${PRODS.length?'Prueba con otra palabra o mira todas las categorías.':'Estamos subiendo el catálogo. Vuelve en un rato.'}</p></div>`; MKF('despuesRender',{categoria,texto}); return;
   }
   $('grid').innerHTML=lista.map(p=>{
     const st=stockTotal(p), agotado=st<=0;
     const tallas=[...new Set(p.variantes.filter(v=>v.stock>0).map(v=>v.talla))].filter(t=>t!=='Única').sort(ordenTallas);
     const nCol=[...new Set(p.variantes.filter(v=>v.stock>0).map(v=>v.color))].filter(c=>c!=='Único').length;
-    return `<button class="card ${agotado?'agotado':''}" data-id="${esc(p.id)}" aria-label="${esc(p.nombre)}, ${fmt(p.precio)}">
-      <div class="ph ${p.thumb?'':'vacio'}">${p.thumb?`<img src="${esc(p.thumb)}" alt="" loading="lazy">`:`<img src="${LOGO}" alt="">`}
-      ${agotado?'<span class="tag">Agotado</span>':(st<=3?'<span class="tag ultimas">Últimas unidades</span>':'')}</div>
-      <div class="nm">${esc(p.nombre)}</div><div class="pr">${fmt(p.precio)}</div>${tallas.length?`<div class="sz">${esc(tallas.join(' · '))}</div>`:''}${nCol>1?`<div class="cl">${nCol} colores</div>`:''}</button>`;
+    return `<button class="card ${agotado?'agotado':''}" data-id="${esc(p.id)}" aria-label="${esc(nom(p.nombre))}, ${fmt(p.precio)}">
+      <div class="ph ${p.thumb?'':'vacio'}">${p.thumb?`<img src="${esc(p.thumb)}" alt="${esc(nom(p.nombre))}" loading="lazy">`:`<img src="${LOGO}" alt="">`}
+      ${window.MK?MK.etiqueta(p):(agotado?'<span class="tag">Agotado</span>':'')}</div>
+      <div class="nm">${esc(nom(p.nombre))}</div><div class="pr">${fmt(p.precio)}</div>${tallas.length?`<div class="sz">${esc(tallas.join(' · '))}</div>`:''}${nCol>1?`<div class="cl">${nCol} colores</div>`:''}</button>`;
   }).join('');
+  MKF('despuesRender',{categoria,texto});
 }
 $('cats').addEventListener('click',e=>{ const b=e.target.closest('.chip'); if(!b) return; categoria=b.dataset.c; render(); });
 $('grid').addEventListener('click',e=>{ const c=e.target.closest('.card[data-id]'); if(c) abrirProducto(c.dataset.id); });
@@ -344,6 +370,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ if($('visor').cla
 async function abrirProducto(id){
   const p=PRODS.find(x=>x.id===id); if(!p) return;
   prodAbierto=p; galIdx=0; selQty=1;
+  MKF('evento','ver',{valor:p.precio,items:[{id:p.id,nombre:p.nombre,precio:p.precio,cantidad:1}]});
   try{ history.replaceState(null,'',location.pathname+'?p='+encodeURIComponent(claveLink(p))); }catch(e){}
   const col=[...new Set(p.variantes.filter(v=>v.stock>0).map(v=>v.color))];
   selColor=col.length===1?col[0]:null;
@@ -358,7 +385,7 @@ async function cargarFotosProducto(p){
   const k=p.id+'|'+(p.fotosV||0)+'|'+(p.nFotos||0);
   if(!(p.nFotos>0) || fotosCache[p.id+'_k']===k) return;
   fotosCache[p.id+'_k']=k;
-  try{ const d=await baseRef.collection('fotos').doc(p.id).get(); const dd=d.exists?d.data():{}; fotosCache[p.id]=(dd.imgs||[]).map((src,i)=>({src,color:((dd.colores||[])[i])||''})); }
+  try{ const d=await baseRef.collection('fotos').doc(p.id).get(); const dd=d.exists?d.data():{}; fotosCache[p.id]=(dd.imgs||[]).map((src,i)=>{ const c=(dd.colores||[])[i]||''; return {src,color:c&&window.MK?MK.colorCanon(c):c}; }); }
   catch(e){ console.error(e); delete fotosCache[p.id+'_k']; }
   if(prodAbierto && prodAbierto.id===p.id) pintarProducto(true);
 }
@@ -417,6 +444,7 @@ function pintarProducto(conservar){
       <button class="btn pri" id="btn-add" ${puede?'':'disabled'}>Agregar a la bolsa</button></div>
       <button class="btn ghost" id="btn-share" style="width:100%;margin-top:10px;font-size:14px">Compartir esta prenda</button>
     </div></div>`;
+  MKF('enProducto',p,$('sheet-prod'),{color:selColor,talla:selTalla});
 }
 $('sheet-prod').addEventListener('click',e=>{
   const p=prodAbierto; if(!p) return;
@@ -436,6 +464,7 @@ function agregarABolsa(){
   const cant=Math.min(selQty, v.stock-ya);
   if(cant<=0){ toast('Ya tienes todas las unidades disponibles en tu bolsa'); return; }
   if(ex) ex.cantidad+=cant; else CART.push({pid:p.id,vid:v.id,cantidad:cant});
+  MKF('evento','agregar',{valor:v.precio*cant,items:[{id:p.id,nombre:p.nombre,precio:v.precio,cantidad:cant}]});
   guardarBolsa(); cerrarHojas(); toast('Agregado a tu bolsa'); 
 }
 
@@ -462,18 +491,19 @@ function pintarBolsa(){
   const t=totales('recoger');
   const falta=CFG.envioActivo&&CFG.envioGratisDesde>0? CFG.envioGratisDesde-t.sub : 0;
   sh.innerHTML=cabBolsa('Mi bolsa')+`<div class="bag-b">${CART.map((l,i)=>{ const r=buscar(l); if(!r) return ''; const img=(r.p.fotosColor||{})[r.v.color]||r.p.thumb;
-    return `<div class="ln"><div class="im">${img?`<img src="${esc(img)}" alt="">`:''}</div><div class="d"><b>${esc(r.p.nombre)}</b><small>${[r.v.talla!=='Única'?'Talla '+esc(r.v.talla):'',r.v.color!=='Único'?esc(r.v.color):''].filter(Boolean).join(' · ')}</small>
+    return `<div class="ln"><div class="im">${img?`<img src="${esc(img)}" alt="">`:''}</div><div class="d"><b>${esc(nom(r.p.nombre))}</b><small>${[r.v.talla!=='Única'?'Talla '+esc(r.v.talla):'',r.v.color!=='Único'?esc(r.v.color):''].filter(Boolean).join(' · ')}</small>
       <div class="row2"><div style="display:flex;align-items:center"><div class="qty"><button data-m="${i}" data-d="-1" aria-label="Menos">−</button><span>${l.cantidad}</span><button data-m="${i}" data-d="1" aria-label="Más" ${l.cantidad>=r.v.stock?'disabled':''}>+</button></div><button class="rm" data-r="${i}">Quitar</button></div><span class="lp">${fmt(r.v.precio*l.cantidad)}</span></div></div></div>`; }).join('')}
     ${falta>0&&falta<=CFG.envioGratisDesde?`<div class="pend">Te faltan ${fmt(falta)} para envío gratis.</div>`:''}
     ${CFG.envioGratisDesde>0&&falta<=0&&CFG.envioActivo?'<div class="free">¡Tu envío es gratis!</div>':''}
   </div><div class="bag-f"><div class="tot"><span>Subtotal</span><span>${fmt(t.sub)}</span></div><div class="tot" style="color:var(--soft);font-size:12.5px"><span>El envío se calcula al finalizar</span></div>
   <button class="btn pri" style="width:100%;margin-top:10px" id="b-seguir" ${CFG.abierta?'':'disabled'}>${CFG.abierta?'Continuar con mi pedido':'Tienda cerrada'}</button></div>`;
+  MKF('enBolsa',sh);
 }
 $('sheet-bag').addEventListener('click',e=>{
   const m=e.target.closest('[data-m]'), r=e.target.closest('[data-r]');
   if(m){ const l=CART[+m.dataset.m]; l.cantidad+=(+m.dataset.d); if(l.cantidad<=0) CART.splice(+m.dataset.m,1); guardarBolsa(); pintarBolsa(); }
   else if(r){ CART.splice(+r.dataset.r,1); guardarBolsa(); pintarBolsa(); }
-  else if(e.target.closest('#b-seguir')){ paso='datos'; pintarDatos(); }
+  else if(e.target.closest('#b-seguir')){ MKF('evento','pagar',{valor:totales('recoger').sub,items:itemsBolsa()}); paso='datos'; pintarDatos(); }
   else if(e.target.closest('#b-atras')){ paso='bolsa'; pintarBolsa(); }
   else if(e.target.closest('#b-enviar')) enviarPedido();
 });
@@ -542,6 +572,7 @@ async function enviarPedido(){
   try{
     await baseRef.collection('pedidos').doc().set(doc);
     localStorage.setItem('regia_ultimo_pedido',String(Date.now()));
+    MKF('evento','pedido',{valor:doc.total,codigo:doc.codigo,items:doc.items.map(i=>({id:i.pid,nombre:i.nombre,precio:i.precio,cantidad:i.cantidad}))});
     ultimoPedido=doc; CART=[]; guardarBolsa(); enviando=false; paso='listo'; pintarListo();
   }catch(e){
     console.error(e); enviando=false;
