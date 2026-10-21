@@ -471,7 +471,7 @@
   <div id="sidebar-foot">
     <div class="foot-line">Sesión: <strong id="rol-actual">—</strong></div>
     <div class="foot-line" id="sidebar-sync-badge"><span class="dot"></span>Solo este dispositivo</div>
-    <div class="foot-line foot-ver" id="foot-version">Versión 2026-10-20.5</div>
+    <div class="foot-line foot-ver" id="foot-version">Versión 2026-10-21.1</div>
     <button class="btn ghost sm" onclick="cerrarSesion()" aria-label="Cerrar sesión" title="Cerrar sesión"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span class="lbl">Cerrar sesión</span></button>
   </div>
 </div>
@@ -2337,7 +2337,7 @@ function logoTienda(id, imprimir){ return id==='fraganza' ? (imprimir? LOGO_FRAG
 function badgeTienda(id){ return id==='fraganza'? '<span class="badge" style="background:#F3E6D3;color:#7A4E1D;">Fraganza</span>' : '<span class="badge" style="background:#EFE7FA;color:#6B3FA0;">Regia</span>'; }
 function opcionesTiendaHTML(sel, conGrupo){ return (conGrupo?`<option value="grupo"${sel==='grupo'?' selected':''}>Grupo (las dos)</option>`:'')+TIENDAS.map(t=>`<option value="${t.id}"${sel===t.id?' selected':''}>${t.nombre}</option>`).join(''); }
 let DB = cargarDB();
-const APP_VERSION='2026-10-20.5';
+const APP_VERSION='2026-10-21.1';
 document.addEventListener('DOMContentLoaded',()=>{ const el=document.getElementById('foot-version'); if(el) el.textContent='Versión '+APP_VERSION; });
 let firebaseApp=null, firestoreRef=null, syncStoreCode=null, syncActivo=false, aplicandoSnapshotRemoto=false;
 
@@ -4150,13 +4150,14 @@ function agregarFotosVariante(input){
   if(!files.length) return;
   const gid=invF.gid, color=invF.color, fallos=[];
   invFProcesando+=files.length; pintarEstadoFotos();
+  const grande=invF.tienda==='fraganza'; // fotos de perfume con texto: más nitidez
   files.forEach(f=>comprimirImagenWeb(f, (d,motivo)=>{
     invFProcesando--;
     if(invF.gid===gid && invF.color===color){ if(d){ invF.fotos.push(d); invF.cambiado=true; } else fallos.push(motivo); }
     if(invFProcesando<=0){ invFProcesando=0; pintarFotosVariante();
       if(fallos.length) toast('⚠ '+fallos.length+' foto(s) no se pudieron cargar: '+fallos[0]+'. Tómale captura de pantalla o guárdala como JPG y súbela otra vez.');
     } else pintarEstadoFotos();
-  }));
+  }, grande?1500:900, grande?0.82:0.72));
 }
 function pintarEstadoFotos(){
   const el=document.getElementById('var-fotos'); if(!el) return;
@@ -4188,7 +4189,7 @@ async function guardarFotosVariante(gid, color, tienda){
   let imgs=[...invF.otros.imgs, ...invF.fotos]; const colores=[...invF.otros.colores, ...invF.fotos.map(()=>color)];
   const LIM=850000, peso=()=>imgs.reduce((s,x)=>s+x.length,0);
   // si pesan mucho juntas, se reducen solas (primero un poco, luego más) en vez de rechazar el guardado
-  for(const [lado,cal] of [[800,0.66],[700,0.6],[600,0.55],[520,0.5]]){
+  for(const [lado,cal] of [[1200,0.75],[1000,0.7],[800,0.66],[700,0.6],[600,0.55],[520,0.5]]){
     if(peso()<=LIM) break;
     imgs=await Promise.all(imgs.map(x=>recomprimirDataUrl(x,lado,cal)));
   }
