@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fraganza by CM · Perfumes en Malambo</title>
-<meta name="description" content="Perfumes para ella y para él con asesoría personalizada. Compra en línea, paga a cuotas con Addi o Sistecrédito, o recoge en C.C. Plaza Malambo.">
+<meta name="description" content="Perfumes para ella y para él con asesoría personalizada. Compra en línea, paga a cuotas con Addi o Sistecrédito, o recoge en el Centro Comercial Plaza Malambo.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Fraganza by CM">
 <meta property="og:title" content="Fraganza by CM · Perfumes para ella y para él">
-<meta property="og:description" content="Encuentra tu aroma ideal con asesoría por WhatsApp. Compra en línea o recoge en C.C. Plaza Malambo.">
+<meta property="og:description" content="Encuentra tu aroma ideal con asesoría por WhatsApp. Compra en línea o recoge en el Centro Comercial Plaza Malambo.">
 <meta property="og:url" content="https://maylopezescorcia-source.github.io/regia/fraganza.html">
 <meta property="og:image" content="https://maylopezescorcia-source.github.io/regia/fraganza-preview.jpg">
 <meta property="og:image:width" content="1200">
@@ -27,8 +27,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="tienda-config.js" onerror="window.__sinConfig=true"></script>
-<script>window.MK_TIENDA='fraganza';</script>
-<script src="tienda-marketing.js"></script>
 <style>
   :root{
     --ink:#2B100B; --soft:#7A6656; --line:#EADFCF; --wash:#FAF5EE; --paper:#fff;
@@ -211,6 +209,8 @@
   .visor .vx{position:fixed;top:12px;right:12px;width:42px;height:42px;border-radius:50%;border:0;background:#fff;font-size:24px;line-height:1;display:grid;place-items:center;z-index:2;box-shadow:0 2px 12px rgba(0,0,0,.3);}
   .visor .vt{position:fixed;top:20px;left:16px;color:#fff;font-size:13px;opacity:.8;}
 </style>
+<script>window.MK_TIENDA='fraganza';</script>
+<script src="tienda-marketing.js"></script>
 </head>
 <body>
 <div id="aviso" class="aviso" hidden></div>
@@ -226,18 +226,18 @@
   <nav class="cats" id="cats" aria-label="Categorías"></nav>
 </header>
 
-<section class="mk-hero" id="mk-hero" aria-label="Bienvenida">
+<section class="mk-hero" id="mk-hero">
   <div class="mk-hero-in">
-    <div class="mk-hero-tx">
-      <p class="mk-kicker">Perfumería · Malambo</p>
-      <h1>Fragancias que dejan <em>huella</em></h1>
-      <p class="mk-sub">Perfumes para ella y para él, con asesoría personalizada por WhatsApp para que encuentres tu aroma ideal.</p>
-      <div class="mk-cta"><a class="btn pri" href="#main">Ver perfumes</a><a class="btn ghost mk-wa-link" href="#" target="_blank" rel="noopener" hidden><svg viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" d="M16 3a13 13 0 0 0-11.2 19.6L3 29l6.6-1.7A13 13 0 1 0 16 3zm0 23.7c-2 0-4-.5-5.7-1.6l-.4-.2-3.9 1 1-3.8-.3-.4A10.7 10.7 0 1 1 16 26.7zm5.9-8c-.3-.2-1.9-.9-2.2-1-.3-.1-.5-.2-.7.2l-1 1.2c-.2.2-.4.2-.7.1a8.8 8.8 0 0 1-4.4-3.8c-.3-.6.3-.5 1-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4s-1.2 1.1-1.2 2.8 1.2 3.2 1.4 3.5c.2.2 2.3 3.6 5.7 5 2.1.9 2.9 1 4 .8.6-.1 1.9-.8 2.2-1.5.3-.8.3-1.4.2-1.5l-.6-.3z"/></svg>Escríbenos</a></div>
+    <div>
+      <h1>Perfumes para ella y para él</h1>
+      <p class="mk-sub">Te ayudamos por WhatsApp a encontrar el aroma que va contigo. Compra aquí o recoge en el Centro Comercial Plaza Malambo.</p>
     </div>
-    <div class="mk-hero-ph" id="mk-hero-ph"></div>
+  </div>
+  <div class="mk-trend" id="mk-trend" hidden>
+    <div class="mk-trend-h"><h2>En tendencia</h2><a href="#main">Ver todo</a></div>
+    <div class="mk-rail" id="mk-rail"></div>
   </div>
 </section>
-<div class="mk-trust" id="mk-trust" hidden></div>
 
 <main id="main">
   <div id="cerrada" class="cerrada" hidden></div>

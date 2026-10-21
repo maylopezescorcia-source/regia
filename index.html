@@ -1527,10 +1527,11 @@
         <div class="toolbar">
           <div class="field search-box"><label>Buscar producto</label><input type="text" id="tj-buscar" oninput="tiendaFiltroTxt=this.value;renderTienda()" placeholder="Nombre o categoría…"></div>
           <div class="field"><label>Tienda</label><select onchange="tiendaFiltroTienda=this.value;renderTienda()"><option value="todas">Las dos</option><option value="regia">Regia by CM</option><option value="fraganza">Fraganza by CM</option></select></div>
-          <div class="field"><label>Mostrar</label><select onchange="tiendaFiltroEstado=this.value;renderTienda()"><option value="todos">Todos</option><option value="pub">En tienda</option><option value="nopub">Ocultos</option></select></div>
+          <div class="field"><label>Mostrar</label><select onchange="tiendaFiltroEstado=this.value;renderTienda()"><option value="todos">Todos</option><option value="pub">En tienda</option><option value="nopub">Ocultos</option><option value="tend">★ En tendencia</option></select></div>
           <button class="btn ghost" onclick="publicarVisibles(true)">Publicar los que veo</button>
           <button class="btn ghost" onclick="publicarVisibles(false)">Ocultar los que veo</button>
         </div>
+        <p class="pw-meta" style="margin:0 0 10px;">★ Las prendas marcadas <b>En tendencia</b> salen destacadas en la portada de la tienda web. Lo ideal es tener entre 3 y 8 por tienda.</p>
         <table><thead><tr><th></th><th>Producto</th><th class="right">Desde</th><th class="right">Stock</th><th class="center">Estado</th><th></th></tr></thead><tbody id="tj-lista"></tbody></table>
       </div>
       <div id="tienda-ajustes" class="card" style="margin-bottom:16px;">
@@ -1655,6 +1656,7 @@
   <div class="modal" style="width:520px;">
     <h3 id="tp-titulo">Producto</h3>
     <label class="chk"><input type="checkbox" id="tp-pub"> Mostrar en la tienda</label>
+    <label class="chk" style="margin-left:14px;"><input type="checkbox" id="tp-tend"> ★ En tendencia (sale en la portada)</label>
     <div class="field" style="margin-top:10px;"><label>Descripción para el cliente</label><textarea id="tp-desc" rows="4" maxlength="600" style="width:100%;" placeholder="Material, ajuste, cuidados, a qué combina…"></textarea></div>
     <div class="field"><label>Fotos en la tienda</label>
       <div id="tp-fotos"></div>
@@ -4093,7 +4095,7 @@ async function unirReferencias(){
     }
     // datos de la tienda (publicada, descripción)
     const gd=T.grupos[destino]||(T.grupos[destino]={});
-    otros.forEach(g=>{ const o=T.grupos[g]; if(o){ if(o.publicado) gd.publicado=true; if(!gd.descripcion && o.descripcion) gd.descripcion=o.descripcion; if(o.publicadoEn && (!gd.publicadoEn || o.publicadoEn<gd.publicadoEn)) gd.publicadoEn=o.publicadoEn; } delete T.grupos[g]; });
+    otros.forEach(g=>{ const o=T.grupos[g]; if(o){ if(o.publicado) gd.publicado=true; if(o.tendencia && !gd.tendencia) gd.tendencia=o.tendencia; if(!gd.descripcion && o.descripcion) gd.descripcion=o.descripcion; if(o.publicadoEn && (!gd.publicadoEn || o.publicadoEn<gd.publicadoEn)) gd.publicadoEn=o.publicadoEn; } delete T.grupos[g]; });
     // mover las variantes
     gids.forEach(g=>(G.get(g)||[]).forEach(a=>{ a.grupoId=destino; }));
     unidas++;
@@ -8277,7 +8279,7 @@ function construirDocProducto(gid, arts){
   return {
     id:gid, nombre:arts[0].nombre||'', categoria:arts[0].categoria||'', descripcion:g.descripcion||'',
     precio:precios.length?Math.min(...precios):0, thumb:(arts.find(a=>a.imagen)||{}).imagen||'',
-    nFotos:g.nFotos||0, fotosV:g.fotosV||0, publicadoEn:g.publicadoEn||0, variantes, fotosColor:fotosPorColor(arts), v:3
+    nFotos:g.nFotos||0, fotosV:g.fotosV||0, publicadoEn:g.publicadoEn||0, tendencia:g.tendencia||0, variantes, fotosColor:fotosPorColor(arts), v:3
   };
 }
 // Una foto por color (la del inventario), para que la tienda cambie la imagen al elegir el color
@@ -8698,9 +8700,10 @@ function renderTienda(){
     const pub=!!T.grupos[gid]?.publicado;
     if(tiendaFiltroEstado==='pub'&&!pub) return false;
     if(tiendaFiltroEstado==='nopub'&&pub) return false;
+    if(tiendaFiltroEstado==='tend'&&!T.grupos[gid]?.tendencia) return false;
     if(tiendaFiltroTienda!=='todas' && tiendaDeArticulo(arts[0])!==tiendaFiltroTienda) return false;
     return !q || (arts[0].nombre+' '+(arts[0].categoria||'')).toLowerCase().includes(q);
-  }).sort((a,b)=>a[1][0].nombre.localeCompare(b[1][0].nombre));
+  }).sort((a,b)=>((T.grupos[b[0]]||{}).tendencia?1:0)-((T.grupos[a[0]]||{}).tendencia?1:0) || a[1][0].nombre.localeCompare(b[1][0].nombre));
   sel('tj-lista').innerHTML = filas.length? filas.map(([gid,arts])=>{
     const g=T.grupos[gid]||{}; const img=(arts.find(a=>a.imagen)||{}).imagen;
     const stock=arts.reduce((s,a)=>s+(a.stock||0),0); const precios=arts.map(a=>a.precio).filter(x=>x>0);
@@ -8710,8 +8713,8 @@ function renderTienda(){
       <td>${badgeTienda(tiendaDeArticulo(arts[0]))} <strong>${escH(arts[0].nombre)}</strong><div class="pw-meta">${escH(arts[0].categoria||'Sin categoría')} · ${arts.length} variante(s)${g.descripcion?'':' · sin descripción'}</div></td>
       <td class="right num">${precios.length?fmt(Math.min(...precios)):'—'}</td>
       <td class="right num">${stock}</td>
-      <td class="center">${g.publicado?(sinFoto?'<span class="badge gold">Sin foto</span>':'<span class="badge success">En tienda</span>'):'<span class="badge">Oculto</span>'}</td>
-      <td class="right"><button class="btn ${g.publicado?'ghost':'gold'} sm" onclick="alternarPublicado('${escH(gid)}')">${g.publicado?'Ocultar':'Publicar'}</button> <button class="btn ghost sm" onclick="abrirProductoTienda('${escH(gid)}')">Detalles y fotos</button> <button class="btn ghost sm" onclick="copiarLinkProducto('${escH(gid)}')" title="Link directo a esta prenda para tus redes">🔗 Link</button></td></tr>`;
+      <td class="center">${g.publicado?(sinFoto?'<span class="badge gold">Sin foto</span>':'<span class="badge success">En tienda</span>'):'<span class="badge">Oculto</span>'}${g.tendencia?' <span class="badge gold">★ Tendencia</span>':''}</td>
+      <td class="right"><button class="btn ${g.tendencia?'gold':'ghost'} sm" onclick="alternarTendencia('${escH(gid)}')" title="Destacar en la portada de la tienda">${g.tendencia?'★ En tendencia':'☆ Tendencia'}</button> <button class="btn ${g.publicado?'ghost':'gold'} sm" onclick="alternarPublicado('${escH(gid)}')">${g.publicado?'Ocultar':'Publicar'}</button> <button class="btn ghost sm" onclick="abrirProductoTienda('${escH(gid)}')">Detalles y fotos</button> <button class="btn ghost sm" onclick="copiarLinkProducto('${escH(gid)}')" title="Link directo a esta prenda para tus redes">🔗 Link</button></td></tr>`;
   }).join('') : '<tr><td colspan="6"><div class="empty">No hay productos que coincidan. Crea artículos en Inventario y luego publícalos aquí.</div></td></tr>';
 }
 function slugDe(t){ return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
@@ -8744,6 +8747,19 @@ function guardarAjustesTienda(){
   T.activada=true;
   guardarDB(); renderTienda();
   toast('Ajustes de la tienda guardados');
+}
+// ★ En tendencia: la prenda sale destacada en la portada de la tienda web
+function alternarTendencia(gid){
+  const T=DB.tienda; T.grupos=T.grupos||{}; const g=T.grupos[gid]||(T.grupos[gid]={});
+  if(g.tendencia){ g.tendencia=0; guardarDB(); renderTienda(); toast('Quitada de tendencia'); return; }
+  g.tendencia=Date.now();
+  let msg='★ Marcada en tendencia: sale en la portada de la tienda';
+  if(!g.publicado){ g.publicado=true; if(!g.publicadoEn) g.publicadoEn=Date.now(); T.activada=true; msg='★ Publicada y marcada en tendencia'; }
+  const arts=tiendaGrupos().get(gid)||[]; const t=tiendaDeArticulo(arts[0]);
+  const n=[...tiendaGrupos().entries()].filter(([x,a])=>(T.grupos[x]||{}).tendencia && tiendaDeArticulo(a[0])===t).length;
+  if(n>8) msg+=' · Tienes '+n+' en tendencia; la portada muestra las 8 más recientes';
+  if(!arts.some(a=>a.imagen) && !(g.nFotos>0)) msg+=' · Ojo: no tiene foto, súbela para que se vea';
+  guardarDB(); renderTienda(); toast(msg);
 }
 function alternarPublicado(gid){
   const T=DB.tienda; const g=T.grupos[gid]||(T.grupos[gid]={});
@@ -8795,6 +8811,7 @@ async function abrirProductoTienda(gid){
   document.getElementById('tp-titulo').textContent=arts[0].nombre;
   document.getElementById('tp-desc').value=g.descripcion||'';
   document.getElementById('tp-pub').checked=!!g.publicado;
+  document.getElementById('tp-tend').checked=!!g.tendencia;
   pintarFotosTienda();
   abrirModal('modal-tienda-producto');
   const ref=tiendaRef(tiendaDeArticulo(arts[0]));
@@ -8816,7 +8833,8 @@ function quitarFotoTienda(i){ tiendaFotosEditando.splice(i,1); tiendaFotosColor.
 async function guardarProductoTienda(){
   const gid=tiendaGrupoEditando; if(!gid) return;
   const desc=document.getElementById('tp-desc').value.trim().slice(0,600);
-  const quiere=document.getElementById('tp-pub').checked;
+  const tend=document.getElementById('tp-tend').checked;
+  const quiere=document.getElementById('tp-pub').checked || tend;
   const arts0=(tiendaGrupos().get(gid)||[])[0];
   const ref=arts0? tiendaRef(tiendaDeArticulo(arts0)) : null;
   let nFotos=null;
@@ -8831,6 +8849,7 @@ async function guardarProductoTienda(){
   g.descripcion=desc;
   if(quiere && !g.publicado && !g.publicadoEn) g.publicadoEn=Date.now();
   g.publicado=quiere;
+  g.tendencia= tend ? (g.tendencia||Date.now()) : 0;
   if(nFotos!==null){ g.nFotos=nFotos; g.fotosV=Date.now(); }
   T.activada=true;
   guardarDB(); cerrarModal('modal-tienda-producto'); renderTienda();

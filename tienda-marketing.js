@@ -1,11 +1,13 @@
 /* ============================================================
-   MEJORAS DE MARKETING · Regia by CM y Fraganza by CM
+   DISEÑO Y MARKETING · Regia by CM y Fraganza by CM
    Lo usan tienda.html y fraganza.html. Súbelo a GitHub junto a ellas.
 
    ─── EDITA SOLO ESTE BLOQUE ───
    Deja en blanco ('') lo que todavía no tengas: esa parte no se muestra.
    ============================================================ */
 window.MARKETING = {
+  whatsapp:         '3128556822',   // número de WhatsApp de las dos tiendas
+  direccion:        'Centro Comercial Plaza Malambo, Malambo - Atlántico',
   instagramRegia:   '',   // usuario sin @  · ej: 'regiabycm'
   instagramFraganza:'',   // usuario sin @  · ej: 'fraganzabycm'
   tiktok:           '',   // usuario sin @
@@ -25,17 +27,18 @@ window.MARKETING = {
 'use strict';
 const M = window.MARKETING || {};
 const TID = window.MK_TIENDA === 'fraganza' ? 'fraganza' : 'regia';
+document.documentElement.dataset.mk = TID;
 
 const TEXTOS = {
   regia: {
     marca: 'Regia by CM',
     instagram: M.instagramRegia,
-    kicker: 'Ropa deportiva para mujer · Malambo',
     palabra: ['prenda', 'prendas'],
-    cruzado: 'Completa tu look',
+    cruzado: 'Combínalo con',
     guiaTallas: true,
     waSaludo: 'Hola Regia by CM, vi la tienda en línea y quiero asesoría',
-    otra: { url: 'fraganza.html', titulo: '¿Un perfume para completar tu look?', texto: 'Mira las fragancias de Fraganza by CM, en el mismo local.', cta: 'Ver perfumes' },
+    otra: { url: 'fraganza.html', titulo: 'Fraganza by CM', texto: 'Perfumes en el mismo local. Tu bolsa de aquí queda guardada.', cta: 'Ver perfumes' },
+    pie: 'Ropa deportiva para mujer, para entrenar y para el día a día.',
     cats: { 'basica':'Básicas', 'chaleco':'Chalecos', 'chaqueta':'Chaquetas', 'enterizo':'Enterizos', 'falda':'Faldas',
             'gorra':'Accesorios', 'termo':'Accesorios', 'media':'Accesorios', 'accesorio':'Accesorios',
             'leggin':'Leggins', 'legging':'Leggins', 'running':'Running', 'set':'Sets', 'set largo':'Sets', 'set corto':'Sets',
@@ -44,13 +47,13 @@ const TEXTOS = {
   fraganza: {
     marca: 'Fraganza by CM',
     instagram: M.instagramFraganza,
-    kicker: 'Perfumería · Malambo',
     palabra: ['perfume', 'perfumes'],
     cruzado: 'También te puede gustar',
     guiaTallas: false,
     quitarPrefijo: /^perfumes?\s+/i,
     waSaludo: 'Hola Fraganza by CM, vi la tienda en línea y quiero asesoría para elegir un perfume',
-    otra: { url: 'tienda.html', titulo: '¿Buscas ropa deportiva?', texto: 'Sets, enterizos y leggins en Regia by CM, en el mismo local.', cta: 'Ver Regia by CM' },
+    otra: { url: 'tienda.html', titulo: 'Regia by CM', texto: 'Ropa deportiva en el mismo local. Tu bolsa de aquí queda guardada.', cta: 'Ver ropa deportiva' },
+    pie: 'Perfumes para ella y para él, con asesoría para encontrar tu aroma.',
     cats: { 'perfume':'Perfumes' }
   }
 }[TID];
@@ -60,6 +63,7 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp
 const fmt = n => '$' + Math.round(n || 0).toLocaleString('es-CO');
 const stock = p => (p.variantes || []).reduce((s, v) => s + (v.stock || 0), 0);
 const $ = id => document.getElementById(id);
+const quieto = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- textos: nombres y categorías ordenados ---------- */
 const MENORES = new Set(['de','del','y','e','con','a','al','en','la','el','las','los','por','para','sin','o','u']);
@@ -142,158 +146,249 @@ const IC = {
   envio: '<path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="17.5" r="1.6"/><circle cx="17" cy="17.5" r="1.6"/>',
   tienda: '<path d="M4 9l1.5-5h13L20 9"/><path d="M4 9h16v11H4z"/><path d="M9 20v-6h6v6"/>',
   cuotas: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/>',
-  efectivo: '<rect x="2.5" y="6.5" width="19" height="11" rx="2"/><circle cx="12" cy="12" r="2.6"/>',
   chat: '<path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.1A8 8 0 1 1 20 12z"/>',
-  pin: '<path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
-  reloj: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
   regla: '<path d="M3 15.5 15.5 3 21 8.5 8.5 21z"/><path d="m7 12 2 2M10 9l2 2M13 6l2 2"/>',
   cambio: '<path d="M4 9h13l-3.5-3.5M20 15H7l3.5 3.5"/>'
 };
 const ico = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${IC[k]}</svg>`;
 const WA_SVG = '<svg viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" d="M16 3a13 13 0 0 0-11.2 19.6L3 29l6.6-1.7A13 13 0 1 0 16 3zm0 23.7c-2 0-4-.5-5.7-1.6l-.4-.2-3.9 1 1-3.8-.3-.4A10.7 10.7 0 1 1 16 26.7zm5.9-8c-.3-.2-1.9-.9-2.2-1-.3-.1-.5-.2-.7.2l-1 1.2c-.2.2-.4.2-.7.1a8.8 8.8 0 0 1-4.4-3.8c-.3-.6.3-.5 1-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4s-1.2 1.1-1.2 2.8 1.2 3.2 1.4 3.5c.2.2 2.3 3.6 5.7 5 2.1.9 2.9 1 4 .8.6-.1 1.9-.8 2.2-1.5.3-.8.3-1.4.2-1.5l-.6-.3z"/></svg>';
 
-/* ---------- estilos (usan los colores de cada tienda) ---------- */
+/* ---------- diseño minimalista (se aplica encima del estilo de cada página) ---------- */
 const CSS = `
-main{scroll-margin-top:120px;}
-.mk-hero{max-width:1180px;margin:0 auto;padding:14px 16px 0;}
+:root{--line:#ECE9F1;--wash:#F6F4F8;--r:6px;}
+:root[data-mk="fraganza"]{--line:#EFE7DC;--wash:#F8F4EE;}
+body{background:#fff;font-size:14.5px;}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px;}
+
+/* barra de avisos */
+.aviso{background:var(--wash);color:var(--ink);font-size:12.5px;padding:8px 16px;min-height:34px;display:flex;align-items:center;justify-content:center;}
+.aviso[hidden]{display:none;}
+.aviso span{transition:opacity .35s ease;}
+.aviso span.fuera{opacity:0;}
+
+/* cabecera */
+header.top{background:rgba(255,255,255,.97);border-bottom:1px solid var(--line);}
+.top-in{padding:8px 16px;gap:14px;}
+.brand img{height:42px;}
+:root[data-mk="fraganza"] .brand img{height:48px;}
+.search input{background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:10px 4px 10px 28px;font-size:14px;}
+.search input:focus{outline:none;border-bottom-color:var(--ink);}
+.search svg{left:2px;}
+.bag{background:transparent;width:42px;height:42px;}
+.bag svg{stroke:var(--ink);width:23px;height:23px;}
+.bag .n{background:var(--ink);color:#fff;border:2px solid #fff;top:2px;right:0;min-width:18px;height:18px;font-size:10px;}
+@media(max-width:620px){ .brand img{height:36px;} :root[data-mk="fraganza"] .brand img{height:42px;} }
+
+/* categorías como pestañas */
+.cats{gap:22px;padding:2px 16px 0;}
+.chip{border:0;background:none;border-radius:0;padding:10px 0 11px;font-size:13.5px;font-weight:400;color:var(--soft);border-bottom:2px solid transparent;}
+.chip:hover{color:var(--ink);border-color:transparent;}
+.chip[aria-pressed="true"]{background:none;color:var(--ink);font-weight:500;border-bottom-color:var(--ink);}
+
+/* portada */
+main{scroll-margin-top:110px;}
+.mk-hero{max-width:1180px;margin:0 auto;padding:30px 16px 8px;}
 .mk-hero[hidden]{display:none;}
-.mk-hero-in{position:relative;overflow:hidden;border-radius:22px;background:var(--wash);border:1px solid var(--line);display:grid;grid-template-columns:1fr;gap:14px;padding:18px 16px 16px;}
-.mk-hero-in::before{content:"";position:absolute;inset:auto -30% -60% 30%;height:120%;background:radial-gradient(closest-side,color-mix(in srgb,var(--pink) 22%,transparent),transparent);pointer-events:none;}
-.mk-hero-tx{position:relative;}
-.mk-kicker{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--violet);font-weight:600;margin:0 0 8px;}
-.mk-hero h1{font-size:clamp(26px,7vw,46px);line-height:1.05;margin:0;}
-.mk-hero h1 em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;}
-.mk-sub{color:var(--soft);font-size:14px;margin:8px 0 14px;max-width:44ch;}
-.mk-cta{display:flex;gap:10px;flex-wrap:wrap;}
-.mk-cta .btn{text-decoration:none;display:inline-flex;align-items:center;gap:8px;padding:11px 16px;font-size:14px;}
-.mk-cta .btn.ghost{color:var(--ink);}
-.mk-cta .btn.ghost svg{color:#1FAF55;}
-.mk-cta .btn svg{width:18px;height:18px;}
-.mk-cta .btn.pri{flex:0 0 auto;}
-.mk-cta [hidden]{display:none !important;}
-.mk-hero-ph{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
-.mk-hero-ph:empty{display:none;}
-.mk-hero-ph button{border:0;padding:0;background:#fff;border-radius:14px;overflow:hidden;aspect-ratio:1/1;box-shadow:0 10px 24px -16px rgba(0,0,0,.45);}
-@media(min-width:760px){.mk-hero-ph button{aspect-ratio:4/5;}}
-.mk-hero-ph img{width:100%;height:100%;object-fit:cover;}
+.mk-hero h1{font-family:'Jost',sans-serif;font-weight:300;font-size:clamp(32px,8.6vw,58px);line-height:1.04;letter-spacing:-.02em;max-width:15ch;margin:0;text-wrap:balance;}
+:root[data-mk="fraganza"] .mk-hero h1{font-family:'Cormorant Garamond',serif;font-weight:500;letter-spacing:-.01em;font-size:clamp(36px,10vw,66px);line-height:1;}
+.mk-sub{color:var(--soft);font-size:15px;line-height:1.5;margin:12px 0 0;max-width:38ch;}
+.mk-trend{margin-top:30px;}
+.mk-trend[hidden]{display:none;}
+.mk-trend-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px;}
+.mk-trend-h h2{font-family:'Jost',sans-serif;font-weight:500;font-size:19px;letter-spacing:0;}
+:root[data-mk="fraganza"] .mk-trend-h h2{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:24px;}
+.mk-trend-h a{font-size:13.5px;color:var(--ink);text-underline-offset:4px;}
+.mk-rail{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin:0 -16px;padding:0 16px 4px;scroll-padding:0 16px;}
+.mk-rail::-webkit-scrollbar{display:none;}
+.mk-tc{flex:0 0 42%;scroll-snap-align:start;border:0;background:none;padding:0;text-align:left;color:var(--ink);display:flex;flex-direction:column;justify-content:flex-start;align-self:flex-start;}
+.mk-tc:first-child{flex-basis:70%;}
+.mk-tc .im{aspect-ratio:3/4;background:var(--wash);border-radius:var(--r);overflow:hidden;}
+.mk-tc:first-child .im{aspect-ratio:4/5;}
+.mk-tc img{width:100%;height:100%;object-fit:cover;}
+.mk-tc .nm2{display:block;font-size:13.5px;margin-top:8px;line-height:1.3;}
+.mk-tc .pr2{display:block;font-family:'Jost',sans-serif;font-size:14.5px;font-weight:500;margin-top:1px;}
+.mk-tc:first-child .nm2{font-size:15px;}
 @media(min-width:760px){
-  .mk-hero-in{grid-template-columns:1.15fr 1fr;align-items:center;padding:40px 40px;}
-  .mk-hero-ph{gap:12px;}
-  .mk-sub{font-size:16px;}
-  .mk-hero-ph button:nth-child(2){transform:translateY(-14px);}
+  .mk-hero{padding-top:44px;}
+  .mk-rail{margin:0;padding:0;gap:14px;}
+  .mk-tc{flex-basis:calc(30% - 10px);}
+  .mk-tc:first-child{flex-basis:calc(40% - 10px);}
 }
-.mk-trust{max-width:1180px;margin:12px auto 0;padding:0 16px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;}
-.mk-trust::-webkit-scrollbar{display:none;}
-.mk-trust[hidden]{display:none;}
-.mk-ti{flex-shrink:0;display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:14px;padding:9px 13px;background:#fff;}
-.mk-ti svg,.mk-info svg,.mk-foot svg{width:20px;height:20px;fill:none;stroke:var(--violet);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
-.mk-ti b{display:block;font-size:12.5px;font-weight:600;line-height:1.2;}
-.mk-ti small{display:block;font-size:11.5px;color:var(--soft);line-height:1.2;}
-.tag.mk-tag{background:var(--grad);color:#fff;}
-/* botón flotante de WhatsApp */
-.mk-wa{position:fixed;right:16px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:30;width:56px;height:56px;border-radius:50%;background:#1FAF55;color:#fff;display:grid;place-items:center;box-shadow:0 10px 26px -8px rgba(0,0,0,.45);text-decoration:none;transition:transform .15s;}
-.mk-wa:active{transform:scale(.94);}
-.mk-wa svg{width:30px;height:30px;}
-.mk-wa[hidden],body.lock .mk-wa{display:none;}
+@media(min-width:1000px){
+  .mk-hero:has(.mk-trend:not([hidden])){display:grid;grid-template-columns:minmax(300px,1fr) 2.3fr;gap:56px;align-items:end;}
+  .mk-hero:has(.mk-trend:not([hidden])) .mk-trend{margin-top:0;min-width:0;}
+  .mk-hero h1{font-size:clamp(36px,3.5vw,48px);}
+  :root[data-mk="fraganza"] .mk-hero h1{font-size:clamp(46px,5vw,64px);}
+}
+
+/* catálogo */
+main{padding-top:6px;}
+.count{font-size:13px;margin:26px 0 14px;color:var(--soft);}
+.count:has(.mk-cnt-t){display:flex;align-items:baseline;justify-content:space-between;margin-top:40px;border-top:1px solid var(--line);padding-top:22px;}
+.mk-cnt-t{font-family:'Jost',sans-serif;font-size:19px;font-weight:500;color:var(--ink);}
+:root[data-mk="fraganza"] .mk-cnt-t{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:24px;}
+.grid{gap:30px 10px;}
+@media(min-width:760px){.grid{gap:40px 18px;}}
+.ph{border-radius:var(--r);}
+@media(hover:hover){.card:hover .ph img{transform:scale(1.025);}}
+.card .nm{font-size:13.5px;font-weight:400;margin-top:9px;color:var(--ink);}
+.card .pr{font-family:'Jost',sans-serif;font-size:15px;font-weight:500;margin-top:1px;}
+.card .sz,.card .cl{font-size:12px;}
+.tag{left:8px;top:8px;border-radius:4px;font-size:11.5px;font-weight:500;padding:3px 8px;background:#fff;color:var(--ink);}
+.tag.mk-tag{background:#fff;color:var(--ink);}
+.agotado .tag{background:var(--ink);color:#fff;}
+
+/* botones */
+.btn{border-radius:10px;font-weight:500;}
+.btn.pri{background:var(--ink);box-shadow:none;}
+.btn.pri:hover:not(:disabled){filter:none;opacity:.88;}
+.btn.ghost{border:1px solid var(--line);}
+.btn.dark{background:var(--ink);}
+
 /* ficha de producto */
-.mk-guia{border:0;background:none;padding:0;margin-left:8px;font-size:12.5px;font-weight:600;color:var(--violet);text-decoration:underline;text-underline-offset:3px;display:inline-flex;align-items:center;gap:4px;}
-.mk-guia svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;}
+.sheet-prod{border-radius:18px 18px 0 0;}
+@media(min-width:860px){.sheet-prod{border-radius:16px;}}
+.sh-close{box-shadow:none;border:1px solid var(--line);background:#fff;}
+.info h2{font-family:'Jost',sans-serif;font-weight:400;font-size:25px;letter-spacing:-.01em;}
+:root[data-mk="fraganza"] .info h2{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:30px;}
+.info .precio{font-family:'Jost',sans-serif;font-size:19px;font-weight:500;}
+.opt{border-radius:8px;border-width:1px;font-weight:400;}
+.opt[aria-pressed="true"]{font-weight:500;}
+.gal-th button{border-radius:4px;}
+.gal-th button[aria-current="true"]{border-color:var(--ink);}
+.stock-note.ultimas{color:var(--ink);}
+.mk-guia{border:0;background:none;padding:0;margin-left:10px;font-size:13px;font-weight:400;color:var(--ink);text-decoration:underline;text-underline-offset:3px;display:inline-flex;align-items:center;gap:5px;}
+.mk-guia svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.5;}
 .mk-ask{color:var(--ink);display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:10px;text-decoration:none;font-size:14px;}
-.mk-ask svg{width:19px;height:19px;}
+.mk-ask svg{width:18px;height:18px;color:#1FAF55;}
 .btn.wa.mk-ask{color:#fff;}
-.mk-info{list-style:none;padding:14px 0 0;margin:16px 0 0;border-top:1px solid var(--line);display:grid;gap:10px;}
-.mk-info li{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;color:#4A4755;}
-.mk-info b{color:var(--ink);font-weight:600;}
-.mk-xs{margin-top:22px;}
-.mk-xs h3{font-size:18px;margin-bottom:10px;}
+.btn.wa.mk-ask svg{color:#fff;}
+.mk-info{list-style:none;padding:16px 0 0;margin:18px 0 0;border-top:1px solid var(--line);display:grid;gap:10px;}
+.mk-info li{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;color:var(--soft);}
+.mk-info b{color:var(--ink);font-weight:500;}
+.mk-info svg{width:18px;height:18px;fill:none;stroke:var(--ink);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;margin-top:1px;}
+.mk-xs{margin-top:26px;}
+.mk-xs h3{font-family:'Jost',sans-serif;font-weight:500;font-size:16px;margin-bottom:10px;}
+:root[data-mk="fraganza"] .mk-xs h3{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:21px;}
 .mk-xs-row{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;}
 .mk-xs-row::-webkit-scrollbar{display:none;}
-.mk-xs-it{flex:0 0 118px;border:0;background:none;padding:0;text-align:left;}
-.mk-xs-it .im{aspect-ratio:4/5;border-radius:12px;overflow:hidden;background:var(--wash);}
-.mk-xs-it img{width:100%;height:100%;object-fit:contain;}
+.mk-xs-it{flex:0 0 112px;border:0;background:none;padding:0;text-align:left;color:var(--ink);display:flex;flex-direction:column;justify-content:flex-start;align-self:flex-start;}
+.mk-xs-it .im{aspect-ratio:3/4;border-radius:var(--r);overflow:hidden;background:var(--wash);}
+.mk-xs-it img{width:100%;height:100%;object-fit:cover;}
 .mk-xs-it span{display:block;font-size:12.5px;margin-top:6px;line-height:1.25;}
-.mk-xs-it strong{display:block;font-family:'Jost',sans-serif;font-weight:500;font-size:14px;}
-/* guía de tallas */
-.mk-modal{position:fixed;inset:0;z-index:70;background:rgba(27,26,33,.5);display:none;align-items:flex-end;justify-content:center;}
-.mk-modal.on{display:flex;}
-.mk-modal-in{background:#fff;width:min(520px,100%);max-height:88dvh;overflow:auto;border-radius:22px 22px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom));position:relative;}
-@media(min-width:620px){.mk-modal{align-items:center;}.mk-modal-in{border-radius:22px;}}
-.mk-modal h3{font-size:22px;margin-bottom:4px;}
-.mk-modal p{font-size:13.5px;color:var(--soft);margin:6px 0 12px;}
-.mk-modal table{width:100%;border-collapse:collapse;font-size:14px;}
-.mk-modal th,.mk-modal td{padding:10px 6px;text-align:center;border-bottom:1px solid var(--line);}
-.mk-modal th{font-size:12px;color:var(--soft);font-weight:600;}
-.mk-modal td:first-child{font-weight:700;}
-.mk-modal .x{position:absolute;top:12px;right:12px;width:36px;height:36px;border-radius:50%;border:0;background:var(--wash);font-size:20px;}
-/* bolsa: tienda hermana */
-.mk-otra{display:block;margin-top:18px;border-radius:14px;padding:14px 16px;background:var(--wash);border:1px dashed var(--line);text-decoration:none;color:var(--ink);}
-.mk-otra b{display:block;font-size:14px;}
+.mk-xs-it strong{display:block;font-family:'Jost',sans-serif;font-weight:500;font-size:13.5px;}
+
+/* bolsa y confirmación */
+.ln .im{border-radius:4px;}
+.done .ck{background:var(--ink);}
+.bag-h h2{font-family:'Jost',sans-serif;font-weight:400;}
+.mk-otra{display:block;margin-top:20px;padding:14px 0 0;border-top:1px solid var(--line);text-decoration:none;color:var(--ink);}
+.mk-otra b{display:block;font-size:14px;font-weight:500;}
 .mk-otra small{display:block;color:var(--soft);font-size:12.5px;margin:2px 0 6px;}
-.mk-otra span{font-size:13px;font-weight:600;color:var(--violet);}
+.mk-otra span{font-size:13.5px;text-decoration:underline;text-underline-offset:3px;}
+
+/* WhatsApp flotante */
+.mk-wa{position:fixed;right:16px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:30;width:52px;height:52px;border-radius:50%;background:#1FAF55;color:#fff;display:grid;place-items:center;box-shadow:0 6px 18px -6px rgba(0,0,0,.35);text-decoration:none;}
+.mk-wa:active{transform:scale(.95);}
+.mk-wa svg{width:28px;height:28px;}
+.mk-wa[hidden],body.lock .mk-wa{display:none;}
+
+/* guía de tallas */
+.mk-modal{position:fixed;inset:0;z-index:70;background:rgba(20,18,24,.45);display:none;align-items:flex-end;justify-content:center;}
+.mk-modal.on{display:flex;}
+.mk-modal-in{background:#fff;width:min(520px,100%);max-height:88dvh;overflow:auto;border-radius:18px 18px 0 0;padding:24px 20px calc(22px + env(safe-area-inset-bottom));position:relative;}
+@media(min-width:620px){.mk-modal{align-items:center;}.mk-modal-in{border-radius:16px;}}
+.mk-modal h3{font-family:'Jost',sans-serif;font-weight:400;font-size:24px;}
+.mk-modal p{font-size:13.5px;color:var(--soft);margin:8px 0 14px;}
+.mk-modal table{width:100%;border-collapse:collapse;font-size:14px;}
+.mk-modal th,.mk-modal td{padding:11px 6px;text-align:center;border-bottom:1px solid var(--line);}
+.mk-modal th{font-size:12.5px;color:var(--soft);font-weight:500;}
+.mk-modal td:first-child{font-weight:600;}
+.mk-modal .x{position:absolute;top:12px;right:12px;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:#fff;font-size:20px;}
+
 /* pie de página */
-footer.mk-foot{text-align:left;padding:34px 16px calc(96px + env(safe-area-inset-bottom));background:var(--wash);color:var(--ink);}
-.mk-foot-in{max-width:1180px;margin:0 auto;display:grid;gap:26px;grid-template-columns:1fr;}
-@media(min-width:760px){.mk-foot-in{grid-template-columns:1.2fr 1fr 1fr;}}
-.mk-foot img{height:46px;margin:0 0 10px;}
-.mk-foot h4{font-family:'Jost',sans-serif;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--soft);font-weight:600;margin:0 0 10px;}
-.mk-foot p{margin:0 0 8px;font-size:14px;line-height:1.5;}
-.mk-foot .row{display:flex;gap:9px;align-items:flex-start;margin-bottom:9px;font-size:14px;}
-.mk-foot a{color:var(--ink);}
-.mk-redes{display:flex;gap:8px;flex-wrap:wrap;}
-.mk-redes a{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;text-decoration:none;}
-.mk-pagos{display:flex;flex-wrap:wrap;gap:6px;}
-.mk-pagos span{background:#fff;border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:12px;}
-.mk-copy{max-width:1180px;margin:26px auto 0;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--soft);}
+footer.mk-foot{text-align:left;padding:40px 16px calc(100px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--line);color:var(--ink);margin-top:20px;}
+.mk-foot-in{max-width:1180px;margin:0 auto;display:grid;gap:30px;grid-template-columns:1fr;}
+@media(min-width:760px){.mk-foot-in{grid-template-columns:1.3fr 1fr 1fr;}}
+.mk-foot img{height:40px;margin:0 0 12px;}
+.mk-foot h4{font-family:'Jost',sans-serif;font-size:15px;font-weight:500;margin:0 0 10px;}
+.mk-foot p{margin:0 0 7px;font-size:14px;line-height:1.55;color:var(--soft);}
+.mk-foot a{color:var(--ink);text-underline-offset:3px;}
+.mk-redes{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:14px;}
+.mk-copy{max-width:1180px;margin:30px auto 0;font-size:12.5px;color:var(--soft);}
+.mk-foot .mk-otra{margin-top:16px;}
 `;
 function estilos(){ if ($('mk-css')) return; const s = document.createElement('style'); s.id = 'mk-css'; s.textContent = CSS; document.head.appendChild(s); }
 
-/* ---------- portada ---------- */
-function portadaFotos(){
-  const el = $('mk-hero-ph'); if (!el || el.dataset.ok) return;
-  const cand = PRODS.filter(p => p.thumb && stock(p) > 0)
-    .sort((a, b) => (b.nFotos || 0) - (a.nFotos || 0) || (b.precio || 0) - (a.precio || 0));
-  // variedad: una por categoría primero
-  const vistas = new Set(), elegidas = [];
-  cand.forEach(p => { const c = catLabel(p.categoria); if (elegidas.length < 3 && !vistas.has(c)){ vistas.add(c); elegidas.push(p); } });
-  cand.forEach(p => { if (elegidas.length < 3 && !elegidas.includes(p)) elegidas.push(p); });
-  if (elegidas.length < 3) return;
-  el.innerHTML = elegidas.map(p => `<button type="button" data-mk-open="${esc(p.id)}" aria-label="${esc(nombre(p.nombre))}"><img src="${esc(p.thumb)}" alt="${esc(nombre(p.nombre))}"></button>`).join('');
-  el.dataset.ok = '1';
+/* ---------- portada: prendas en tendencia ---------- */
+// Se eligen en el sistema (Tienda online → ☆ Tendencia). Si no hay ninguna marcada, se escogen solas.
+let firmaTend = '';
+function enTendencia(){
+  const marcadas = PRODS.filter(p => p.tendencia > 0 && stock(p) > 0 && p.thumb).sort((a, b) => b.tendencia - a.tendencia);
+  if (marcadas.length >= 2) return marcadas.slice(0, 8);
+  const cand = PRODS.filter(p => p.thumb && stock(p) > 0 && !marcadas.includes(p))
+    .sort((a, b) => (b.nFotos || 0) - (a.nFotos || 0) || (b.publicadoEn || 0) - (a.publicadoEn || 0) || (b.precio || 0) - (a.precio || 0));
+  const vistas = new Set(), out = [...marcadas];
+  cand.forEach(p => { const c = catLabel(p.categoria); if (out.length < 6 && !vistas.has(c)){ vistas.add(c); out.push(p); } });
+  cand.forEach(p => { if (out.length < 6 && !out.includes(p)) out.push(p); });
+  return out;
+}
+function pintarTendencia(){
+  const box = $('mk-trend'), row = $('mk-rail'); if (!box || !row) return;
+  const lista = enTendencia();
+  const firma = lista.map(p => p.id + ':' + p.precio + ':' + (p.thumb || '').length).join('|');
+  if (firma === firmaTend) return;
+  firmaTend = firma;
+  box.hidden = lista.length < 2;
+  row.innerHTML = lista.map(p => `<button type="button" class="mk-tc" data-mk-open="${esc(p.id)}"><div class="im"><img src="${esc(p.thumb)}" alt="${esc(nombre(p.nombre))}"></div><span class="nm2">${esc(nombre(p.nombre))}</span><span class="pr2">${fmt(p.precio)}</span></button>`).join('');
 }
 function despuesRender(estado){
-  const h = $('mk-hero'), t = $('mk-trust');
+  const h = $('mk-hero');
   const inicio = estado.categoria === 'Todo' && !String(estado.texto || '').trim();
   if (h) h.hidden = !inicio;
-  if (t) t.hidden = !inicio || !t.innerHTML;
-  portadaFotos();
-  document.querySelectorAll('#grid .card[data-id] .ph img').forEach(img => {
-    if (!img.alt){ const c = img.closest('.card'); const n = c && c.querySelector('.nm'); if (n) img.alt = n.textContent; }
-  });
+  pintarTendencia();
+  const cnt = $('count');
+  if (cnt && inicio && cnt.textContent && !cnt.querySelector('.mk-cnt-t')) cnt.innerHTML = `<span class="mk-cnt-t">Toda la colección</span><span>${esc(cnt.textContent)}</span>`;
+}
+
+/* ---------- barra de avisos (rota: cuotas, envíos, recogida...) ---------- */
+let avisoT = null;
+function mensajesAviso(){
+  const m = [];
+  const md = (CFG.medios || []).map(x => x.id);
+  if (CFG.aviso) m.push(CFG.aviso);
+  if (md.includes('addi') || md.includes('sistecredito'))
+    m.push('Paga a cuotas con ' + [md.includes('addi') ? 'Addi' : '', md.includes('sistecredito') ? 'Sistecrédito' : ''].filter(Boolean).join(' o '));
+  if (CFG.envioActivo) m.push('Envíos a domicilio' + (CFG.tiempoEnvio ? ' en ' + CFG.tiempoEnvio : ''));
+  if (CFG.retiroEnTienda) m.push('Recoge tu pedido en el Centro Comercial Plaza Malambo');
+  if (md.includes('contraentrega')) m.push('También puedes pagar contra entrega');
+  return m;
+}
+function barraAvisos(){
+  const av = $('aviso'); if (!av) return;
+  const m = mensajesAviso();
+  clearInterval(avisoT);
+  if (!m.length){ av.hidden = true; return; }
+  av.hidden = false;
+  let i = 0;
+  av.innerHTML = `<span>${esc(m[0])}</span>`;
+  if (m.length < 2 || quieto()) return;
+  avisoT = setInterval(() => {
+    const sp = av.querySelector('span'); if (!sp) return;
+    sp.classList.add('fuera');
+    setTimeout(() => { i = (i + 1) % m.length; sp.textContent = m[i]; sp.classList.remove('fuera'); }, 350);
+  }, 4200);
 }
 
 /* ---------- configuración de la tienda (WhatsApp, pagos, envíos) ---------- */
-function confianza(){
-  const it = [];
-  const medios = (CFG.medios || []).map(m => m.id);
-  if (CFG.envioActivo) it.push(['envio', 'Envíos a domicilio', CFG.tiempoEnvio || 'Te confirmamos costo y tiempo']);
-  if (CFG.retiroEnTienda) it.push(['tienda', 'Recoge en tienda', CFG.direccionTienda || 'Sin costo']);
-  if (medios.includes('addi') || medios.includes('sistecredito'))
-    it.push(['cuotas', 'Paga a cuotas', [medios.includes('addi') ? 'Addi' : '', medios.includes('sistecredito') ? 'Sistecrédito' : ''].filter(Boolean).join(' o ')]);
-  if (medios.includes('contraentrega')) it.push(['efectivo', 'Paga contra entrega', 'En efectivo al recibir']);
-  else if (medios.includes('transferencia')) it.push(['efectivo', 'Nequi y transferencia', 'Daviplata y más']);
-  if (CFG.whatsapp) it.push(['chat', 'Asesoría por WhatsApp', 'Te ayudamos a elegir']);
-  if (M.politicaCambios) it.push(['cambio', 'Cambios fáciles', 'Mira las condiciones abajo']);
-  return it;
-}
 function config(cfg){
   CFG = cfg || {};
+  // datos fijos de las dos tiendas (tienen prioridad sobre lo que llegue del sistema)
+  if (M.whatsapp){ let n = String(M.whatsapp).replace(/\D/g, ''); if (/^3\d{9}$/.test(n)) n = '57' + n; CFG.whatsapp = n; }
+  if (M.direccion) CFG.direccionTienda = M.direccion;
   estilos();
-  // franja de confianza
-  const t = $('mk-trust');
-  if (t){ t.innerHTML = confianza().map(([i, b, s]) => `<div class="mk-ti">${ico(i)}<div><b>${esc(b)}</b><small>${esc(s)}</small></div></div>`).join(''); }
-  // botones de WhatsApp
+  barraAvisos();
   const wa = waLink(TEXTOS.waSaludo + ' 😊');
-  document.querySelectorAll('.mk-wa-link').forEach(a => { if (wa){ a.href = wa; a.hidden = false; } else a.hidden = true; });
   let f = $('mk-wa');
   if (!f){ f = document.createElement('a'); f.id = 'mk-wa'; f.className = 'mk-wa'; f.target = '_blank'; f.rel = 'noopener'; f.setAttribute('aria-label', 'Escríbenos por WhatsApp'); f.innerHTML = WA_SVG; f.addEventListener('click', () => evento('contacto', {})); document.body.appendChild(f); }
   f.hidden = !wa; if (wa) f.href = wa;
@@ -305,30 +400,31 @@ function pie(){
   const ft = document.querySelector('footer'); if (!ft) return;
   ft.classList.add('mk-foot');
   const logo = (typeof LOGO !== 'undefined' && LOGO) || '';
-  const dir = CFG.direccionTienda || 'C.C. Plaza Malambo';
+  const dir = CFG.direccionTienda || 'Centro Comercial Plaza Malambo, Malambo - Atlántico';
   const redes = [
     TEXTOS.instagram ? `<a href="https://instagram.com/${esc(TEXTOS.instagram.replace(/^@/, ''))}" target="_blank" rel="noopener">Instagram</a>` : '',
     M.tiktok ? `<a href="https://www.tiktok.com/@${esc(M.tiktok.replace(/^@/, ''))}" target="_blank" rel="noopener">TikTok</a>` : '',
     M.facebook ? `<a href="${esc(/^https?:/.test(M.facebook) ? M.facebook : 'https://facebook.com/' + M.facebook)}" target="_blank" rel="noopener">Facebook</a>` : '',
     CFG.whatsapp ? `<a href="${esc(waLink(TEXTOS.waSaludo))}" target="_blank" rel="noopener">WhatsApp</a>` : ''
   ].filter(Boolean).join('');
-  const pagos = (CFG.medios || []).map(m => `<span>${esc(m.label)}</span>`).join('');
+  const tel = CFG.whatsapp ? 'WhatsApp ' + String(CFG.whatsapp).replace(/^57(\d{3})(\d{3})(\d{4})$/, '$1 $2 $3') : '';
+  const pagos = (CFG.medios || []).map(m => esc(m.label)).join('<br>');
   ft.innerHTML = `<div class="mk-foot-in">
     <div>${logo ? `<img src="${logo}" alt="${esc(TEXTOS.marca)}">` : ''}
-      <p style="color:var(--soft)">${TID === 'regia' ? 'Ropa deportiva para mujer que estiliza tu figura, para entrenar y para el día a día.' : 'Perfumes para él y para ella, con asesoría para encontrar tu aroma ideal.'}</p>
+      <p>${esc(TEXTOS.pie)}</p>
       ${redes ? `<div class="mk-redes">${redes}</div>` : ''}</div>
     <div><h4>Visítanos</h4>
-      <div class="row">${ico('pin')}<span>${esc(dir)}<br><a href="${esc(M.mapsUrl)}" target="_blank" rel="noopener">Cómo llegar</a></span></div>
-      ${M.horario ? `<div class="row">${ico('reloj')}<span>${esc(M.horario)}</span></div>` : ''}
-      ${CFG.whatsapp ? `<div class="row">${ico('chat')}<span><a href="${esc(waLink(TEXTOS.waSaludo))}" target="_blank" rel="noopener">+${esc(String(CFG.whatsapp).replace(/^(\d{2})(\d{3})(\d{3})(\d{4})$/, '$1 $2 $3 $4'))}</a></span></div>` : ''}
+      <p>${esc(dir)}<br><a href="${esc(M.mapsUrl)}" target="_blank" rel="noopener">Cómo llegar</a></p>
+      ${M.horario ? `<p>${esc(M.horario)}</p>` : ''}
+      ${tel ? `<p><a href="${esc(waLink(TEXTOS.waSaludo))}" target="_blank" rel="noopener">${esc(tel)}</a></p>` : ''}
     </div>
     <div><h4>Pagos y envíos</h4>
-      ${pagos ? `<div class="mk-pagos">${pagos}</div>` : ''}
-      ${CFG.envioActivo ? `<p style="margin-top:12px">Envíos a domicilio${CFG.tiempoEnvio ? ' · ' + esc(CFG.tiempoEnvio) : ''}.</p>` : ''}
-      ${M.politicaCambios ? `<p><b>Cambios:</b> ${esc(M.politicaCambios)}</p>` : ''}
-      <a class="mk-otra" href="${TEXTOS.otra.url}"><b>${esc(TEXTOS.otra.titulo)}</b><small>${esc(TEXTOS.otra.texto)}</small><span>${esc(TEXTOS.otra.cta)} →</span></a>
+      ${pagos ? `<p>${pagos}</p>` : ''}
+      ${CFG.envioActivo ? `<p>Envíos a domicilio${CFG.tiempoEnvio ? ' en ' + esc(CFG.tiempoEnvio) : ''}.</p>` : ''}
+      ${M.politicaCambios ? `<p>Cambios: ${esc(M.politicaCambios)}</p>` : ''}
+      <a class="mk-otra" href="${TEXTOS.otra.url}"><b>${esc(TEXTOS.otra.titulo)}</b><small>${esc(TEXTOS.otra.texto)}</small><span>${esc(TEXTOS.otra.cta)}</span></a>
     </div></div>
-    <div class="mk-copy">© ${new Date().getFullYear()} ${esc(TEXTOS.marca)} · Malambo, Atlántico</div>`;
+    <div class="mk-copy">© ${new Date().getFullYear()} ${esc(TEXTOS.marca)}</div>`;
 }
 
 /* ---------- ficha de producto ---------- */
@@ -336,41 +432,36 @@ function recomendados(p){
   const cp = catLabel(p.categoria);
   const sem = [...String(p.id)].reduce((s, c) => (s * 31 + c.charCodeAt(0)) >>> 0, 7);
   return PRODS.filter(x => x.id !== p.id && x.thumb && stock(x) > 0)
-    .map(x => ({ x, s: (TID === 'regia' ? (catLabel(x.categoria) !== cp ? 2 : 0) : (catLabel(x.categoria) === cp ? 1 : 0)) + ((sem ^ [...String(x.id)].reduce((s, c) => (s * 33 + c.charCodeAt(0)) >>> 0, 5)) % 1000) / 1000 }))
+    .map(x => ({ x, s: (TID === 'regia' ? (catLabel(x.categoria) !== cp ? 2 : 0) : (catLabel(x.categoria) === cp ? 1 : 0)) + (x.tendencia > 0 ? 1 : 0) + ((sem ^ [...String(x.id)].reduce((s, c) => (s * 33 + c.charCodeAt(0)) >>> 0, 5)) % 1000) / 1000 }))
     .sort((a, b) => b.s - a.s).slice(0, 8).map(o => o.x);
 }
 function enProducto(p, sh, sel){
   if (!p || !sh) return;
   const info = sh.querySelector('.info'); if (!info) return;
   sel = sel || {};
-  // título con nombre ordenado
   const h = info.querySelector('h2'); if (h) h.textContent = nombre(p.nombre);
   const gi = sh.querySelector('.gal-main img'); if (gi) gi.alt = nombre(p.nombre);
-  // guía de tallas junto a "Talla"
   if (TEXTOS.guiaTallas){
     info.querySelectorAll('.opt-t').forEach(o => { if (/^Talla/.test(o.textContent) && !o.querySelector('.mk-guia')) o.insertAdjacentHTML('beforeend', `<button type="button" class="mk-guia">${ico('regla')}Guía de tallas</button>`); });
   }
-  // preguntar por WhatsApp
   const share = info.querySelector('#btn-share');
   const detalle = [sel.color && sel.color !== 'Único' ? sel.color : '', sel.talla && sel.talla !== 'Única' ? 'talla ' + sel.talla : ''].filter(Boolean).join(', ');
   const wa = waLink(`Hola, me interesa ${nombre(p.nombre)}${detalle ? ' (' + detalle + ')' : ''} de ${fmt(p.precio)}. ¿Me das más información?\n${location.origin + location.pathname}?p=${encodeURIComponent(p.id)}`);
   if (wa && share){
     share.insertAdjacentHTML('beforebegin', `<a class="btn ghost mk-ask" href="${esc(wa)}" target="_blank" rel="noopener" data-mk-ev="contacto">${WA_SVG}Preguntar por WhatsApp</a>`);
   }
-  // bloque de confianza
   const li = [];
   if (!p.descripcion){
     li.push(TID === 'regia'
-      ? ['chat', '<b>¿Dudas con la talla?</b> Escríbenos y te ayudamos a elegir la ideal para ti.']
+      ? ['chat', '<b>¿Dudas con la talla?</b> Escríbenos y te ayudamos a elegir la ideal.']
       : ['chat', '<b>¿Quieres saber cómo huele?</b> Escríbenos y te contamos sus notas y su duración.']);
   }
-  if (CFG.envioActivo) li.push(['envio', '<b>Envío a domicilio</b>' + (CFG.tiempoEnvio ? ' · ' + esc(CFG.tiempoEnvio) : '')]);
-  if (CFG.retiroEnTienda) li.push(['tienda', '<b>Recoge en tienda</b> · ' + esc(CFG.direccionTienda || 'C.C. Plaza Malambo')]);
+  if (CFG.envioActivo) li.push(['envio', '<b>Envío a domicilio</b>' + (CFG.tiempoEnvio ? ' en ' + esc(CFG.tiempoEnvio) : '')]);
+  if (CFG.retiroEnTienda) li.push(['tienda', '<b>Recoge en tienda</b>, ' + esc(CFG.direccionTienda || 'Centro Comercial Plaza Malambo')]);
   const md = (CFG.medios || []).map(m => m.id);
   if (md.includes('addi') || md.includes('sistecredito')) li.push(['cuotas', '<b>Paga a cuotas</b> con ' + [md.includes('addi') ? 'Addi' : '', md.includes('sistecredito') ? 'Sistecrédito' : ''].filter(Boolean).join(' o ')]);
   if (M.politicaCambios && TID === 'regia') li.push(['cambio', '<b>Cambios:</b> ' + esc(M.politicaCambios)]);
   if (li.length) info.insertAdjacentHTML('beforeend', `<ul class="mk-info">${li.map(([i, t]) => `<li>${ico(i)}<span>${t}</span></li>`).join('')}</ul>`);
-  // venta cruzada
   const rec = recomendados(p);
   if (rec.length >= 2){
     info.insertAdjacentHTML('beforeend', `<div class="mk-xs"><h3>${esc(TEXTOS.cruzado)}</h3><div class="mk-xs-row">${rec.map(x => `<button type="button" class="mk-xs-it" data-mk-open="${esc(x.id)}"><div class="im"><img src="${esc(x.thumb)}" alt="${esc(nombre(x.nombre))}" loading="lazy"></div><span>${esc(nombre(x.nombre))}</span><strong>${fmt(x.precio)}</strong></button>`).join('')}</div></div>`);
@@ -380,7 +471,7 @@ function enProducto(p, sh, sel){
 /* ---------- bolsa ---------- */
 function enBolsa(sh){
   const b = sh && sh.querySelector('.bag-b'); if (!b || !b.querySelector('.ln')) return;
-  b.insertAdjacentHTML('beforeend', `<a class="mk-otra" href="${TEXTOS.otra.url}"><b>${esc(TEXTOS.otra.titulo)}</b><small>${esc(TEXTOS.otra.texto)} Tu bolsa de esta tienda queda guardada.</small><span>${esc(TEXTOS.otra.cta)} →</span></a>`);
+  b.insertAdjacentHTML('beforeend', `<a class="mk-otra" href="${TEXTOS.otra.url}"><b>${esc(TEXTOS.otra.titulo)}</b><small>${esc(TEXTOS.otra.texto)}</small><span>${esc(TEXTOS.otra.cta)}</span></a>`);
 }
 
 /* ---------- guía de tallas ---------- */
