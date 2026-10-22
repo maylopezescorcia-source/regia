@@ -215,6 +215,7 @@
 
   .grid{display:grid;gap:16px;}
   .grid-4{grid-template-columns:repeat(4,1fr);}
+  .grid-4.cr-kpis{grid-template-columns:repeat(auto-fit,minmax(180px,1fr));}
   .grid-3{grid-template-columns:repeat(3,1fr);}
   .grid-2{grid-template-columns:1.3fr .9fr;}
   @media(max-width:1000px){.grid-4{grid-template-columns:repeat(2,1fr);} .grid-2{grid-template-columns:1fr;}}
@@ -588,7 +589,7 @@
         <div class="field">
           <label>Método de pago</label>
           <select id="fac-metodo" onchange="cambioMetodoFacturar()">
-            <option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Mixto</option><option>Sistecrédito</option><option>Addi</option>
+            <option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Mixto</option><option>Sistecrédito</option><option>Addi</option><option>Inter Rapidísimo</option>
           </select>
         </div>
         <div class="field" id="fac-mixto-split" style="display:none;background:var(--surface-2);padding:10px;border-radius:8px;">
@@ -600,9 +601,10 @@
           <div style="font-size:12px;margin-top:6px;" id="fac-mixto-estado"></div>
         </div>
         <div class="field" id="fac-credito-box" style="display:none;background:var(--surface-2);padding:10px;border-radius:8px;">
-          <label>Comisión de <span id="fac-credito-nombre">la financiera</span> (%)</label>
+          <div id="fac-com-wrap"><label>Comisión de <span id="fac-credito-nombre">la financiera</span> (%)</label>
           <input type="number" id="fac-comision-pct" min="0" max="100" step="0.01" oninput="renderCarrito()">
-          <div style="font-size:11.5px;color:var(--ink-soft);margin-top:4px;">Se suma al valor de la compra. Puedes cambiarla solo para esta venta. Queda registrado el crédito para cobrarle a la financiera.</div>
+          <div style="font-size:11.5px;color:var(--ink-soft);margin-top:4px;">Se suma al valor de la compra. Puedes cambiarla solo para esta venta. Queda registrado el crédito para cobrarle a la financiera.</div></div>
+          <div id="fac-inter-nota" style="display:none;font-size:12.5px;line-height:1.45;"><b>Envío contra entrega con Inter Rapidísimo.</b> La venta queda en <b>Créditos</b> como cuenta por cobrar a Inter Rapidísimo, que paga hasta 7 días después de entregar el paquete. No entra a la caja de hoy.</div>
         </div>
         <div class="field" id="fac-vendedor-field" style="display:none;">
           <label>Vendedor</label>
@@ -656,8 +658,9 @@
       <div class="card"><h3>Mixto (total)</h3><div class="kpi indigo" style="font-size:19px;" id="cc-mixto">$0</div></div>
     </div>
     <div class="grid grid-4" style="margin-bottom:14px;">
-      <div class="card" style="grid-column:span 2;"><h3>Sistecrédito</h3><div class="kpi indigo" style="font-size:19px;" id="cc-sistecredito">$0</div><div class="kpi-sub">No es efectivo: queda por cobrar a la financiera</div></div>
-      <div class="card" style="grid-column:span 2;"><h3>Addi</h3><div class="kpi indigo" style="font-size:19px;" id="cc-addi">$0</div><div class="kpi-sub">No es efectivo: queda por cobrar a la financiera</div></div>
+      <div class="card"><h3>Sistecrédito</h3><div class="kpi indigo" style="font-size:19px;" id="cc-sistecredito">$0</div><div class="kpi-sub">No es efectivo: queda por cobrar a la financiera</div></div>
+      <div class="card"><h3>Addi</h3><div class="kpi indigo" style="font-size:19px;" id="cc-addi">$0</div><div class="kpi-sub">No es efectivo: queda por cobrar a la financiera</div></div>
+      <div class="card" style="grid-column:span 2;"><h3>Inter Rapidísimo (contra entrega)</h3><div class="kpi indigo" style="font-size:19px;" id="cc-inter">$0</div><div class="kpi-sub">No es efectivo: la transportadora te paga hasta 7 días después</div></div>
     </div>
     <div class="card" style="margin-bottom:18px;">
       <h3>Ventas totales del día</h3>
@@ -771,22 +774,23 @@
   <!-- ================= CRÉDITOS (Sistecrédito / Addi) ================= -->
   <div class="view" id="view-creditos">
     <div class="view-head">
-      <div><h1>Créditos — Sistecrédito y Addi</h1><p>Ventas financiadas, días transcurridos y lo que cada financiera te debe.</p></div>
+      <div><h1>Créditos — Sistecrédito, Addi e Inter Rapidísimo</h1><p>Ventas financiadas y envíos contra entrega: días transcurridos y lo que cada entidad te debe.</p></div>
       <div style="display:flex;gap:8px;">
         <button class="btn ghost" onclick="exportarCreditosExcel()">Excel</button>
         <button class="btn ghost" onclick="exportarCreditosPDF()">PDF</button>
       </div>
     </div>
     <hr class="stitch head-stitch">
-    <div class="grid grid-4" style="margin-bottom:18px;">
+    <div class="grid grid-4 cr-kpis" style="margin-bottom:18px;">
       <div class="card"><h3>Sistecrédito te debe</h3><div class="kpi indigo" style="font-size:20px;" id="cr-debe-sistecredito">$0</div><div class="kpi-sub" id="cr-n-sistecredito"></div></div>
       <div class="card"><h3>Addi te debe</h3><div class="kpi indigo" style="font-size:20px;" id="cr-debe-addi">$0</div><div class="kpi-sub" id="cr-n-addi"></div></div>
+      <div class="card"><h3>Inter Rapidísimo te debe</h3><div class="kpi indigo" style="font-size:20px;" id="cr-debe-inter">$0</div><div class="kpi-sub" id="cr-n-inter"></div></div>
       <div class="card"><h3>Total por cobrar</h3><div class="kpi gold" style="font-size:20px;" id="cr-debe-total">$0</div><div class="kpi-sub">neto: lo facturado menos la comisión de la financiera</div></div>
       <div class="card"><h3>Crédito más antiguo</h3><div class="kpi danger" style="font-size:20px;" id="cr-mas-antiguo">—</div><div class="kpi-sub">días sin cobrar</div></div>
     </div>
     <div class="toolbar">
-      <div class="field"><label>Financiera</label>
-        <select id="cr-filtro-fin" onchange="renderCreditos()"><option value="">Todas</option><option>Sistecrédito</option><option>Addi</option></select>
+      <div class="field"><label>Entidad</label>
+        <select id="cr-filtro-fin" onchange="renderCreditos()"><option value="">Todas</option><option>Sistecrédito</option><option>Addi</option><option>Inter Rapidísimo</option></select>
       </div>
       <div class="field"><label>Estado</label>
         <select id="cr-filtro-estado" onchange="renderCreditos()"><option value="pendiente">Pendientes de cobro</option><option value="pagado">Cobrados</option><option value="">Todos</option></select>
@@ -795,10 +799,10 @@
     </div>
     <div class="card">
       <table>
-        <thead><tr><th>Venta</th><th>Fecha</th><th>Cliente</th><th>Financiera</th><th class="right">Facturado</th><th class="right">Comisión</th><th class="right">Neto a recibir</th><th class="center">Días</th><th>Estado</th><th></th></tr></thead>
+        <thead><tr><th>Venta</th><th>Fecha</th><th>Cliente</th><th>Entidad</th><th class="right">Facturado</th><th class="right">Comisión</th><th class="right">Neto a recibir</th><th class="center">Días</th><th>Estado</th><th></th></tr></thead>
         <tbody id="tbl-creditos"></tbody>
       </table>
-      <p style="font-size:11.5px;color:var(--ink-soft);margin-top:10px;">Días: verde hasta 15, amarillo de 16 a 30, rojo más de 30 días sin cobrar. En créditos ya cobrados, los días son lo que tardó el pago.</p>
+      <p style="font-size:11.5px;color:var(--ink-soft);margin-top:10px;">Días: verde hasta 15, amarillo de 16 a 30, rojo más de 30 días sin cobrar. <b>Inter Rapidísimo</b>: verde hasta 7 días; después de 7 días sale <b>Vencido</b> y conviene reclamarle a la transportadora. En los ya cobrados, los días son lo que tardó el pago.</p>
     </div>
   </div>
 
@@ -2032,7 +2036,7 @@
       <div class="field"><label>Dirección</label><input type="text" id="ev-direccion"></div>
     </div>
     <div class="field"><label>Método de pago</label>
-      <select id="ev-metodo" onchange="cambioMetodoEdicion()"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Mixto</option><option>Sistecrédito</option><option>Addi</option></select>
+      <select id="ev-metodo" onchange="cambioMetodoEdicion()"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta</option><option>Mixto</option><option>Sistecrédito</option><option>Addi</option><option>Inter Rapidísimo</option></select>
     </div>
     <div class="field" id="ev-mixto-split" style="display:none;background:var(--surface-2);padding:10px;border-radius:8px;">
       <label>Desglose del pago mixto</label>
@@ -2148,6 +2152,7 @@
     <div class="kpi-sub" id="dc-mixto-detalle" style="text-align:right;"></div>
     <div class="tot-line"><span>Ventas con Sistecrédito (por cobrar)</span><span class="num" id="dc-sistecredito">$0</span></div>
     <div class="tot-line"><span>Ventas con Addi (por cobrar)</span><span class="num" id="dc-addi">$0</span></div>
+    <div class="tot-line"><span>Contra entrega Inter Rapidísimo (por cobrar)</span><span class="num" id="dc-inter">$0</span></div>
     <div class="tot-line big"><span>Total ventas</span><span class="num" id="dc-total-ventas">$0</span></div>
     <hr class="stitch" style="margin:12px 0;">
     <div class="tot-line"><span>Base de caja</span><span class="num" id="dc-base">$0</span></div>
@@ -2178,7 +2183,7 @@
     <div class="tot-line big"><span>Neto a recibir</span><span class="num" id="cob-neto">$0</span></div>
     <div class="field" style="margin-top:12px;"><label>¿Quién pagó?</label>
       <select id="cob-pagador" onchange="cambioPagadorCobro()">
-        <option value="financiera">Pagó la financiera (Sistecrédito / Addi)</option>
+        <option value="financiera" id="cob-op-fin">Pagó la financiera (Sistecrédito / Addi)</option>
         <option value="cliente">Pagó el cliente directamente</option>
       </select>
     </div>
@@ -2403,7 +2408,7 @@ document.addEventListener('DOMContentLoaded', ()=>{ if(!tabActiva) pantallaOtraT
 if(!tabActiva && document.body) setTimeout(pantallaOtraTab, 0);
 
 let DB = cargarDB();
-const APP_VERSION='2026-10-21.3';
+const APP_VERSION='2026-10-22.2';
 document.addEventListener('DOMContentLoaded',()=>{ const el=document.getElementById('foot-version'); if(el) el.textContent='Versión '+APP_VERSION; });
 let firebaseApp=null, firestoreRef=null, syncStoreCode=null, syncActivo=false, aplicandoSnapshotRemoto=false;
 
@@ -2653,12 +2658,14 @@ function fechaISOLocal(d){
 }
 function hoyISO(){ return fechaISOLocal(new Date()); }
 /* ---- Créditos con financieras (Sistecrédito / Addi) ---- */
-const FINANCIERAS=['Sistecrédito','Addi'];
+const FINANCIERAS=['Sistecrédito','Addi','Inter Rapidísimo'];
+const PLAZO_INTER=7; // Inter Rapidísimo paga lo recaudado contra entrega hasta 7 días después
+function esInter(m){ return m==='Inter Rapidísimo'; }
 function esMetodoCredito(m){ return FINANCIERAS.indexOf(m)!==-1; }
 function comisionDefaultPct(metodo){
   if(metodo==='Sistecrédito') return Number(DB.config.finComisionSistecredito)||0;
   if(metodo==='Addi') return Number(DB.config.finComisionAddi)||0;
-  return 0;
+  return 0; // Inter Rapidísimo: no se le suma nada al cliente
 }
 function calcularComisionFin(base, pct){ return Math.round(Math.max(0,base)*(Math.max(0,pct)/100)); }
 function netoCredito(v){ return Math.max(0,(v.total||0)-(v.comisionValor||0)); } // lo que la financiera debe pagarte (total menos su comisión)
@@ -2747,7 +2754,7 @@ function diaCierrePendiente(){
 function calcularCierreCaja(fecha){
   fecha=fecha||hoyISO();
   const ventasDia=DB.ventas.filter(v=>v.fecha===fecha);
-  const porMetodo={Efectivo:0, Transferencia:0, Tarjeta:0, Mixto:0, 'Sistecrédito':0, Addi:0};
+  const porMetodo={Efectivo:0, Transferencia:0, Tarjeta:0, Mixto:0, 'Sistecrédito':0, Addi:0, 'Inter Rapidísimo':0};
   ventasDia.forEach(v=>{ porMetodo[v.metodo]=(porMetodo[v.metodo]||0)+v.total; });
   // la parte en efectivo/transferencia de los pagos mixtos también debe contarse en el efectivo real de caja
   let efectivoDeMixtos=0, transferenciaDeMixtos=0;
@@ -2803,6 +2810,7 @@ function renderCierre(){
   document.getElementById('cc-ajustes-devolucion').textContent=fmt(r.ajustesDevolucion);
   document.getElementById('cc-sistecredito').textContent=fmt(r.porMetodo['Sistecrédito']||0);
   document.getElementById('cc-addi').textContent=fmt(r.porMetodo.Addi||0);
+  document.getElementById('cc-inter').textContent=fmt(r.porMetodo['Inter Rapidísimo']||0);
   document.getElementById('cc-cobros-credito').textContent=fmt(r.cobrosCreditoTotal||0)+(r.cobrosCreditoEfectivo>0? ' (efectivo: '+fmt(r.cobrosCreditoEfectivo)+')':'');
   renderProductosVendidosDia(fechaCierreActual, 'cc-productos-vendidos');
 
@@ -2869,6 +2877,7 @@ function imprimirCierre(){
   }
   html+=linea('Ventas con Sistecrédito (por cobrar)', fmt(r.porMetodo['Sistecrédito']||0));
   html+=linea('Ventas con Addi (por cobrar)', fmt(r.porMetodo.Addi||0));
+  if(r.porMetodo['Inter Rapidísimo']>0) html+=linea('Contra entrega Inter Rapidísimo (por cobrar)', fmt(r.porMetodo['Inter Rapidísimo']));
   if(r.cobrosCreditoEfectivo>0) html+=linea('Cobros de crédito recibidos en efectivo', fmt(r.cobrosCreditoEfectivo));
   html+=`<div class="ti-row ti-bold"><span>Total ventas</span><span>${fmt(r.totalVentas)}</span></div>`;
   html+='<div class="ti-dash"></div>';
@@ -2906,6 +2915,7 @@ function exportarCierrePDF(){
     ['  · de la cual, en transferencia', fmt(r.transferenciaDeMixtos||0)],
     ['Ventas con Sistecrédito (por cobrar)', fmt(r.porMetodo['Sistecrédito']||0)],
     ['Ventas con Addi (por cobrar)', fmt(r.porMetodo.Addi||0)],
+    ['Contra entrega Inter Rapidísimo (por cobrar)', fmt(r.porMetodo['Inter Rapidísimo']||0)],
     ['Cobros de crédito recibidos en efectivo', fmt(r.cobrosCreditoEfectivo||0)],
     ['Total ventas', fmt(r.totalVentas)],
     ['Base de caja', fmt(base)],
@@ -2932,7 +2942,7 @@ function guardarCierreCaja(){
     ventasEfectivo:r.efectivoTotalReal||0, ventasTransferencia:r.transferenciaTotalReal||0,
     ventasTarjeta:r.porMetodo.Tarjeta||0, ventasMixto:r.porMetodo.Mixto||0,
     ventasMixtoEfectivo:r.efectivoDeMixtos||0, ventasMixtoTransferencia:r.transferenciaDeMixtos||0,
-    ventasSistecredito:r.porMetodo['Sistecrédito']||0, ventasAddi:r.porMetodo.Addi||0, cobrosCreditoEfectivo:r.cobrosCreditoEfectivo||0,
+    ventasSistecredito:r.porMetodo['Sistecrédito']||0, ventasAddi:r.porMetodo.Addi||0, ventasInter:r.porMetodo['Inter Rapidísimo']||0, cobrosCreditoEfectivo:r.cobrosCreditoEfectivo||0,
     totalVentas:r.totalVentas, salidasEfectivo:salidas,
     efectivoEsperado:esperado, efectivoContado:contado, diferencia:contado-esperado,
     notas:document.getElementById('cc-notas').value.trim(),
@@ -2976,6 +2986,7 @@ function verDetalleCierre(id){
   document.getElementById('dc-mixto-detalle').textContent = c.ventasMixto>0 ? ('Efvo '+fmt(c.ventasMixtoEfectivo||0)+' · Transf '+fmt(c.ventasMixtoTransferencia||0)) : '';
   document.getElementById('dc-sistecredito').textContent=fmt(c.ventasSistecredito||0);
   document.getElementById('dc-addi').textContent=fmt(c.ventasAddi||0);
+  document.getElementById('dc-inter').textContent=fmt(c.ventasInter||0);
   document.getElementById('dc-total-ventas').textContent=fmt(c.totalVentas||0);
   document.getElementById('dc-base').textContent=fmt(c.baseCaja||0);
   document.getElementById('dc-salidas').textContent=fmt(c.salidasEfectivo||0);
@@ -3001,6 +3012,7 @@ function exportarCierrePDFHistorico(){
     ['  · de la cual, en transferencia', fmt(c.ventasMixtoTransferencia||0)],
     ['Ventas con Sistecrédito (por cobrar)', fmt(c.ventasSistecredito||0)],
     ['Ventas con Addi (por cobrar)', fmt(c.ventasAddi||0)],
+    ['Contra entrega Inter Rapidísimo (por cobrar)', fmt(c.ventasInter||0)],
     ['Cobros de crédito recibidos en efectivo', fmt(c.cobrosCreditoEfectivo||0)],
     ['Total ventas', fmt(c.totalVentas||0)],
     ['Base de caja', fmt(c.baseCaja||0)],
@@ -3603,6 +3615,7 @@ function creditosFiltrados(){
   if(q) lista=lista.filter(v=>((v.cliente||'')+' '+(v.cedula||'')).toLowerCase().includes(q));
   return lista;
 }
+function sumarDiasISO(iso,n){ const d=fechaLocalDesdeISO(iso); d.setDate(d.getDate()+n); return fechaISOLocal(d); }
 function diasCredito(v){
   return v.credito.estado==='pagado' && v.credito.fechaPago
     ? diasEntreFechas(v.fecha, v.credito.fechaPago)
@@ -3611,7 +3624,10 @@ function diasCredito(v){
 function renderCreditos(){
   const pend=DB.ventas.filter(v=>v.credito && v.credito.estado==='pendiente');
   const suma=(arr)=>arr.reduce((s,v)=>s+netoCredito(v),0);
-  const pSis=pend.filter(v=>v.credito.financiera==='Sistecrédito'), pAddi=pend.filter(v=>v.credito.financiera==='Addi');
+  const pSis=pend.filter(v=>v.credito.financiera==='Sistecrédito'), pAddi=pend.filter(v=>v.credito.financiera==='Addi'), pInter=pend.filter(v=>esInter(v.credito.financiera));
+  const vencInter=pInter.filter(v=>diasCredito(v)>PLAZO_INTER);
+  document.getElementById('cr-debe-inter').textContent=fmt(suma(pInter));
+  document.getElementById('cr-n-inter').innerHTML=pInter.length+' envío(s) por cobrar'+(vencInter.length?' · <b style="color:var(--danger)">'+vencInter.length+' vencido(s) (+7 días)</b>':'');
   document.getElementById('cr-debe-sistecredito').textContent=fmt(suma(pSis));
   document.getElementById('cr-n-sistecredito').textContent=pSis.length+' crédito(s) pendiente(s)';
   document.getElementById('cr-debe-addi').textContent=fmt(suma(pAddi));
@@ -3624,14 +3640,16 @@ function renderCreditos(){
     return a.credito.estado==='pendiente' ? diasCredito(b)-diasCredito(a) : (b.credito.fechaPago||'').localeCompare(a.credito.fechaPago||'');
   });
   const tbody=document.getElementById('tbl-creditos');
-  if(!lista.length){ tbody.innerHTML='<tr><td colspan="10"><div class="empty">No hay créditos con esos filtros. Los créditos se crean al facturar con Sistecrédito o Addi.</div></td></tr>'; return; }
+  if(!lista.length){ tbody.innerHTML='<tr><td colspan="10"><div class="empty">No hay créditos con esos filtros. Se crean al facturar con Sistecrédito, Addi o Inter Rapidísimo (contra entrega).</div></td></tr>'; return; }
   tbody.innerHTML=lista.map(v=>{
     const dias=diasCredito(v);
     const pagado=v.credito.estado==='pagado';
-    const colorDias=pagado? 'indigo' : (dias<=15? 'success' : (dias<=30? 'gold' : 'danger'));
+    const inter=esInter(v.credito.financiera);
+    const colorDias=pagado? 'indigo' : inter? (dias<=PLAZO_INTER? 'success' : 'danger') : (dias<=15? 'success' : (dias<=30? 'gold' : 'danger'));
     const estadoTxt=pagado
-      ? '<span class="badge success">Cobrado</span><div style="font-size:11px;color:var(--ink-soft);">'+(v.credito.pagadoPor==='cliente'?'Pagó el cliente':'Pagó la financiera')+' · '+v.credito.fechaPago+'</div>'
-      : '<span class="badge danger">Pendiente</span>';
+      ? '<span class="badge success">Cobrado</span><div style="font-size:11px;color:var(--ink-soft);">'+(v.credito.pagadoPor==='cliente'?'Pagó el cliente':(inter?'Pagó Inter Rapidísimo':'Pagó la financiera'))+' · '+v.credito.fechaPago+'</div>'
+      : (inter && dias>PLAZO_INTER ? '<span class="badge danger">Vencido</span><div style="font-size:11px;color:var(--danger);">Pasó el plazo de '+PLAZO_INTER+' días: reclama el pago</div>'
+        : '<span class="badge '+(inter?'gold':'danger')+'">Pendiente</span>'+(inter?'<div style="font-size:11px;color:var(--ink-soft);">Paga a más tardar el '+sumarDiasISO(v.fecha,PLAZO_INTER)+'</div>':''));
     return `<tr>
       <td>${v.numero}</td><td>${v.fecha}</td><td>${v.cliente}${v.cedula? '<div style="font-size:11px;color:var(--ink-soft);">CC '+v.cedula+'</div>':''}</td>
       <td>${v.credito.financiera}</td>
@@ -3655,6 +3673,7 @@ function abrirModalCobroCredito(id){
   document.getElementById('cob-comision').textContent=fmt(v.comisionValor||0);
   document.getElementById('cob-neto').textContent=fmt(netoCredito(v));
   document.getElementById('cob-pagador').value='financiera';
+  document.getElementById('cob-op-fin').textContent= esInter(v.credito.financiera)? 'Pagó Inter Rapidísimo (lo recaudado contra entrega)' : 'Pagó la financiera (Sistecrédito / Addi)';
   document.getElementById('cob-fecha').value=hoyISO();
   cambioPagadorCobro();
   abrirModal('modal-cobro-credito');
@@ -3666,7 +3685,7 @@ function cambioPagadorCobro(){
   document.getElementById('cob-monto').value = porCliente? v.total : netoCredito(v);
   document.getElementById('cob-aviso').textContent = porCliente
     ? 'El cliente paga directo: por defecto se registra el total facturado. Edítalo si le perdonas la comisión.'
-    : 'La financiera te paga el neto (lo facturado menos su comisión). Edítalo si te consignó un valor distinto.';
+    : (esInter(v.credito.financiera) ? 'Inter Rapidísimo te consigna lo que recaudó. Si te descontó alguna comisión de recaudo, escribe el valor que realmente te llegó.' : 'La financiera te paga el neto (lo facturado menos su comisión). Edítalo si te consignó un valor distinto.');
 }
 function guardarCobroCredito(){
   const v=DB.ventas.find(x=>x.id===document.getElementById('cob-venta-id').value); if(!v || !v.credito) return;
@@ -3707,7 +3726,7 @@ function exportarCreditosExcel(){
 function exportarCreditosPDF(){
   const d=datosCreditos();
   const idx=[0,1,2,4,5,6,7,8,9];
-  generarPDF('creditos-'+hoyISO()+'.pdf', 'Créditos Sistecrédito y Addi', d.n+' crédito(s) — '+hoyISO(),
+  generarPDF('creditos-'+hoyISO()+'.pdf', 'Créditos Sistecrédito, Addi e Inter Rapidísimo', d.n+' crédito(s) — '+hoyISO(),
     idx.map(i=>d.headers[i]), d.rows.map(r=>idx.map(i=>r[i])),
     [{texto:'Pendiente por cobrar (neto): '+fmt(d.porCobrar), bold:true}]);
 }
@@ -4699,6 +4718,8 @@ function cambioMetodoFacturar(){
     box.style.display='block';
     document.getElementById('fac-credito-nombre').textContent=m;
     document.getElementById('fac-comision-pct').value=comisionDefaultPct(m);
+    document.getElementById('fac-com-wrap').style.display=esInter(m)?'none':'';
+    document.getElementById('fac-inter-nota').style.display=esInter(m)?'':'none';
   } else {
     box.style.display='none';
   }
@@ -6965,7 +6986,7 @@ function datosReporteDesglose(){
 }
 /* ================= REPORTE FINANCIERO COMPLETO (2026-10-18) ================= */
 const LIQ_LINEAS=[
-  {k:'comFin',    txt:'Comisiones de financieras (Sistecrédito / Addi)', def:true},
+  {k:'comFin',    txt:'Comisiones de financieras (Sistecrédito / Addi / Inter Rapidísimo)', def:true},
   {k:'gastos',    txt:'Gastos diarios registrados', def:true},
   {k:'salCierre', txt:'Salidas de efectivo en los cierres de caja (no registradas como gasto)', def:true},
   {k:'difCierre', txt:'Faltantes de caja en los cierres (menos sobrantes)', def:true},
@@ -7683,7 +7704,7 @@ function renderEstadoCuentasFlujo(){
   else if(pendiente>0){ pl.textContent='Pendiente por distribuir'; pel.textContent=fmt(pendiente); pel.style.color='var(--danger)'; }
   else { pl.textContent='Distribuiste más de lo que hay'; pel.textContent=fmt(Math.abs(pendiente)); pel.style.color='var(--danger)'; }
   const cred=DB.ventas.filter(v=>v.credito && v.credito.estado!=='pagado');
-  document.getElementById('fa-credito').textContent=cred.length? ('Además tienes '+cred.length+' venta(s) a crédito (Sistecrédito/Addi) por cobrar: '+fmt(cred.reduce((s,v)=>s+netoCredito(v),0))+'. Entran al flujo cuando se cobran.') : '';
+  document.getElementById('fa-credito').textContent=cred.length? ('Además tienes '+cred.length+' venta(s) a crédito o contra entrega (Sistecrédito/Addi/Inter Rapidísimo) por cobrar: '+fmt(cred.reduce((s,v)=>s+netoCredito(v),0))+'. Entran al flujo cuando se cobran.') : '';
 }
 let semanaFlujoActual=null;
 let semanaFlujoManual=null;
@@ -8506,7 +8527,7 @@ function actualizarEstadoSync(){
 /* ================= TIENDA ONLINE (catálogo público + pedidos web) ================= */
 const TIENDA_MEDIOS=[
   {id:'transferencia', label:'Transferencia / Nequi / Daviplata', metodo:'Transferencia'},
-  {id:'contraentrega', label:'Contra entrega (efectivo)', metodo:'Efectivo'},
+  {id:'contraentrega', label:'Contra entrega con Inter Rapidísimo (flete por adelantado)', metodo:'Inter Rapidísimo'},
   {id:'tienda', label:'Pago y recogida en tienda', metodo:'Efectivo'},
   {id:'sistecredito', label:'Sistecrédito', metodo:'Sistecrédito'},
   {id:'addi', label:'Addi', metodo:'Addi'}
@@ -8852,7 +8873,7 @@ function abrirConfirmarPedido(id){
     <div class="pw-items">${filas}</div>
     <div class="row">
       <div class="field"><label>Método de pago de la venta</label>
-        <select id="pw-metodo" onchange="recalcularPedidoModal()">${['Efectivo','Transferencia','Tarjeta','Sistecrédito','Addi'].map(m=>`<option ${m===metodoDef?'selected':''}>${m}</option>`).join('')}</select></div>
+        <select id="pw-metodo" onchange="recalcularPedidoModal()">${['Efectivo','Transferencia','Tarjeta','Sistecrédito','Addi','Inter Rapidísimo'].map(m=>`<option ${m===metodoDef?'selected':''}>${m}</option>`).join('')}</select></div>
       <div class="field" id="pw-comision-wrap" style="display:none"><label>Comisión financiera (%)</label><input type="number" id="pw-comision" min="0" max="100" step="0.01" oninput="recalcularPedidoModal()"></div>
     </div>
     <div class="row">
@@ -8873,7 +8894,7 @@ function totalesPedidoModal(){
   const descuento=subtotal*pct/100;
   const metodo=document.getElementById('pw-metodo')?.value||'Efectivo';
   const esCred=esMetodoCredito(metodo);
-  const comPct=esCred? Math.max(0,parseFloat(document.getElementById('pw-comision')?.value)||0):0;
+  const comPct=esCred && !esInter(metodo)? Math.max(0,parseFloat(document.getElementById('pw-comision')?.value)||0):0;
   const comision=esCred? calcularComisionFin(subtotal-descuento,comPct):0;
   return {lineas,subtotal,descuento,metodo,esCred,comPct,comision,total:subtotal-descuento+comision};
 }
@@ -8881,7 +8902,7 @@ function recalcularPedidoModal(){
   if(!pedidoEnModal) return;
   const metodo=document.getElementById('pw-metodo').value;
   const wrap=document.getElementById('pw-comision-wrap'), inp=document.getElementById('pw-comision');
-  if(esMetodoCredito(metodo)){ wrap.style.display=''; if(inp.dataset.m!==metodo){ inp.value=comisionDefaultPct(metodo); inp.dataset.m=metodo; } } else { wrap.style.display='none'; inp.dataset.m=''; }
+  if(esMetodoCredito(metodo) && !esInter(metodo)){ wrap.style.display=''; if(inp.dataset.m!==metodo){ inp.value=comisionDefaultPct(metodo); inp.dataset.m=metodo; } } else { wrap.style.display='none'; inp.dataset.m=''; }
   const t=totalesPedidoModal();
   document.getElementById('pw-resumen').innerHTML=`<span>${t.descuento>0?'Descuento '+fmt(t.descuento)+' · ':''}${t.comision>0?'Comisión '+fmt(t.comision)+' · ':''}${t.lineas.length} producto(s)</span><strong>Total venta ${fmt(t.total)}</strong>`;
   const b=document.getElementById('pw-btn-facturar'); if(b) b.disabled=!t.lineas.length;

@@ -214,7 +214,7 @@
   .visor .vt{position:fixed;top:20px;left:16px;color:#fff;font-size:13px;opacity:.8;}
 </style>
 <script>window.MK_TIENDA='regia';</script>
-<script src="tienda-marketing.js?v=20261022d"></script>
+<script src="tienda-marketing.js?v=20261022e"></script>
 </head>
 <body>
 <div id="aviso" class="aviso" hidden></div>
@@ -524,15 +524,15 @@ function pintarDatos(err){
     ${campo('correo','Correo','email','autocomplete="email" maxlength="80"',true)}
     ${campo('cedula','Cédula','text','inputmode="numeric" maxlength="20"',true)}
     <div class="f"><label>¿Cómo lo recibes?</label><div class="pick">
-      ${entregas().map(x=>`<label class="pickopt"><input type="radio" name="ent" value="${x}" ${FORM.entrega===x?'checked':''}><span>${x==='envio'?'Envío a domicilio':'Recoger en tienda'}<small>${x==='envio'?(t.envio?fmt(CFG.costoEnvio)+(CFG.tiempoEnvio?' · '+esc(CFG.tiempoEnvio):''):(CFG.envioGratisDesde>0&&totales('envio').envio===0&&CFG.costoEnvio>0?'Gratis en tu pedido':(CFG.costoEnvio?'':'Sin costo'))+(CFG.tiempoEnvio?' · '+esc(CFG.tiempoEnvio):'')):esc(CFG.direccionTienda||'Te avisamos cuando esté listo')}</small></span></label>`).join('')}</div></div>
+      ${entregas().map(x=>`<label class="pickopt"><input type="radio" name="ent" value="${x}" ${FORM.entrega===x?'checked':''}><span>${x==='envio'?'Envío a domicilio':'Recoger en tienda'}<small>${x==='envio'?(t.envio?fmt(CFG.costoEnvio)+(CFG.tiempoEnvio?' · '+esc(CFG.tiempoEnvio):''):(CFG.envioGratisDesde>0&&totales('envio').envio===0&&CFG.costoEnvio>0?'Gratis en tu pedido':(CFG.costoEnvio?'':(window.MK&&MK.fleteTexto()?MK.fleteTexto():'Sin costo')))+(CFG.tiempoEnvio?' · '+esc(CFG.tiempoEnvio):'')):esc(CFG.direccionTienda||'Te avisamos cuando esté listo')}</small></span></label>`).join('')}</div></div>
     ${FORM.entrega==='envio'?campo('direccion','Dirección de entrega','text','autocomplete="street-address" maxlength="120"')+campo('ciudad','Ciudad','text','autocomplete="address-level2" maxlength="60"'):''}
     <div class="f"><label>Forma de pago</label>${E.medioPago?`<div class="err">${esc(E.medioPago)}</div>`:''}<div class="pick">
-      ${medios.map(m=>`<label class="pickopt"><input type="radio" name="pay" value="${esc(m.id)}" ${FORM.medioPago===m.id?'checked':''}><span>${esc(m.label)}${m.id==='sistecredito'||m.id==='addi'?'<small>Te contactamos para aprobar tu crédito</small>':''}</span></label>`).join('')||'<div class="err">La tienda aún no tiene formas de pago activas.</div>'}</div></div>
+      ${medios.map(m=>`<label class="pickopt"><input type="radio" name="pay" value="${esc(m.id)}" ${FORM.medioPago===m.id?'checked':''}><span>${esc(m.label)}${m.id==='sistecredito'||m.id==='addi'?'<small>Te contactamos para aprobar tu crédito</small>':''}${m.id==='contraentrega'&&window.MK?'<small>'+esc(MK.CE_NOTA())+'</small>':''}</span></label>`).join('')||'<div class="err">La tienda aún no tiene formas de pago activas.</div>'}</div></div>
     <div class="f"><label for="f-notas">Notas <i>(opcional)</i></label><textarea id="f-notas" rows="2" maxlength="200" placeholder="Referencia de entrega, horario…">${esc(FORM.notas)}</textarea></div>
     <input class="hp" id="f-web" tabindex="-1" autocomplete="off" aria-hidden="true">
     ${E.general?`<div class="errbox">${esc(E.general)}</div>`:''}
   </div><div class="bag-f"><div class="tot"><span>Subtotal</span><span>${fmt(t.sub)}</span></div>
-    ${FORM.entrega==='envio'?`<div class="tot"><span>Envío</span><span>${t.envio?fmt(t.envio):'Gratis'}</span></div>`:''}
+    ${FORM.entrega==='envio'?`<div class="tot"><span>Envío</span><span>${t.envio?fmt(t.envio):(window.MK&&MK.fleteTexto()&&!(CFG.envioGratisDesde>0&&t.sub>=CFG.envioGratisDesde)?'Por confirmar':'Gratis')}</span></div>`:''}
     <div class="tot g"><span>Total</span><span>${fmt(t.total)}</span></div>
     <button class="btn pri" style="width:100%;margin-top:10px" id="b-enviar" ${enviando?'disabled':''}>${enviando?'Enviando…':'Hacer pedido'}</button>
     <p style="font-size:12px;color:var(--soft);margin:8px 0 0;text-align:center">Te confirmamos disponibilidad y pago por WhatsApp.</p></div>`;
@@ -542,7 +542,9 @@ function leerForm(){
   const en=document.querySelector('input[name=ent]:checked'); if(en) FORM.entrega=en.value;
   const pg=document.querySelector('input[name=pay]:checked'); if(pg) FORM.medioPago=pg.value;
 }
-$('sheet-bag').addEventListener('change',e=>{ if(paso==='datos' && (e.target.name==='ent'||e.target.name==='pay')){ leerForm(); pintarDatos(); } });
+$('sheet-bag').addEventListener('change',e=>{ if(paso==='datos' && (e.target.name==='ent'||e.target.name==='pay')){ leerForm();
+  if(FORM.medioPago==='contraentrega' && FORM.entrega!=='envio' && entregas().includes('envio')){ if(e.target.name==='ent'){ FORM.medioPago=''; toast('El pago contra entrega es solo con envío a domicilio'); } else FORM.entrega='envio'; }
+  pintarDatos(); } });
 function limpio(s,max){ return String(s||'').replace(/[\u0000-\u001f<>`]/g,' ').replace(/\s+/g,' ').trim().slice(0,max); }
 function codigoPedido(){ const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let c='RG-'; const r=new Uint32Array(5); (crypto&&crypto.getRandomValues?crypto.getRandomValues(r):r.forEach((_,i)=>r[i]=Math.random()*1e9)); for(let i=0;i<5;i++) c+=a[r[i]%a.length]; return c; }
 async function enviarPedido(){

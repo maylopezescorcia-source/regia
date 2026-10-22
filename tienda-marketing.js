@@ -14,6 +14,7 @@ window.MARKETING = {
   tiktokFraganza:   'fraganzabycm',
   llaveNequi:       '0092801187',     // Llave Nequi Negocios (Bre-B)
   titularNequi:     'Regia By Cm · Maidet Hernandez',
+  transportadora:   'Inter Rapidísimo',   // envío contra entrega: el cliente paga el flete antes y el pedido al recibirlo
   facebook:         '',   // URL completa de la página
   horario:          '',   // ej: 'Lun a Sáb 9:00 a.m. – 8:00 p.m. · Dom 10:00 a.m. – 2:00 p.m.'
   politicaCambios:  '',   // ej: 'Cambios de talla dentro de los 5 días siguientes a la compra, con la prenda sin uso y con etiquetas.'
@@ -240,6 +241,13 @@ main{scroll-margin-top:110px;}
 .mk-logos img{height:24px;width:auto;}
 .mk-logos img[alt="Sistecrédito"]{height:19px;}
 .mk-qr-btn{margin-top:14px;font-size:13.5px;padding:10px 14px;}
+.mk-ce{display:flex;gap:12px;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);}
+.mk-ce img{height:26px;width:auto;flex-shrink:0;}
+.mk-ce p{margin:0;}
+.mk-ce b{color:var(--ink);font-weight:500;}
+.mk-ce-nota{font-size:13px;color:var(--soft);margin:0 0 10px;line-height:1.45;}
+.mk-ce-nota b{color:var(--ink);}
+@media(max-width:420px){.mk-ce{flex-direction:column;align-items:flex-start;gap:8px;}}
 .mk-cuentas{display:grid;gap:8px;margin-top:12px;grid-template-columns:1fr 1fr;}
 .mk-cuenta{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;text-decoration:none;color:var(--ink);min-width:0;}
 .mk-cuenta svg{width:22px;height:22px;flex-shrink:0;}
@@ -434,6 +442,15 @@ function busqueda(txt){
     const q = $('q'); if (q && q.value.trim() === txt) abrirUnica(txt);
   }, 1100);
 }
+// mientras llega el catálogo (puede tardar unos segundos), la portada se oculta de inmediato al escribir
+document.addEventListener('input', e => {
+  if (!e.target || e.target.id !== 'q') return;
+  let listo = true; try{ listo = !!cargado; }catch(x){}
+  if (listo) return;
+  const txt = e.target.value.trim(), h = $('mk-hero'), cnt = $('count');
+  if (h) h.hidden = !!txt;
+  if (cnt) cnt.innerHTML = txt ? `<span class="mk-cnt-t">Buscando “${esc(txt)}”…</span><span></span>` : '';
+}, true);
 document.addEventListener('keydown', e => {
   if (e.key !== 'Enter' || !e.target || e.target.id !== 'q') return;
   e.preventDefault();
@@ -452,7 +469,7 @@ function mensajesAviso(){
   if (M.llaveNequi) m.push('Paga con Nequi o Bre-B');
   if (CFG.envioActivo) m.push('Envíos a domicilio' + (CFG.tiempoEnvio ? ' en ' + CFG.tiempoEnvio : ''));
   if (CFG.retiroEnTienda) m.push('Recoge tu pedido en el Centro Comercial Plaza Malambo');
-  if (md.includes('contraentrega')) m.push('También puedes pagar contra entrega');
+  if (md.includes('contraentrega')) m.push(M.transportadora ? 'Envío contra entrega con ' + M.transportadora : 'También puedes pagar contra entrega');
   return m;
 }
 function barraAvisos(){
@@ -493,13 +510,14 @@ function seccionInicio(){
   if (!box){ box = document.createElement('div'); box.id = 'mk-inicio'; box.className = 'mk-inicio'; hero.appendChild(box); }
   const md = (CFG.medios || []).map(m => m.id);
   const logos = LOGOS_PAGO.filter(l => l.id === 'nequi' || l.id === 'breb' || md.includes(l.id) || !md.length);
-  const otros = [md.includes('contraentrega') ? 'contra entrega' : '', md.includes('tienda') || CFG.retiroEnTienda ? 'efectivo en tienda' : ''].filter(Boolean);
+  const otros = [md.includes('tienda') || CFG.retiroEnTienda ? 'efectivo en tienda' : ''].filter(Boolean);
   const redes = cuentasRedes();
   box.innerHTML = `
     <section class="mk-blk mk-pagos-blk" aria-labelledby="mk-pagos-t">
       <h2 id="mk-pagos-t">Paga como prefieras</h2>
       <div class="mk-logos">${logos.map(l => `<img src="${l.src}" alt="${esc(l.alt)}" loading="lazy">`).join('')}</div>
       <p>Transferencia por Nequi o Bre-B${md.includes('addi') || md.includes('sistecredito') ? ', compra a cuotas con ' + [md.includes('addi') ? 'Addi' : '', md.includes('sistecredito') ? 'Sistecrédito' : ''].filter(Boolean).join(' o ') : ''}${otros.length ? ' y ' + otros.join(' o ') : ''}.</p>
+      ${md.includes('contraentrega') && M.transportadora ? `<div class="mk-ce"><img src="envio-interrapidisimo.png" alt="${esc(M.transportadora)}" loading="lazy"><p><b>Envío contra entrega.</b> Pagas el flete por adelantado y el valor de tu pedido cuando llegue a tu dirección.</p></div>` : ''}
     </section>
     ${redes.length ? `<section class="mk-blk mk-redes-blk" aria-labelledby="mk-redes-t">
       <h2 id="mk-redes-t">Síguenos</h2>
@@ -524,21 +542,28 @@ function abrirQR(){
 }
 // después de hacer un pedido pagado por transferencia: muestra el QR y la llave
 function enListo(p, sh){
-  if (!p || !sh || p.medioPago !== 'transferencia' || !M.llaveNequi) return;
+  const ce = p && p.medioPago === 'contraentrega' && M.transportadora;
+  if (!p || !sh || !M.llaveNequi || !(p.medioPago === 'transferencia' || ce)) return;
   const d = sh.querySelector('.done'); if (!d || d.querySelector('.mk-pago-listo')) return;
   const ref = d.querySelector('.pago') || d.querySelector('p strong')?.closest('p');
-  const html = `<div class="mk-pago-listo"><b>Para pagar ${fmt(p.total)}</b><img src="nequi-qr.jpg" alt="Código QR de Nequi y Bre-B">
+  const titulo = ce ? `<b>Paga solo el flete del envío</b><p class="mk-ce-nota">El valor de tu pedido (${fmt(p.total - (p.envio || 0))}) se lo pagas a ${esc(M.transportadora)} cuando llegue a tu dirección. ${p.envio ? 'Flete: <b>' + fmt(p.envio) + '</b>.' : 'Te confirmamos el valor del flete por WhatsApp.'}</p>` : `<b>Para pagar ${fmt(p.total)}</b>`;
+  const html = `<div class="mk-pago-listo">${titulo}<img src="nequi-qr.jpg" alt="Código QR de Nequi y Bre-B">
     <div class="mk-llave"><span><small>Llave Nequi Negocios</small><b>${esc(M.llaveNequi)}</b></span><button type="button" class="btn ghost" data-mk-copiar="${esc(M.llaveNequi)}">Copiar</button></div>
     <small>Envía el comprobante en el mismo chat de WhatsApp.</small></div>`;
   if (ref) ref.insertAdjacentHTML('afterend', html); else d.insertAdjacentHTML('beforeend', html);
   // sin salto automático a WhatsApp, para que alcance a ver el QR
   clearInterval(window.__waT);
-  const c = d.querySelector('#wa-cuenta'); if (c) c.textContent = 'Paga con el QR o la llave y toca el botón verde para enviarnos tu pedido.';
+  const c = d.querySelector('#wa-cuenta'); if (c) c.textContent = ce ? 'Toca el botón verde para enviarnos tu pedido y te confirmamos el flete.' : 'Paga con el QR o la llave y toca el botón verde para enviarnos tu pedido.';
 }
 
 /* ---------- configuración de la tienda (WhatsApp, pagos, envíos) ---------- */
+const CE_LABEL = () => 'Contra entrega con ' + (M.transportadora || 'transportadora');
+// sin costo de envío fijo en el sistema: el flete depende de la ciudad y se confirma por WhatsApp
+const fleteTexto = () => (M.transportadora && !(Number(CFG.costoEnvio) > 0)) ? 'Flete según tu ciudad, te lo confirmamos' : '';
+const CE_NOTA = () => 'Pagas el flete por Nequi o Bre-B antes del despacho y el valor de tu pedido cuando te llegue.';
 function config(cfg){
   CFG = cfg || {};
+  (CFG.medios || []).forEach(m => { if (m.id === 'contraentrega' && M.transportadora) m.label = CE_LABEL(); });
   // datos fijos de las dos tiendas (tienen prioridad sobre lo que llegue del sistema)
   if (M.whatsapp){ let n = String(M.whatsapp).replace(/\D/g, ''); if (/^3\d{9}$/.test(n)) n = '57' + n; CFG.whatsapp = n; }
   if (M.direccion) CFG.direccionTienda = M.direccion;
@@ -584,6 +609,7 @@ function pie(){
     <div class="mk-copy">© ${new Date().getFullYear()} ${esc(TEXTOS.marca)}</div>`;
 }
 
+const md0 = () => (CFG.medios || []).map(m => m.id);
 /* ---------- ficha de producto ---------- */
 function recomendados(p){
   const cp = catLabel(p.categoria);
@@ -613,7 +639,7 @@ function enProducto(p, sh, sel){
       ? ['chat', '<b>¿Dudas con la talla?</b> Escríbenos y te ayudamos a elegir la ideal.']
       : ['chat', '<b>¿Quieres saber cómo huele?</b> Escríbenos y te contamos sus notas y su duración.']);
   }
-  if (CFG.envioActivo) li.push(['envio', '<b>Envío a domicilio</b>' + (CFG.tiempoEnvio ? ' en ' + esc(CFG.tiempoEnvio) : '')]);
+  if (CFG.envioActivo) li.push(['envio', (md0().includes('contraentrega') && M.transportadora) ? '<b>Envío contra entrega con ' + esc(M.transportadora) + '</b>: pagas el flete antes y la prenda al recibirla' : '<b>Envío a domicilio</b>' + (CFG.tiempoEnvio ? ' en ' + esc(CFG.tiempoEnvio) : '')]);
   if (CFG.retiroEnTienda) li.push(['tienda', '<b>Recoge en tienda</b>, ' + esc(CFG.direccionTienda || 'Centro Comercial Plaza Malambo')]);
   const md = (CFG.medios || []).map(m => m.id);
   if (md.includes('addi') || md.includes('sistecredito')) li.push(['cuotas', '<b>Paga a cuotas</b> con ' + [md.includes('addi') ? 'Addi' : '', md.includes('sistecredito') ? 'Sistecrédito' : ''].filter(Boolean).join(' o ')]);
@@ -716,5 +742,5 @@ document.addEventListener('keydown', e => { const m = document.querySelector('.m
 
 estilos();
 cargarPixeles();
-window.MK = { enListo, normalizar, colorCanon, titulo, nombre, catLabel, ordenCats, palabra, etiqueta, setProds, despuesRender, config, enProducto, enBolsa, evento };
+window.MK = { fleteTexto, CE_NOTA, enListo, normalizar, colorCanon, titulo, nombre, catLabel, ordenCats, palabra, etiqueta, setProds, despuesRender, config, enProducto, enBolsa, evento };
 })();
