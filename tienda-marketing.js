@@ -8,9 +8,12 @@
 window.MARKETING = {
   whatsapp:         '3128556822',   // número de WhatsApp de las dos tiendas
   direccion:        'Centro Comercial Plaza Malambo, Malambo - Atlántico',
-  instagramRegia:   '',   // usuario sin @  · ej: 'regiabycm'
-  instagramFraganza:'',   // usuario sin @  · ej: 'fraganzabycm'
-  tiktok:           '',   // usuario sin @
+  instagramRegia:   'regiabycm',      // usuario sin @
+  instagramFraganza:'fraganzabycm',
+  tiktokRegia:      'regia.by.cm',
+  tiktokFraganza:   'fraganzabycm',
+  llaveNequi:       '0092801187',     // Llave Nequi Negocios (Bre-B)
+  titularNequi:     'Regia By Cm · Maidet Hernandez',
   facebook:         '',   // URL completa de la página
   horario:          '',   // ej: 'Lun a Sáb 9:00 a.m. – 8:00 p.m. · Dom 10:00 a.m. – 2:00 p.m.'
   politicaCambios:  '',   // ej: 'Cambios de talla dentro de los 5 días siguientes a la compra, con la prenda sin uso y con etiquetas.'
@@ -33,6 +36,7 @@ const TEXTOS = {
   regia: {
     marca: 'Regia by CM',
     instagram: M.instagramRegia,
+    tiktok: M.tiktokRegia,
     palabra: ['prenda', 'prendas'],
     cruzado: 'Combínalo con',
     guiaTallas: true,
@@ -47,6 +51,7 @@ const TEXTOS = {
   fraganza: {
     marca: 'Fraganza by CM',
     instagram: M.instagramFraganza,
+    tiktok: M.tiktokFraganza,
     palabra: ['perfume', 'perfumes'],
     cruzado: 'También te puede gustar',
     guiaTallas: false,
@@ -150,6 +155,8 @@ const IC = {
   regla: '<path d="M3 15.5 15.5 3 21 8.5 8.5 21z"/><path d="m7 12 2 2M10 9l2 2M13 6l2 2"/>',
   cambio: '<path d="M4 9h13l-3.5-3.5M20 15H7l3.5 3.5"/>'
 };
+const IG_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17.3" cy="6.7" r="1.2" fill="currentColor"/></svg>';
+const TT_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.6 3c.3 2.2 1.6 3.7 3.9 3.9v3a7.3 7.3 0 0 1-3.9-1.2v6.1a5.8 5.8 0 1 1-5.8-5.8c.3 0 .6 0 .9.1v3.1a2.8 2.8 0 1 0 2 2.7V3h2.9z"/></svg>';
 const ico = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${IC[k]}</svg>`;
 const WA_SVG = '<svg viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" d="M16 3a13 13 0 0 0-11.2 19.6L3 29l6.6-1.7A13 13 0 1 0 16 3zm0 23.7c-2 0-4-.5-5.7-1.6l-.4-.2-3.9 1 1-3.8-.3-.4A10.7 10.7 0 1 1 16 26.7zm5.9-8c-.3-.2-1.9-.9-2.2-1-.3-.1-.5-.2-.7.2l-1 1.2c-.2.2-.4.2-.7.1a8.8 8.8 0 0 1-4.4-3.8c-.3-.6.3-.5 1-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4s-1.2 1.1-1.2 2.8 1.2 3.2 1.4 3.5c.2.2 2.3 3.6 5.7 5 2.1.9 2.9 1 4 .8.6-.1 1.9-.8 2.2-1.5.3-.8.3-1.4.2-1.5l-.6-.3z"/></svg>';
 
@@ -221,11 +228,47 @@ main{scroll-margin-top:110px;}
   :root[data-mk="fraganza"] .mk-hero h1{font-size:clamp(46px,5vw,64px);}
 }
 
+/* portada: pagos y redes */
+.mk-inicio{display:grid;gap:12px;margin-top:30px;grid-template-columns:1fr;}
+@media(min-width:760px){.mk-inicio{grid-template-columns:1fr 1fr;gap:16px;}}
+@media(min-width:1000px){.mk-hero:has(.mk-trend:not([hidden])) .mk-inicio{grid-column:1 / -1;margin-top:8px;}}
+.mk-blk{border:1px solid var(--line);border-radius:12px;padding:18px 18px 16px;background:#fff;}
+.mk-blk h2{font-family:'Jost',sans-serif;font-weight:500;font-size:17px;margin:0;}
+:root[data-mk="fraganza"] .mk-blk h2{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:22px;}
+.mk-blk p{font-size:13.5px;color:var(--soft);margin:6px 0 0;line-height:1.5;}
+.mk-logos{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin:14px 0 4px;}
+.mk-logos img{height:24px;width:auto;}
+.mk-logos img[alt="Sistecrédito"]{height:19px;}
+.mk-qr-btn{margin-top:14px;font-size:13.5px;padding:10px 14px;}
+.mk-cuentas{display:grid;gap:8px;margin-top:12px;grid-template-columns:1fr 1fr;}
+.mk-cuenta{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;text-decoration:none;color:var(--ink);min-width:0;}
+.mk-cuenta svg{width:22px;height:22px;flex-shrink:0;}
+.mk-cuenta span{min-width:0;}
+.mk-cuenta b{display:block;font-size:13.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mk-cuenta small{display:block;font-size:11.5px;color:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mk-cuenta.otra{background:var(--wash);border-color:transparent;}
+@media(max-width:520px){.mk-cuentas{grid-template-columns:1fr;}}
+/* QR de pago */
+.mk-qr-in{text-align:center;}
+.mk-qr-in p{margin:6px 0 12px;}
+.mk-qr-img{width:min(300px,100%);border-radius:12px;display:block;margin:0 auto 12px;}
+.mk-llave{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--wash);border-radius:10px;padding:10px 12px;text-align:left;}
+.mk-llave small{display:block;font-size:11.5px;color:var(--soft);}
+.mk-llave b{font-size:18px;letter-spacing:.04em;font-weight:600;}
+.mk-llave .btn,.done .mk-llave .btn{padding:8px 12px;font-size:13px;flex-shrink:0;width:auto;margin-top:0;}
+.mk-qr-in .mk-ask{margin-top:12px;}
+.mk-pago-listo{background:var(--wash);border-radius:14px;padding:14px;margin:14px 0;text-align:center;}
+.mk-pago-listo > b{display:block;font-size:14px;margin-bottom:8px;}
+.mk-pago-listo img{width:min(240px,100%);border-radius:10px;display:block;margin:0 auto 10px;}
+.mk-pago-listo .mk-llave{background:#fff;}
+.mk-pago-listo > small{display:block;font-size:12px;color:var(--soft);margin-top:8px;}
+
 /* catálogo */
 main{padding-top:6px;}
 .count{font-size:13px;margin:26px 0 14px;color:var(--soft);}
 .count:has(.mk-cnt-t){display:flex;align-items:baseline;justify-content:space-between;margin-top:40px;border-top:1px solid var(--line);padding-top:22px;}
 .mk-cnt-t{font-family:'Jost',sans-serif;font-size:19px;font-weight:500;color:var(--ink);}
+.mk-hero[hidden] ~ main .count:has(.mk-cnt-t){margin-top:18px;border-top:0;padding-top:0;}
 :root[data-mk="fraganza"] .mk-cnt-t{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:24px;}
 .grid{gap:30px 10px;}
 @media(min-width:760px){.grid{gap:40px 18px;}}
@@ -349,7 +392,42 @@ function despuesRender(estado){
   pintarTendencia();
   const cnt = $('count');
   if (cnt && inicio && cnt.textContent && !cnt.querySelector('.mk-cnt-t')) cnt.innerHTML = `<span class="mk-cnt-t">Toda la colección</span><span>${esc(cnt.textContent)}</span>`;
+  busqueda(String(estado.texto || '').trim());
 }
+
+/* ---------- buscador: muestra la prenda de una ---------- */
+// Al escribir se oculta la portada y se ven solo los resultados. Si queda una sola prenda, se abre sola
+// (al hacer una pausa al escribir o al pulsar Enter).
+let busqT = null, busqAbierta = '';
+const tarjetas = () => [...document.querySelectorAll('#grid .card[data-id]')];
+const hojaAbierta = () => { const sh = $('sheet-prod'); return sh && sh.classList.contains('on'); };
+function abrirUnica(txt){
+  const c = tarjetas();
+  if (c.length !== 1 || hojaAbierta() || typeof window.abrirProducto !== 'function') return false;
+  busqAbierta = txt;
+  const q = $('q'); if (q) q.blur();
+  window.abrirProducto(c[0].dataset.id);
+  return true;
+}
+function busqueda(txt){
+  clearTimeout(busqT);
+  const cnt = $('count');
+  if (!txt){ busqAbierta = ''; return; }
+  // los resultados quedan arriba, debajo del buscador
+  const main = $('main');
+  if (main){ const top = main.getBoundingClientRect().top + window.scrollY - 120; if (window.scrollY > top) window.scrollTo(0, Math.max(0, top)); }
+  const n = tarjetas().length;
+  if (cnt && n) cnt.innerHTML = `<span class="mk-cnt-t">Resultados para “${esc(txt)}”</span><span>${esc(palabra(n))}</span>`;
+  if (n === 1 && txt.length >= 3 && txt !== busqAbierta) busqT = setTimeout(() => {
+    const q = $('q'); if (q && q.value.trim() === txt) abrirUnica(txt);
+  }, 1100);
+}
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || !e.target || e.target.id !== 'q') return;
+  e.preventDefault();
+  const txt = e.target.value.trim();
+  if (!abrirUnica(txt)) e.target.blur();   // varias prendas: cierra el teclado para verlas
+});
 
 /* ---------- barra de avisos (rota: cuotas, envíos, recogida...) ---------- */
 let avisoT = null;
@@ -359,6 +437,7 @@ function mensajesAviso(){
   if (CFG.aviso) m.push(CFG.aviso);
   if (md.includes('addi') || md.includes('sistecredito'))
     m.push('Paga a cuotas con ' + [md.includes('addi') ? 'Addi' : '', md.includes('sistecredito') ? 'Sistecrédito' : ''].filter(Boolean).join(' o '));
+  if (M.llaveNequi) m.push('Paga con Nequi o Bre-B');
   if (CFG.envioActivo) m.push('Envíos a domicilio' + (CFG.tiempoEnvio ? ' en ' + CFG.tiempoEnvio : ''));
   if (CFG.retiroEnTienda) m.push('Recoge tu pedido en el Centro Comercial Plaza Malambo');
   if (md.includes('contraentrega')) m.push('También puedes pagar contra entrega');
@@ -380,6 +459,71 @@ function barraAvisos(){
   }, 4200);
 }
 
+/* ---------- portada: medios de pago y redes sociales ---------- */
+const LOGOS_PAGO = [
+  { id:'nequi', src:'pago-nequi.png', alt:'Nequi' },
+  { id:'breb', src:'pago-breb.png', alt:'Bre-B' },
+  { id:'addi', src:'pago-addi.png', alt:'Addi' },
+  { id:'sistecredito', src:'pago-sistecredito.png', alt:'Sistecrédito' }
+];
+function cuentasRedes(){
+  const r = [];
+  const add = (red, usuario, marca, propia) => { if (!usuario) return; usuario = String(usuario).replace(/^@/, '');
+    r.push({ red, usuario, marca, propia, url: red === 'ig' ? 'https://www.instagram.com/' + usuario : 'https://www.tiktok.com/@' + usuario }); };
+  const yo = TID, otra = TID === 'regia' ? 'fraganza' : 'regia';
+  const datos = { regia:{ marca:'Regia by CM', ig:M.instagramRegia, tt:M.tiktokRegia }, fraganza:{ marca:'Fraganza by CM', ig:M.instagramFraganza, tt:M.tiktokFraganza } };
+  [yo, otra].forEach(t => { add('ig', datos[t].ig, datos[t].marca, t === yo); add('tt', datos[t].tt, datos[t].marca, t === yo); });
+  return r;
+}
+function seccionInicio(){
+  const hero = $('mk-hero'); if (!hero) return;
+  let box = $('mk-inicio');
+  if (!box){ box = document.createElement('div'); box.id = 'mk-inicio'; box.className = 'mk-inicio'; hero.appendChild(box); }
+  const md = (CFG.medios || []).map(m => m.id);
+  const logos = LOGOS_PAGO.filter(l => l.id === 'nequi' || l.id === 'breb' || md.includes(l.id) || !md.length);
+  const otros = [md.includes('contraentrega') ? 'contra entrega' : '', md.includes('tienda') || CFG.retiroEnTienda ? 'efectivo en tienda' : ''].filter(Boolean);
+  const redes = cuentasRedes();
+  box.innerHTML = `
+    <section class="mk-blk mk-pagos-blk" aria-labelledby="mk-pagos-t">
+      <h2 id="mk-pagos-t">Paga como prefieras</h2>
+      <div class="mk-logos">${logos.map(l => `<img src="${l.src}" alt="${esc(l.alt)}" loading="lazy">`).join('')}</div>
+      <p>Transferencia por Nequi o Bre-B${md.includes('addi') || md.includes('sistecredito') ? ', compra a cuotas con ' + [md.includes('addi') ? 'Addi' : '', md.includes('sistecredito') ? 'Sistecrédito' : ''].filter(Boolean).join(' o ') : ''}${otros.length ? ' y ' + otros.join(' o ') : ''}.</p>
+    </section>
+    ${redes.length ? `<section class="mk-blk mk-redes-blk" aria-labelledby="mk-redes-t">
+      <h2 id="mk-redes-t">Síguenos</h2>
+      <p>Novedades, videos de las prendas y promociones.</p>
+      <div class="mk-cuentas">${redes.map(c => `<a class="mk-cuenta${c.propia ? '' : ' otra'}" href="${esc(c.url)}" target="_blank" rel="noopener">${c.red === 'ig' ? IG_SVG : TT_SVG}<span><b>@${esc(c.usuario)}</b><small>${c.red === 'ig' ? 'Instagram' : 'TikTok'} · ${esc(c.marca)}</small></span></a>`).join('')}</div>
+    </section>` : ''}`;
+}
+function abrirQR(){
+  let m = $('mk-qr');
+  if (!m){
+    m = document.createElement('div'); m.id = 'mk-qr'; m.className = 'mk-modal'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-label', 'Pagar con Nequi o Bre-B');
+    m.innerHTML = `<div class="mk-modal-in mk-qr-in"><button class="x" type="button" data-mk-cerrar aria-label="Cerrar">×</button>
+      <h3>Paga con Nequi o Bre-B</h3>
+      <p>Escanea el código desde la app de Nequi o de tu banco, o envía a la llave.</p>
+      <img class="mk-qr-img" src="nequi-qr.jpg" alt="Código QR de Nequi y Bre-B de ${esc(M.titularNequi || 'la tienda')}">
+      <div class="mk-llave"><span><small>Llave Nequi Negocios</small><b>${esc(M.llaveNequi)}</b></span><button type="button" class="btn ghost" data-mk-copiar="${esc(M.llaveNequi)}">Copiar</button></div>
+      ${M.titularNequi ? `<p style="margin-top:10px">A nombre de ${esc(M.titularNequi)}.</p>` : ''}
+      ${CFG.whatsapp ? `<a class="btn wa mk-ask" href="${esc(waLink('Hola, ya hice el pago por Nequi/Bre-B. Te envío el comprobante.'))}" target="_blank" rel="noopener" data-mk-ev="contacto">${WA_SVG}Enviar comprobante por WhatsApp</a>` : ''}</div>`;
+    document.body.appendChild(m);
+  }
+  m.classList.add('on');
+}
+// después de hacer un pedido pagado por transferencia: muestra el QR y la llave
+function enListo(p, sh){
+  if (!p || !sh || p.medioPago !== 'transferencia' || !M.llaveNequi) return;
+  const d = sh.querySelector('.done'); if (!d || d.querySelector('.mk-pago-listo')) return;
+  const ref = d.querySelector('.pago') || d.querySelector('p strong')?.closest('p');
+  const html = `<div class="mk-pago-listo"><b>Para pagar ${fmt(p.total)}</b><img src="nequi-qr.jpg" alt="Código QR de Nequi y Bre-B">
+    <div class="mk-llave"><span><small>Llave Nequi Negocios</small><b>${esc(M.llaveNequi)}</b></span><button type="button" class="btn ghost" data-mk-copiar="${esc(M.llaveNequi)}">Copiar</button></div>
+    <small>Envía el comprobante en el mismo chat de WhatsApp.</small></div>`;
+  if (ref) ref.insertAdjacentHTML('afterend', html); else d.insertAdjacentHTML('beforeend', html);
+  // sin salto automático a WhatsApp, para que alcance a ver el QR
+  clearInterval(window.__waT);
+  const c = d.querySelector('#wa-cuenta'); if (c) c.textContent = 'Paga con el QR o la llave y toca el botón verde para enviarnos tu pedido.';
+}
+
 /* ---------- configuración de la tienda (WhatsApp, pagos, envíos) ---------- */
 function config(cfg){
   CFG = cfg || {};
@@ -392,6 +536,7 @@ function config(cfg){
   let f = $('mk-wa');
   if (!f){ f = document.createElement('a'); f.id = 'mk-wa'; f.className = 'mk-wa'; f.target = '_blank'; f.rel = 'noopener'; f.setAttribute('aria-label', 'Escríbenos por WhatsApp'); f.innerHTML = WA_SVG; f.addEventListener('click', () => evento('contacto', {})); document.body.appendChild(f); }
   f.hidden = !wa; if (wa) f.href = wa;
+  seccionInicio();
   pie();
 }
 
@@ -402,8 +547,8 @@ function pie(){
   const logo = (typeof LOGO !== 'undefined' && LOGO) || '';
   const dir = CFG.direccionTienda || 'Centro Comercial Plaza Malambo, Malambo - Atlántico';
   const redes = [
-    TEXTOS.instagram ? `<a href="https://instagram.com/${esc(TEXTOS.instagram.replace(/^@/, ''))}" target="_blank" rel="noopener">Instagram</a>` : '',
-    M.tiktok ? `<a href="https://www.tiktok.com/@${esc(M.tiktok.replace(/^@/, ''))}" target="_blank" rel="noopener">TikTok</a>` : '',
+    TEXTOS.instagram ? `<a href="https://www.instagram.com/${esc(TEXTOS.instagram.replace(/^@/, ''))}" target="_blank" rel="noopener">Instagram</a>` : '',
+    TEXTOS.tiktok ? `<a href="https://www.tiktok.com/@${esc(TEXTOS.tiktok.replace(/^@/, ''))}" target="_blank" rel="noopener">TikTok</a>` : '',
     M.facebook ? `<a href="${esc(/^https?:/.test(M.facebook) ? M.facebook : 'https://facebook.com/' + M.facebook)}" target="_blank" rel="noopener">Facebook</a>` : '',
     CFG.whatsapp ? `<a href="${esc(waLink(TEXTOS.waSaludo))}" target="_blank" rel="noopener">WhatsApp</a>` : ''
   ].filter(Boolean).join('');
@@ -547,13 +692,17 @@ document.addEventListener('click', e => {
     return;
   }
   if (e.target.closest('.mk-guia')){ e.preventDefault(); e.stopPropagation(); abrirGuia(); return; }
-  const m = $('mk-guia');
-  if (m && m.classList.contains('on') && (e.target === m || e.target.closest('[data-mk-cerrar]'))){ m.classList.remove('on'); return; }
+  if (e.target.closest('[data-mk-qr]')){ e.preventDefault(); abrirQR(); return; }
+  const cp = e.target.closest('[data-mk-copiar]');
+  if (cp){ e.preventDefault(); const v = cp.dataset.mkCopiar, ok = () => { cp.textContent = '¡Copiada!'; setTimeout(() => { cp.textContent = 'Copiar'; }, 1800); };
+    try{ navigator.clipboard.writeText(v).then(ok).catch(() => { prompt('Copia la llave:', v); }); }catch(x){ prompt('Copia la llave:', v); } return; }
+  const abierto = document.querySelector('.mk-modal.on');
+  if (abierto && (e.target === abierto || e.target.closest('[data-mk-cerrar]'))){ abierto.classList.remove('on'); return; }
   if (e.target.closest('[data-mk-ev="contacto"]')) evento('contacto', {});
 }, true);
-document.addEventListener('keydown', e => { const m = $('mk-guia'); if (e.key === 'Escape' && m && m.classList.contains('on')){ m.classList.remove('on'); e.stopPropagation(); } }, true);
+document.addEventListener('keydown', e => { const m = document.querySelector('.mk-modal.on'); if (e.key === 'Escape' && m){ m.classList.remove('on'); e.stopPropagation(); } }, true);
 
 estilos();
 cargarPixeles();
-window.MK = { normalizar, colorCanon, titulo, nombre, catLabel, ordenCats, palabra, etiqueta, setProds, despuesRender, config, enProducto, enBolsa, evento };
+window.MK = { enListo, normalizar, colorCanon, titulo, nombre, catLabel, ordenCats, palabra, etiqueta, setProds, despuesRender, config, enProducto, enBolsa, evento };
 })();

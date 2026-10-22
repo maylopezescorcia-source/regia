@@ -21,7 +21,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="regia-icon.png">
 <link rel="apple-touch-icon" href="regia-apple-icon.png">
 <meta name="theme-color" content="#6B3FA0">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"ClothingStore","name":"Regia by CM","url":"https://maylopezescorcia-source.github.io/regia/tienda.html","image":"https://maylopezescorcia-source.github.io/regia/regia-preview.jpg","telephone":"+57 312 855 6822","address":{"@type":"PostalAddress","streetAddress":"Centro Comercial Plaza Malambo","addressLocality":"Malambo","addressRegion":"Atlántico","addressCountry":"CO"},"paymentAccepted":"Efectivo, Nequi, Daviplata, transferencia, Addi, Sistecrédito","currenciesAccepted":"COP"}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"ClothingStore","name":"Regia by CM","url":"https://maylopezescorcia-source.github.io/regia/tienda.html","image":"https://maylopezescorcia-source.github.io/regia/regia-preview.jpg","telephone":"+57 312 855 6822","address":{"@type":"PostalAddress","streetAddress":"Centro Comercial Plaza Malambo","addressLocality":"Malambo","addressRegion":"Atlántico","addressCountry":"CO"},"paymentAccepted":"Efectivo, Nequi, Bre-B, transferencia, Addi, Sistecrédito","currenciesAccepted":"COP","sameAs":["https://www.instagram.com/regiabycm","https://www.tiktok.com/@regia.by.cm"]}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -214,7 +214,7 @@
   .visor .vt{position:fixed;top:20px;left:16px;color:#fff;font-size:13px;opacity:.8;}
 </style>
 <script>window.MK_TIENDA='regia';</script>
-<script src="tienda-marketing.js"></script>
+<script src="tienda-marketing.js?v=20261022c"></script>
 </head>
 <body>
 <div id="aviso" class="aviso" hidden></div>
@@ -603,6 +603,7 @@ function pintarListo(){
       ${pagoHtml}
       <button class="btn ghost" onclick="cerrarHojas()">Seguir mirando</button></div>`;
   }
+  MKF('enListo',p,$('sheet-bag'));
 }
 actualizarBolsaN();
 iniciar();
