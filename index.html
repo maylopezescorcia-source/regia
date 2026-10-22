@@ -2408,7 +2408,7 @@ document.addEventListener('DOMContentLoaded', ()=>{ if(!tabActiva) pantallaOtraT
 if(!tabActiva && document.body) setTimeout(pantallaOtraTab, 0);
 
 let DB = cargarDB();
-const APP_VERSION='2026-10-22.2';
+const APP_VERSION='2026-10-22.3';
 document.addEventListener('DOMContentLoaded',()=>{ const el=document.getElementById('foot-version'); if(el) el.textContent='Versión '+APP_VERSION; });
 let firebaseApp=null, firestoreRef=null, syncStoreCode=null, syncActivo=false, aplicandoSnapshotRemoto=false;
 
@@ -8194,6 +8194,7 @@ async function conectarSincronizacion(firebaseConfigObj, storeCode, esConexionMa
     syncStoreCode=storeCode;
     // NUNCA se reemplaza a ciegas: lo de este equipo y lo de la nube se UNEN (ventas, gastos, clientes… de los dos lados se conservan)
     // Formato repartido (v2): los datos van en varios documentos, así no hay límite de 1 MB
+    await cargarBase();
     let remoto=await leerNube(null), base=leerBase(), legado=null, legadoMs=0;
     if(remoto) delete remoto._partesIdx;
     let viejo=null; try{ viejo=await firestoreRef.get(); }catch(e){ console.error(e); }
@@ -8277,7 +8278,10 @@ function leerBaseVieja(){ try{ return JSON.parse(localStorage.getItem('almacenro
    stores/{código}__v2           → documento principal (configuración y lo liviano) + índice de partes
    stores/{código}__v2__…        → partes (ventas, inventario, fotos de inventario… en trozos de ~650 KB)
    Todo se escribe en una sola transacción: o se guarda completo o no se guarda nada. */
-const SYNC_FMT='__v2', LIM_PARTE=650000, LIM_CAMPO=25000;
+const SYNC_FMT='__v2', LIM_PARTE=650000, LIM_CAMPO=25000, OBJ_PARTE=60000;
+// Corte de bloques según el id de cada registro: al vender o cambiar un stock solo se sube el bloque pequeño donde está
+// ese registro (unos 60–150 KB), no 650 KB. Los cortes no se mueven cuando se agregan o editan otros registros.
+function corteEn(it){ if(!it || typeof it!=='object' || it.id==null) return false; const s=String(it.id); let h=0x811c9dc5; for(let i=0;i<s.length;i++){ h=Math.imul(h^s.charCodeAt(i),16777619); } return ((h>>>0)%6)===0; }
 let PARTES_CACHE={}; // {id:{h, d}} partes ya descargadas en esta sesión
 function refPrincipal(){ return firebase.firestore().collection('stores').doc(syncStoreCode+SYNC_FMT); }
 function refParte(id){ return firebase.firestore().collection('stores').doc(id); }
@@ -8287,7 +8291,7 @@ function idParte(path,t,i){ return syncStoreCode+SYNC_FMT+'__'+path.map(x=>Strin
 function dividirDB(db){
   const principal={}, partes={};
   const add=(path,t,i,v)=>{ partes[idParte(path,t,i)]={p:path,t,i,v}; };
-  const trozosLista=(arr,path)=>{ let cur=[],tam=0,i=0; arr.forEach(it=>{ const t=tamJ(it)+1; if(t>LIM_PARTE*1.4) throw {code:'demasiado-grande', tam:t}; if(cur.length && tam+t>LIM_PARTE){ add(path,'a',i++,cur); cur=[]; tam=0; } cur.push(it); tam+=t; }); add(path,'a',i,cur); };
+  const trozosLista=(arr,path)=>{ let cur=[],tam=0,i=0; arr.forEach(it=>{ const t=tamJ(it)+1; if(t>LIM_PARTE*1.4) throw {code:'demasiado-grande', tam:t}; if(cur.length && (tam+t>LIM_PARTE || (tam>=OBJ_PARTE && corteEn(it)))){ add(path,'a',i++,cur); cur=[]; tam=0; } cur.push(it); tam+=t; }); add(path,'a',i,cur); };
   const trozosObjeto=(obj,path)=>{ let cur={},tam=0,i=0;
     Object.keys(obj).forEach(k=>{ const v=obj[k], t=tamJ(v)+k.length+4;
       if(t>LIM_PARTE){ if(Array.isArray(v)) trozosLista(v,[...path,k]); else if(v&&typeof v==='object') trozosObjeto(v,[...path,k]); else throw {code:'demasiado-grande', tam:t}; return; }
@@ -8298,7 +8302,7 @@ function dividirDB(db){
     const v=db[k], t=tamJ(v);
     if(t<=LIM_CAMPO || k.charAt(0)==='_' || v===null || typeof v!=='object'){ principal[k]=v; return; }
     if(Array.isArray(v)) trozosLista(v,[k]);
-    else if(t<=LIM_PARTE) add([k],'v',0,v);
+    else if(t<=OBJ_PARTE*2) add([k],'v',0,v);
     else trozosObjeto(v,[k]);
   });
   return {principal, partes};
@@ -8331,8 +8335,24 @@ async function leerNube(tx){
   if(!sn.exists) return null;
   const pr=sn.data(); const db=await armarNube(pr, tx); db._partesIdx=pr._partes||{}; return db;
 }
-function leerBase(){ try{ return JSON.parse(localStorage.getItem(claveBase())||'null'); }catch(e){ return null; } }
-function guardarBase(b){ if(!tabActiva) return; try{ localStorage.setItem(claveBase(), JSON.stringify(b)); }catch(e){ console.error('No se pudo guardar la base de sincronización', e); } }
+// La "base" (última versión de la nube que este equipo conoce) es otra copia completa de los datos.
+// Antes se guardaba como texto en localStorage junto a los datos: lo llenaba y había que leerla y convertirla
+// en cada sincronización. Ahora vive en memoria y se respalda en IndexedDB (más espacio, sin convertir a texto).
+let BASE_MEM=null, BASE_CLAVE='';
+function abrirIDB(){ return new Promise((res,rej)=>{ try{ const r=indexedDB.open('almacenropa',1); r.onupgradeneeded=()=>{ r.result.createObjectStore('kv'); }; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }catch(e){ rej(e); } }); }
+async function idbLeer(k){ const db=await abrirIDB(); return new Promise((res,rej)=>{ const q=db.transaction('kv','readonly').objectStore('kv').get(k); q.onsuccess=()=>res(q.result===undefined?null:q.result); q.onerror=()=>rej(q.error); }); }
+async function idbGuardar(k,v){ const db=await abrirIDB(); return new Promise((res,rej)=>{ const tx=db.transaction('kv','readwrite'); tx.objectStore('kv').put(v,k); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); }); }
+async function cargarBase(){
+  const k=claveBase(); if(BASE_CLAVE===k) return;
+  let b=null;
+  try{ b=await idbLeer(k); }catch(e){ console.warn('IndexedDB no disponible', e); }
+  if(!b){ try{ b=JSON.parse(localStorage.getItem(k)||'null'); }catch(e){} }
+  BASE_MEM=b; BASE_CLAVE=k;
+  if(b){ try{ await idbGuardar(k,b); localStorage.removeItem(k); }catch(e){} } // libera el espacio de localStorage
+}
+function leerBase(){ return BASE_CLAVE===claveBase()? BASE_MEM : null; }
+function guardarBase(b){ if(!tabActiva) return; const k=claveBase(); BASE_MEM=b; BASE_CLAVE=k;
+  idbGuardar(k,b).catch(e=>{ console.warn('Base en IndexedDB', e); try{ localStorage.setItem(k, JSON.stringify(b)); }catch(x){ console.error('No se pudo guardar la base de sincronización', x); } }); }
 function marcarPendiente(v){ try{ if(v) localStorage.setItem('almacenropa_sync_pend', String(Date.now())); else localStorage.removeItem('almacenropa_sync_pend'); }catch(e){} actualizarEstadoSync(); }
 function pendienteSync(){ try{ return !!localStorage.getItem('almacenropa_sync_pend'); }catch(e){ return false; } }
 function esColeccionIds(arr){ if(!Array.isArray(arr)) return false; const vistos=new Set(); return arr.every(x=>{ if(!(x && typeof x==='object' && !Array.isArray(x) && x.id!=null && x.id!=='')) return false; const k=String(x.id); if(vistos.has(k)) return false; vistos.add(k); return true; }); }
