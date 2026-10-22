@@ -392,7 +392,22 @@ function despuesRender(estado){
   pintarTendencia();
   const cnt = $('count');
   if (cnt && inicio && cnt.textContent && !cnt.querySelector('.mk-cnt-t')) cnt.innerHTML = `<span class="mk-cnt-t">Toda la colección</span><span>${esc(cnt.textContent)}</span>`;
-  busqueda(String(estado.texto || '').trim());
+  const txt = String(estado.texto || '').trim();
+  if (cnt && !txt && estado.categoria !== 'Todo' && cnt.textContent && !cnt.querySelector('.mk-cnt-t')) cnt.innerHTML = `<span class="mk-cnt-t">${esc(estado.categoria)}</span><span>${esc(cnt.textContent)}</span>`;
+  // al cambiar de categoría o de búsqueda, se ve de una el comienzo de lo elegido
+  const clave = estado.categoria + '|' + txt;
+  if (clave !== ultimaVista){
+    const habia = ultimaVista !== null; ultimaVista = clave;
+    if (habia){ if (inicio) window.scrollTo(0, 0); else irAResultados(); }
+  }
+  busqueda(txt);
+}
+let ultimaVista = null;
+function irAResultados(){
+  const main = $('main'); if (!main) return;
+  const head = document.querySelector('header.top');
+  const top = Math.max(0, main.getBoundingClientRect().top + window.scrollY - (head ? head.offsetHeight : 110) - 6);
+  if (Math.abs(window.scrollY - top) > 4 && window.scrollY > top) window.scrollTo(0, top);
 }
 
 /* ---------- buscador: muestra la prenda de una ---------- */
@@ -413,9 +428,6 @@ function busqueda(txt){
   clearTimeout(busqT);
   const cnt = $('count');
   if (!txt){ busqAbierta = ''; return; }
-  // los resultados quedan arriba, debajo del buscador
-  const main = $('main');
-  if (main){ const top = main.getBoundingClientRect().top + window.scrollY - 120; if (window.scrollY > top) window.scrollTo(0, Math.max(0, top)); }
   const n = tarjetas().length;
   if (cnt && n) cnt.innerHTML = `<span class="mk-cnt-t">Resultados para “${esc(txt)}”</span><span>${esc(palabra(n))}</span>`;
   if (n === 1 && txt.length >= 3 && txt !== busqAbierta) busqT = setTimeout(() => {
