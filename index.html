@@ -865,6 +865,7 @@
         <button class="btn ghost" onclick="imprimirInventario()">Imprimir existencias</button>
         <button class="btn ghost" onclick="exportarInventarioExcel()">Excel</button>
         <button class="btn ghost" onclick="exportarInventarioPDF()">PDF</button>
+        <button class="btn ghost solo-gerencia" onclick="abrirCategorias()">🏷 Categorías</button>
         <button class="btn ghost solo-gerencia" onclick="abrirUnirReferencias()">🔗 Unir referencias repetidas</button>
         <button class="btn gold solo-gerencia" onclick="abrirModalArticulo()">+ Nuevo artículo</button>
       </div>
@@ -873,6 +874,7 @@
     <div id="inv-aviso-unir" class="solo-gerencia" style="display:none;background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:0 0 12px;font-size:13px;"></div>
     <div class="toolbar">
       <div class="field"><label>Tienda</label><select id="inv-tienda" onchange="renderInventario()"><option value="todas">Las dos tiendas</option><option value="regia">Regia by CM</option><option value="fraganza">Fraganza by CM</option></select></div>
+      <div class="field"><label>Categoría</label><select id="inv-categoria" onchange="renderInventario()"><option value="">Todas</option></select></div>
       <div class="field search-box"><label>Buscar</label><input type="text" id="inv-buscar" oninput="renderInventario()" placeholder="Nombre, talla, color…"></div>
     </div>
     <div class="card">
@@ -1694,6 +1696,22 @@
   </div>
 </div>
 
+<!-- ===== Modal: categorías del inventario ===== -->
+<div class="modal-bg" id="modal-categorias">
+  <div class="modal" style="width:600px;">
+    <h3>Categorías</h3>
+    <p class="pw-meta" style="margin-top:-4px;">Son las opciones de la lista desplegable del inventario y los filtros de la tienda web. Al renombrar o unificar, todas las prendas de esa categoría se actualizan solas.</p>
+    <div class="row" style="align-items:flex-end;">
+      <div class="field" style="min-width:170px;"><label>Tienda</label><select id="gc-tienda" onchange="pintarCategorias()"><option value="regia">Regia by CM</option><option value="fraganza">Fraganza by CM</option></select></div>
+      <div class="field" style="flex:2;"><label>Nueva categoría</label><input type="text" id="gc-nueva" maxlength="40" placeholder="Ej: Sets" onkeydown="if(event.key==='Enter')agregarCategoriaGC()"></div>
+      <button class="btn gold" onclick="agregarCategoriaGC()">+ Agregar</button>
+    </div>
+    <div id="gc-sugerencias"></div>
+    <div id="gc-lista" style="max-height:48vh;overflow:auto;margin-top:6px;"></div>
+    <div class="modal-actions"><button class="btn ghost" onclick="cerrarModal('modal-categorias')">Cerrar</button></div>
+  </div>
+</div>
+
 <!-- ===== Modal: unir referencias repetidas ===== -->
 <div class="modal-bg" id="modal-unir">
   <div class="modal" style="width:560px;">
@@ -1710,7 +1728,7 @@
     <h3 id="modal-articulo-titulo">Nuevo artículo</h3>
     <input type="hidden" id="art-id">
     <div class="field"><label>Nombre del artículo</label><input type="text" id="art-nombre" placeholder="Ej: Camiseta básica"></div>
-    <div class="row"><div class="field"><label>Tienda</label><select id="art-tienda"><option value="regia">Regia by CM (ropa deportiva)</option><option value="fraganza">Fraganza by CM (perfumes)</option></select></div><div class="field"><label>Categoría</label><input type="text" id="art-categoria" placeholder="Ej: Camisetas"></div></div>
+    <div class="row"><div class="field"><label>Tienda</label><select id="art-tienda" onchange="llenarSelectCategoria('art-categoria', this.value)"><option value="regia">Regia by CM (ropa deportiva)</option><option value="fraganza">Fraganza by CM (perfumes)</option></select></div><div class="field"><label>Categoría</label><select id="art-categoria" class="sel-cat"></select></div></div>
     <div class="row">
       <div class="field"><label>Tallas (separadas por coma)</label><input type="text" id="art-tallas" placeholder="S, M, L, XL"></div>
       <div class="field"><label>Colores (separados por coma)</label><input type="text" id="art-colores" placeholder="Negro, Blanco"></div>
@@ -1743,10 +1761,14 @@
 <!-- ===== Modal: editar variante individual ===== -->
 <div class="modal-bg" id="modal-variante">
   <div class="modal">
-    <h3>Editar variante</h3>
+    <h3>Editar prenda</h3>
     <input type="hidden" id="var-id">
-    <div class="field"><label>Artículo</label><input type="text" id="var-nombre" disabled></div>
-    <div class="field"><label>Tienda (se aplica a todas las tallas y colores de esta referencia)</label><select id="var-tienda"><option value="regia">Regia by CM (ropa deportiva)</option><option value="fraganza">Fraganza by CM (perfumes)</option></select></div>
+    <p class="pw-meta" style="margin:-4px 0 8px;">El nombre, la categoría y la tienda se cambian en <b>todas las tallas y colores</b> de esta prenda.</p>
+    <div class="row">
+      <div class="field" style="flex:2;"><label>Nombre de la prenda</label><input type="text" id="var-nombre" maxlength="80"></div>
+      <div class="field"><label>Categoría</label><select id="var-categoria" class="sel-cat"></select></div>
+    </div>
+    <div class="field"><label>Tienda</label><select id="var-tienda" onchange="llenarSelectCategoria('var-categoria', this.value)"><option value="regia">Regia by CM (ropa deportiva)</option><option value="fraganza">Fraganza by CM (perfumes)</option></select></div>
     <div class="row">
       <div class="field"><label>Talla</label><input type="text" id="var-talla"></div>
       <div class="field"><label>Color</label><input type="text" id="var-color"></div>
@@ -1847,7 +1869,7 @@
       <details style="margin-top:6px;"><summary style="cursor:pointer;font-weight:600;font-size:13px;">¿Es una referencia nueva? Créala aquí</summary>
         <div class="row" style="margin-top:8px;">
           <div class="field" style="flex:2;"><label>Nombre</label><input type="text" id="cm-n-nombre"></div>
-          <div class="field"><label>Categoría</label><input type="text" id="cm-n-cat"></div>
+          <div class="field"><label>Categoría</label><select id="cm-n-cat" class="sel-cat"></select></div>
         </div>
         <div class="row" style="align-items:flex-end;">
           <div class="field"><label>Tallas o presentaciones (separadas por coma)</label><input type="text" id="cm-n-tallas" placeholder="S, M, L  ·  100ml"></div>
@@ -2338,8 +2360,50 @@ function tiendaDeItem(it){
 function logoTienda(id, imprimir){ return id==='fraganza' ? (imprimir? LOGO_FRAGANZA_PRINT_URI : LOGO_FRAGANZA_URI) : LOGO_DATA_URI; }
 function badgeTienda(id){ return id==='fraganza'? '<span class="badge" style="background:#F3E6D3;color:#7A4E1D;">Fraganza</span>' : '<span class="badge" style="background:#EFE7FA;color:#6B3FA0;">Regia</span>'; }
 function opcionesTiendaHTML(sel, conGrupo){ return (conGrupo?`<option value="grupo"${sel==='grupo'?' selected':''}>Grupo (las dos)</option>`:'')+TIENDAS.map(t=>`<option value="${t.id}"${sel===t.id?' selected':''}>${t.nombre}</option>`).join(''); }
+/* ================= UNA SOLA PESTAÑA ACTIVA ================= */
+// Si el sistema se abre en dos pestañas o ventanas del mismo navegador, cada una tiene su propia copia de los datos
+// y se pisan entre sí (ventas que desaparecen, stock restado dos veces, consecutivos dañados). Solo una puede trabajar.
+const TAB_ID=Math.random().toString(36).slice(2)+Date.now().toString(36);
+const TAB_KEY='almacenropa_tab_activa', TAB_TOMAR='almacenropa_tab_tomar';
+let tabActiva=true;
+function leerTab(){ try{ return JSON.parse(localStorage.getItem(TAB_KEY)||'null'); }catch(e){ return null; } }
+function marcarTab(){ try{ localStorage.setItem(TAB_KEY, JSON.stringify({id:TAB_ID, t:Date.now()})); }catch(e){} }
+(function decidirTab(){
+  let tomar=0; try{ tomar=+localStorage.getItem(TAB_TOMAR)||0; localStorage.removeItem(TAB_TOMAR); }catch(e){}
+  const x=leerTab();
+  if(x && x.id!==TAB_ID && Date.now()-x.t<6000 && Date.now()-tomar>15000) tabActiva=false;
+  if(tabActiva) marcarTab();
+})();
+function pantallaOtraTab(){
+  let el=document.getElementById('aviso-otra-tab');
+  if(!el){
+    el=document.createElement('div'); el.id='aviso-otra-tab';
+    el.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(27,26,33,.72);display:flex;align-items:center;justify-content:center;padding:20px;font-family:Inter,system-ui,sans-serif;';
+    el.innerHTML='<div style="background:#fff;border-radius:16px;max-width:440px;padding:28px 26px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">'
+      +'<div style="font-size:34px;margin-bottom:6px">⚠️</div>'
+      +'<h2 style="margin:0 0 10px;font-size:20px;color:#1B1A21">El sistema está abierto en otra pestaña</h2>'
+      +'<p style="margin:0 0 18px;color:#555;font-size:14.5px;line-height:1.5">Para que las ventas, la caja y el inventario no se crucen, el sistema solo puede trabajar en <b>una pestaña a la vez</b> en este computador. Cierra esta pestaña, o pulsa el botón para trabajar aquí y la otra se detiene.</p>'
+      +'<button onclick="tomarEstaTab()" style="background:#1B1A21;color:#fff;border:0;border-radius:10px;padding:12px 20px;font-size:15px;font-weight:600;cursor:pointer">Usar el sistema en esta pestaña</button></div>';
+    (document.body||document.documentElement).appendChild(el);
+  }
+  el.style.display='flex';
+}
+function tomarEstaTab(){ try{ localStorage.setItem(TAB_TOMAR, String(Date.now())); }catch(e){} location.replace(location.pathname+'?v='+Date.now()); }
+function desactivarTab(){
+  if(!tabActiva) return;
+  tabActiva=false;
+  try{ clearTimeout(syncTimer); }catch(e){}
+  try{ if(syncUnsub){ syncUnsub(); syncUnsub=null; } }catch(e){}
+  pantallaOtraTab();
+}
+setInterval(()=>{ if(!tabActiva) return; const x=leerTab(); if(x && x.id!==TAB_ID && Date.now()-x.t<6000) desactivarTab(); else marcarTab(); }, 2000);
+window.addEventListener('storage', e=>{ if(e.key===TAB_KEY && tabActiva){ const x=leerTab(); if(x && x.id!==TAB_ID) desactivarTab(); } });
+window.addEventListener('pagehide', ()=>{ const x=leerTab(); if(tabActiva && x && x.id===TAB_ID){ try{ localStorage.removeItem(TAB_KEY); }catch(e){} } });
+document.addEventListener('DOMContentLoaded', ()=>{ if(!tabActiva) pantallaOtraTab(); });
+if(!tabActiva && document.body) setTimeout(pantallaOtraTab, 0);
+
 let DB = cargarDB();
-const APP_VERSION='2026-10-21.1';
+const APP_VERSION='2026-10-21.3';
 document.addEventListener('DOMContentLoaded',()=>{ const el=document.getElementById('foot-version'); if(el) el.textContent='Versión '+APP_VERSION; });
 let firebaseApp=null, firestoreRef=null, syncStoreCode=null, syncActivo=false, aplicandoSnapshotRemoto=false;
 
@@ -2416,11 +2480,15 @@ function migrarDB(db){
     db.config.usuarios=[{id:'u-gerencia', nombre:'Gerencia', rol:'gerencia', pin:String(db.config.pinGerencia||'0000'), activo:true},{id:'u-asesor', nombre:'Asesor', rol:'asesor', pin:String(db.config.pinAsesor||'1234'), activo:true}];
   }
   if(!db.ajustesInventario) db.ajustesInventario=[];
+  try{ sembrarCategorias(db); }catch(e){ console.error(e); }
+  try{ repararConsecutivos(db); }catch(e){ console.error(e); }
+  (db.articulos||[]).forEach(a=>{ if(a.stock!=null && (!Number.isFinite(Number(a.stock)) || Math.abs(Number(a.stock))>100000)){ a.stock=0; a.revisarStock=true; } });
   if(db.conteoActual===undefined) db.conteoActual=null;
   try{ deduplicarImagenes(db); }catch(e){}
   return db;
 }
 function guardarDB(){
+  if(!tabActiva){ pantallaOtraTab(); return; }
   DB._updatedAtMs=Date.now();
   try{
     localStorage.setItem(DB_KEY, JSON.stringify(DB));
@@ -2965,7 +3033,7 @@ function actualizarBloqueoFacturacion(){
 
 /* ================= APARTADOS ================= */
 function registrarMovimientoCaja(valor, metodo, etiquetaCliente, flagCampo){
-  const numero=DB.config.siguienteNumero||1;
+  const numero=tomarNumero('ventas','siguienteNumero');
   const venta={
     id:uid(), numero, fecha:hoyISO(), hora:new Date().toISOString(),
     cliente:etiquetaCliente, cedula:'', telefonoCliente:'', correo:'', direccion:'',
@@ -3096,7 +3164,7 @@ function guardarApartado(){
     if(a) a.stock=Math.max(0, a.stock-it.cantidad);
   });
 
-  const numero=DB.config.siguienteNumeroApartado||1;
+  const numero=tomarNumero('apartados','siguienteNumeroApartado');
   const apartado={
     id:uid(), numero, fecha:hoyISO(), creadoEn:new Date().toISOString(),
     cliente, cedula, telefono,
@@ -3497,7 +3565,7 @@ function guardarApartadoRecuperado(){
 
   if(total<totalAbonado && !confirm('El valor de las prendas ('+fmt(total)+') es menor que lo ya abonado ('+fmt(totalAbonado)+'). ¿Continuar de todas formas?')) return;
 
-  const numero=DB.config.siguienteNumeroApartado||1;
+  const numero=tomarNumero('apartados','siguienteNumeroApartado');
   const m=ventaRecuperarSeleccionada.cliente.match(/Abono apartado N\.\° (\d+) — (.+)/);
   const apartado={
     id:uid(), numero, fecha:ventaRecuperarSeleccionada.fecha, creadoEn:new Date().toISOString(),
@@ -3806,7 +3874,7 @@ function procesarDevolucion(){
 
   // registrar la diferencia como movimiento real para que aparezca en Ventas, Cierre de caja y Reportes
   if(hayDiferencia){
-    const numero=DB.config.siguienteNumero||1;
+    const numero=tomarNumero('ventas','siguienteNumero');
     DB.ventas.push({
       id:uid(), numero, fecha:hoyISO(), hora:new Date().toISOString(),
       cliente:'Ajuste '+(tipo==='cambio'?'de cambio':'de devolución')+' — Venta N.° '+ventaDevolucionActual.numero,
@@ -3865,12 +3933,195 @@ function verDetalleDevolucion(id){
   abrirModal('modal-detalle-devolucion');
 }
 
+/* ================= CONSECUTIVOS (facturas y apartados) ================= */
+function numeroSano(v){ return Number.isSafeInteger(v) && v>0 && v<1e7; }
+// siguiente número libre: nunca menor que el último usado (evita números repetidos o dañados)
+function tomarNumero(col, campo){
+  let max=0; (DB[col]||[]).forEach(x=>{ if(numeroSano(x.numero) && x.numero>max) max=x.numero; });
+  const sig=DB.config[campo];
+  return numeroSano(sig) && sig>max && sig<=max+1000 ? sig : max+1;
+}
+// Repara números dañados (p. ej. 4.15e+99) dándoles el siguiente número correcto, y corrige el consecutivo
+function repararConsecutivos(db){
+  if(!db || !db.config) return;
+  const arreglar=(lista, campo, alCambiar)=>{
+    lista=lista||[];
+    let max=0; lista.forEach(x=>{ if(numeroSano(x.numero) && x.numero>max) max=x.numero; });
+    const malos=lista.filter(x=>x && x.numero!=null && x.numero!=='' && !numeroSano(x.numero));
+    malos.sort((a,b)=>String(a.fecha||'').localeCompare(String(b.fecha||'')) || String(a.hora||'').localeCompare(String(b.hora||'')));
+    malos.forEach(x=>{ const viejo=x.numero; x.numero=++max; x.numeroReparado=String(viejo); alCambiar(viejo, x.numero); });
+    // números repetidos (p. ej. dos equipos facturaron a la vez sin internet): el primero conserva su número y los demás
+    // pasan a los siguientes libres. El orden es el mismo en todos los equipos, así todos llegan al mismo resultado.
+    const orden=(a,b)=>String(a.fecha||'').localeCompare(String(b.fecha||'')) || String(a.hora||'').localeCompare(String(b.hora||'')) || String(a.id).localeCompare(String(b.id));
+    const porNum=new Map(); lista.forEach(x=>{ if(x && numeroSano(x.numero)){ if(!porNum.has(x.numero)) porNum.set(x.numero,[]); porNum.get(x.numero).push(x); } });
+    const repetidos=[]; porNum.forEach(g=>{ if(g.length>1){ g.sort(orden); repetidos.push(...g.slice(1)); } });
+    repetidos.sort(orden).forEach(x=>{ x.numeroAnterior=x.numero; x.numero=++max; });
+    const sig=db.config[campo];
+    if(!numeroSano(sig) || sig<=max || sig>max+1000) db.config[campo]=max+1;
+    return malos.length+repetidos.length;
+  };
+  const igual=(a,b)=>a===b || (typeof a==='number' && typeof b==='number' && String(a)===String(b));
+  const n1=arreglar(db.ventas, 'siguienteNumero', (viejo,nuevo)=>{
+    (db.devoluciones||[]).forEach(d=>{ if(igual(d.ventaNumero,viejo)) d.ventaNumero=nuevo; });
+    (db.apartados||[]).forEach(a=>{ if(igual(a.ventaNumero,viejo)) a.ventaNumero=nuevo; });
+    const pr=(db.tienda||{}).procesados||{}; Object.keys(pr).forEach(k=>{ if(igual(pr[k],viejo)) pr[k]=nuevo; });
+  });
+  const n2=arreglar(db.apartados, 'siguienteNumeroApartado', ()=>{});
+  if(n1||n2) console.warn('Consecutivos reparados: '+n1+' venta(s), '+n2+' apartado(s)');
+}
+
+/* ================= CATEGORÍAS DEL INVENTARIO ================= */
+// Lista de categorías por tienda: {id, tienda, nombre}. Las que ya usan las prendas también aparecen, aunque no estén en la lista.
+function sembrarCategorias(db){
+  if(!Array.isArray(db.categorias)) db.categorias=[];
+  if(db.config.categoriasListas) return;
+  const BASE={regia:['Básicas','Chaquetas','Chalecos','Enterizos','Faldas','Leggins','Running','Sets','Shorts','Tops','Vestidos','Accesorios'], fraganza:['Perfumes']};
+  ['regia','fraganza'].forEach(t=>{
+    const ya=new Set(db.categorias.filter(c=>c.tienda===t).map(c=>normNombre(c.nombre)));
+    BASE[t].forEach(n=>{ const k=normNombre(n); if(ya.has(k)) return; ya.add(k);
+      db.categorias.push({id:'cat-'+t+'-'+k.toLowerCase().replace(/[^a-z0-9]+/g,'-'), tienda:t, nombre:n}); });
+  });
+  db.config.categoriasListas=true;
+}
+// clave para detectar categorías escritas parecido: "TOP", "Top" y "Tops" → TOP
+function catClave(s){ return normNombre(s).split(' ').map(w=>w.length>3?w.replace(/S$/,''):w).join(' '); }
+function catsDe(tienda){
+  const m=new Map();
+  (DB.categorias||[]).filter(c=>c.tienda===tienda).forEach(c=>{ const k=normNombre(c.nombre); if(k && !m.has(k)) m.set(k,{nombre:c.nombre, lista:true, g:new Set(), v:0}); });
+  DB.articulos.forEach(a=>{ const c=(a.categoria||'').trim(); if(!c || tiendaDeArticulo(a)!==tienda) return;
+    const k=normNombre(c); if(!m.has(k)) m.set(k,{nombre:c, lista:false, g:new Set(), v:0}); const x=m.get(k); x.g.add(gidDe(a)); x.v++; });
+  return [...m.values()].map(x=>({nombre:x.nombre, lista:x.lista, refs:x.g.size, variantes:x.v}))
+    .sort((a,b)=>(a.nombre==='Accesorios')-(b.nombre==='Accesorios') || a.nombre.localeCompare(b.nombre,'es'));
+}
+function llenarSelectCategoria(selId, tienda, valor){
+  const s=document.getElementById(selId); if(!s) return;
+  if(valor===undefined) valor=(s.value==='__nueva'?'':s.value);
+  const cats=catsDe(tienda), k=normNombre(valor);
+  const match=cats.find(c=>normNombre(c.nombre)===k);
+  let html='<option value="">Sin categoría</option>'+cats.map(c=>`<option value="${escH(c.nombre)}">${escH(c.nombre)}</option>`).join('');
+  if(valor && !match) html+=`<option value="${escH(valor)}">${escH(valor)}</option>`;
+  html+='<option value="__nueva">+ Nueva categoría…</option>';
+  s.innerHTML=html;
+  s.value= match? match.nombre : (valor||'');
+  s.dataset.tienda=tienda; s.dataset.prev=s.value;
+}
+function crearCategoria(tienda, nombre){
+  nombre=String(nombre||'').trim().replace(/\s+/g,' ').slice(0,40); if(!nombre) return '';
+  nombre=nombre.charAt(0).toUpperCase()+nombre.slice(1);
+  const ex=catsDe(tienda).find(c=>normNombre(c.nombre)===normNombre(nombre));
+  if(ex){ if(!ex.lista) DB.categorias.push({id:uid(), tienda, nombre:ex.nombre}); return ex.nombre; }
+  DB.categorias.push({id:uid(), tienda, nombre}); return nombre;
+}
+// "+ Nueva categoría…" en cualquier lista desplegable: pide el nombre y la agrega
+document.addEventListener('change', e=>{
+  const s=e.target; if(!s || !s.classList || !s.classList.contains('sel-cat')) return;
+  if(s.value!=='__nueva'){ s.dataset.prev=s.value; return; }
+  const t=s.dataset.tienda||'regia';
+  const n=prompt('Nombre de la nueva categoría para '+nombreTienda(t)+':');
+  if(!n || !n.trim()){ s.value=s.dataset.prev||''; return; }
+  const nombre=crearCategoria(t, n); guardarDB();
+  llenarSelectCategoria(s.id, t, nombre);
+  toast('Categoría "'+nombre+'" creada');
+});
+// Cambia el nombre de una categoría en la lista y en todas las prendas (si el nombre nuevo ya existe, se unen)
+function renombrarCategoria(t, viejo, nuevo){
+  nuevo=String(nuevo||'').trim().replace(/\s+/g,' ').slice(0,40); if(!nuevo) return 0;
+  const kv=normNombre(viejo), kn=normNombre(nuevo); let n=0;
+  DB.articulos.forEach(a=>{ if(tiendaDeArticulo(a)!==t) return; const k=normNombre(a.categoria);
+    if(k===kv || k===kn){ if(a.categoria!==nuevo){ a.categoria=nuevo; if(k===kv) n++; } } });
+  const quitar=DB.categorias.filter(c=>c.tienda===t && (normNombre(c.nombre)===kv || normNombre(c.nombre)===kn));
+  const conservar=quitar.find(c=>normNombre(c.nombre)===kn) || quitar[0];
+  DB.categorias=DB.categorias.filter(c=>!quitar.includes(c) || c===conservar);
+  if(conservar) conservar.nombre=nuevo; else DB.categorias.push({id:uid(), tienda:t, nombre:nuevo});
+  return n;
+}
+function eliminarCategoria(t, nombre, destino){
+  const k=normNombre(nombre); let n=0;
+  if(destino) n=renombrarCategoria(t, nombre, destino);
+  else DB.articulos.forEach(a=>{ if(tiendaDeArticulo(a)===t && normNombre(a.categoria)===k){ a.categoria=''; n++; } });
+  DB.categorias=DB.categorias.filter(c=>!(c.tienda===t && normNombre(c.nombre)===k && normNombre(destino||'')!==k));
+  return n;
+}
+function abrirCategorias(){
+  const fT=document.getElementById('inv-tienda')?.value;
+  document.getElementById('gc-tienda').value= fT==='fraganza'? 'fraganza' : 'regia';
+  document.getElementById('gc-nueva').value='';
+  pintarCategorias(); abrirModal('modal-categorias');
+}
+let gcMoviendo=null;
+function pintarCategorias(){
+  const t=document.getElementById('gc-tienda').value, cats=catsDe(t);
+  // categorías escritas parecido
+  const grupos=new Map(); cats.forEach(c=>{ const k=catClave(c.nombre); if(!grupos.has(k)) grupos.set(k,[]); grupos.get(k).push(c); });
+  const dobles=[...grupos.values()].filter(g=>g.length>1);
+  document.getElementById('gc-sugerencias').innerHTML=dobles.length? `<div style="background:var(--surface-2);border-radius:10px;padding:10px 12px;margin:10px 0 4px;font-size:13px;">
+    <b>Estas parecen la misma categoría escrita de varias formas:</b>
+    ${dobles.map((g,i)=>{ const pref=(g.find(c=>c.lista)||g.slice().sort((a,b)=>b.refs-a.refs)[0]).nombre;
+      return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;"><span>${g.map(c=>`<span class="badge">${escH(c.nombre)}</span>`).join(' ')}</span>
+        <span>→</span><select id="gc-dest-${i}" style="width:auto;">${g.map(c=>`<option ${c.nombre===pref?'selected':''}>${escH(c.nombre)}</option>`).join('')}</select>
+        <button class="btn gold sm" onclick='unificarCategoriasGC(${JSON.stringify(g.map(c=>c.nombre)).replace(/'/g,"&#39;")}, "gc-dest-${i}")'>Unificar</button></div>`; }).join('')}
+  </div>` : '';
+  document.getElementById('gc-lista').innerHTML=cats.length? `<table><thead><tr><th>Categoría</th><th class="right">Prendas</th><th></th></tr></thead><tbody>${cats.map((c,i)=>`
+    <tr><td><b>${escH(c.nombre)}</b>${c.lista?'':' <span class="badge gold" title="La usan algunas prendas pero no está en la lista">fuera de la lista</span>'}</td>
+      <td class="right num">${c.refs}</td>
+      <td class="right">${gcMoviendo===c.nombre? `<select id="gc-mover" style="width:auto;"><option value="">Sin categoría</option>${cats.filter(x=>x.nombre!==c.nombre).map(x=>`<option>${escH(x.nombre)}</option>`).join('')}</select>
+          <button class="btn danger sm" onclick="confirmarEliminarCategoria(${i})">Mover y eliminar</button> <button class="btn ghost sm" onclick="gcMoviendo=null;pintarCategorias()">Cancelar</button>`
+        : `${c.lista?'':`<button class="btn ghost sm" onclick="agregarALista(${i})">Agregar a la lista</button> `}<button class="btn ghost sm" onclick="renombrarCategoriaGC(${i})">Renombrar</button> <button class="btn ghost sm" onclick="eliminarCategoriaGC(${i})">Eliminar</button>`}</td></tr>`).join('')}</tbody></table>`
+    : '<div class="empty">Aún no hay categorías. Agrega la primera arriba.</div>';
+}
+function gcCat(i){ return catsDe(document.getElementById('gc-tienda').value)[i]; }
+function agregarCategoriaGC(){
+  const t=document.getElementById('gc-tienda').value, inp=document.getElementById('gc-nueva');
+  const n=inp.value.trim(); if(!n){ toast('Escribe el nombre de la categoría'); return; }
+  const nombre=crearCategoria(t, n); inp.value='';
+  guardarDB(); pintarCategorias(); toast('Categoría "'+nombre+'" lista');
+}
+function agregarALista(i){ const c=gcCat(i); if(!c) return; crearCategoria(document.getElementById('gc-tienda').value, c.nombre); guardarDB(); pintarCategorias(); }
+function renombrarCategoriaGC(i){
+  const c=gcCat(i); if(!c) return; const t=document.getElementById('gc-tienda').value;
+  const nuevo=prompt('Nuevo nombre para "'+c.nombre+'":', c.nombre); if(!nuevo || !nuevo.trim() || nuevo.trim()===c.nombre) return;
+  const n=renombrarCategoria(t, c.nombre, nuevo);
+  guardarDB(); pintarCategorias(); renderInventario();
+  toast('Categoría renombrada'+(n?': '+n+' variante(s) actualizadas':''));
+}
+function eliminarCategoriaGC(i){
+  const c=gcCat(i); if(!c) return; const t=document.getElementById('gc-tienda').value;
+  if(c.refs>0){ gcMoviendo=c.nombre; pintarCategorias(); toast('Elige a qué categoría pasan sus '+c.refs+' prenda(s)'); return; }
+  eliminarCategoria(t, c.nombre, ''); guardarDB(); pintarCategorias(); toast('Categoría "'+c.nombre+'" eliminada');
+}
+function confirmarEliminarCategoria(i){
+  const c=gcCat(i); if(!c) return; const t=document.getElementById('gc-tienda').value;
+  const destino=document.getElementById('gc-mover').value;
+  if(!confirm('¿Eliminar "'+c.nombre+'" y pasar sus '+c.refs+' prenda(s) a '+(destino?'"'+destino+'"':'"Sin categoría"')+'?')) return;
+  eliminarCategoria(t, c.nombre, destino); gcMoviendo=null;
+  guardarDB(); pintarCategorias(); renderInventario(); toast('Listo: categoría eliminada');
+}
+function unificarCategoriasGC(nombres, selId){
+  const t=document.getElementById('gc-tienda').value, destino=document.getElementById(selId).value;
+  let n=0; nombres.forEach(x=>{ if(x!==destino) n+=renombrarCategoria(t, x, destino); });
+  renombrarCategoria(t, destino, destino);
+  guardarDB(); pintarCategorias(); renderInventario();
+  toast('Unificadas en "'+destino+'"'+(n?': '+n+' variante(s) actualizadas':''));
+}
+function llenarFiltroCategorias(){
+  const s=document.getElementById('inv-categoria'); if(!s) return;
+  const fT=document.getElementById('inv-tienda')?.value||'todas', v=s.value;
+  const m=new Map(); (fT==='todas'?['regia','fraganza']:[fT]).forEach(t=>catsDe(t).forEach(c=>{ if(c.refs>0){ const k=normNombre(c.nombre); if(!m.has(k)) m.set(k,c.nombre); } }));
+  s.innerHTML='<option value="">Todas</option>'+[...m.values()].map(n=>`<option value="${escH(n)}">${escH(n)}</option>`).join('')+'<option value="__sin">Sin categoría</option>';
+  s.value=[...s.options].some(o=>o.value===v)? v : '';
+}
+function pasaFiltroCategoria(a){
+  const f=document.getElementById('inv-categoria')?.value||''; if(!f) return true;
+  return f==='__sin'? !(a.categoria||'').trim() : normNombre(a.categoria)===normNombre(f);
+}
+
 /* ================= INVENTARIO ================= */
 let imagenArticuloPendiente=null;
 function abrirModalArticulo(){
   document.getElementById('modal-articulo-titulo').textContent='Nuevo artículo';
   ['art-id','art-nombre','art-categoria','art-tallas','art-colores','art-costo','art-precio'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('art-tienda').value=(document.getElementById('inv-tienda')&&document.getElementById('inv-tienda').value!=='todas')? document.getElementById('inv-tienda').value : 'regia';
+  { const fc=document.getElementById('inv-categoria')?.value||''; llenarSelectCategoria('art-categoria', document.getElementById('art-tienda').value, fc==='__sin'?'':fc); }
   document.getElementById('art-sugerido').textContent='Ingresa el costo para ver el precio sugerido.';
   document.getElementById('art-stock').value=0;
   document.getElementById('art-imagen-preview').innerHTML='';
@@ -3911,8 +4162,8 @@ function duplicarArticulo(id){
   document.getElementById('modal-articulo-titulo').textContent='Duplicar "'+a.nombre+'" en otro color/talla';
   document.getElementById('art-id').value='';
   document.getElementById('art-nombre').value=a.nombre;
-  document.getElementById('art-categoria').value=a.categoria||'';
   document.getElementById('art-tienda').value=tiendaDeArticulo(a);
+  llenarSelectCategoria('art-categoria', tiendaDeArticulo(a), a.categoria||'');
   document.getElementById('art-tallas').value='';
   document.getElementById('art-colores').value='';
   document.getElementById('art-costo').value=a.costo;
@@ -3926,7 +4177,7 @@ function duplicarArticulo(id){
 }
 function guardarArticulo(){
   const nombre=document.getElementById('art-nombre').value.trim();
-  const categoria=document.getElementById('art-categoria').value.trim();
+  const categoria=(document.getElementById('art-categoria').value||'').replace('__nueva','').trim();
   const tienda=document.getElementById('art-tienda').value||'regia';
   const tallas=document.getElementById('art-tallas').value.split(',').map(s=>s.trim()).filter(Boolean);
   const colores=document.getElementById('art-colores').value.split(',').map(s=>s.trim()).filter(Boolean);
@@ -3975,7 +4226,7 @@ function encabezadoImpresionReporte(subtitulo){
 function imprimirInventario(){
   const q=(document.getElementById('inv-buscar')?.value||'').toLowerCase();
   const fT=document.getElementById('inv-tienda')?.value||'todas';
-  const lista=DB.articulos.filter(a=>(fT==='todas'||tiendaDeArticulo(a)===fT) && (a.nombre+a.talla+a.color+a.categoria).toLowerCase().includes(q)).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const lista=DB.articulos.filter(a=>(fT==='todas'||tiendaDeArticulo(a)===fT) && pasaFiltroCategoria(a) && (a.nombre+a.talla+a.color+a.categoria).toLowerCase().includes(q)).sort((a,b)=>a.nombre.localeCompare(b.nombre));
   const esGerencia = currentRole==='gerencia';
   const rows=lista.map(a=>`<tr>
       <td>${a.nombre}</td><td>${a.categoria||'—'}</td><td>${a.talla}</td><td>${a.color}</td>
@@ -4000,8 +4251,9 @@ function renderInventario(){
   const q=(document.getElementById('inv-buscar')?.value||'').toLowerCase();
   const tbody=document.getElementById('tbl-inventario');
   const fT=document.getElementById('inv-tienda')?.value||'todas';
+  llenarFiltroCategorias();
   const lista=DB.articulos.filter(a=>
-    (fT==='todas'||tiendaDeArticulo(a)===fT) && (a.nombre+a.talla+a.color+a.categoria).toLowerCase().includes(q)
+    (fT==='todas'||tiendaDeArticulo(a)===fT) && pasaFiltroCategoria(a) && (a.nombre+a.talla+a.color+a.categoria).toLowerCase().includes(q)
   ).sort((a,b)=>a.nombre.localeCompare(b.nombre));
   if(!lista.length){ tbody.innerHTML='<tr><td colspan="11"><div class="empty">No hay artículos. Agrega el primero con “+ Nuevo artículo”.</div></td></tr>'; return; }
   tbody.innerHTML=lista.map(a=>{
@@ -4016,7 +4268,7 @@ function renderInventario(){
       <td class="center">${a.color}</td>
       <td class="right num solo-gerencia">${fmt(a.costo)}</td>
       <td class="right num">${fmt(a.precio)}</td>
-      <td class="right num">${bajo?'<span class="badge danger">'+a.stock+'</span>':a.stock}</td>
+      <td class="right num">${a.revisarStock?'<span class="badge danger" title="El stock llegó dañado al sincronizar: cuéntalo y corrígelo en Editar">Revisar</span> ':''}${bajo?'<span class="badge danger">'+a.stock+'</span>':a.stock}</td>
       <td class="right num solo-gerencia">${margen}%</td>
       <td class="right solo-gerencia">
         <button class="btn ghost sm" onclick="editarVariante('${a.id}')">Editar</button>
@@ -4209,6 +4461,7 @@ function editarVariante(id){
   document.getElementById('var-talla').value=a.talla;
   document.getElementById('var-color').value=a.color;
   document.getElementById('var-tienda').value=tiendaDeArticulo(a);
+  llenarSelectCategoria('var-categoria', tiendaDeArticulo(a), a.categoria||'');
   document.getElementById('var-costo').value=a.costo;
   document.getElementById('var-precio').value=a.precio;
   document.getElementById('var-stock').value=a.stock;
@@ -4244,7 +4497,9 @@ async function guardarVariante(){
   const f={ talla:document.getElementById('var-talla').value.trim(), color:document.getElementById('var-color').value.trim(),
     costo:parseFloat(document.getElementById('var-costo').value)||0, precio:parseFloat(document.getElementById('var-precio').value)||0,
     stock:parseInt(document.getElementById('var-stock').value)||0, codigoBarras:document.getElementById('var-codigo').value.trim()||generarCodigoBarras(),
-    tienda:document.getElementById('var-tienda').value||'regia', pub:document.getElementById('var-pub').checked };
+    tienda:document.getElementById('var-tienda').value||'regia', pub:document.getElementById('var-pub').checked,
+    nombre:document.getElementById('var-nombre').value.trim().replace(/\s+/g,' '), categoria:(document.getElementById('var-categoria').value||'').replace('__nueva','').trim() };
+  if(!f.nombre){ toast('Escribe el nombre de la prenda'); document.getElementById('var-nombre').focus(); return; }
   const gid=gidDe(a0), colorViejo=claveColor(a0.color), colorNuevo=claveColor(f.color);
   // 2) subir fotos (puede tardar); no se toca DB mientras tanto
   let fotos=null;
@@ -4259,8 +4514,10 @@ async function guardarVariante(){
   // 3) aplicar todo sobre los datos vigentes (si llegó una sincronización mientras se subían las fotos, no se pierde nada)
   const a=DB.articulos.find(x=>x.id===id); if(!a){ toast('⚠ Esta variante ya no existe (se borró desde otro equipo)'); return; }
   const grupoTienda=a.grupoId? DB.articulos.filter(x=>x.grupoId===a.grupoId) : DB.articulos.filter(x=>x===a||x.nombre===a.nombre);
-  Object.assign(a,{talla:f.talla,color:f.color,costo:f.costo,precio:f.precio,stock:f.stock,codigoBarras:f.codigoBarras});
-  grupoTienda.forEach(x=>x.tienda=f.tienda);
+  Object.assign(a,{talla:f.talla,color:f.color,costo:f.costo,precio:f.precio,stock:f.stock,codigoBarras:f.codigoBarras}); delete a.revisarStock;
+  const nombreAntes=a.nombre;
+  grupoTienda.forEach(x=>{ x.tienda=f.tienda; x.nombre=f.nombre; x.categoria=f.categoria; });
+  const otraIgual= normNombre(nombreAntes)!==normNombre(f.nombre) && DB.articulos.some(x=>gidDe(x)!==gidDe(a) && tiendaDeArticulo(x)===f.tienda && normNombre(x.nombre)===normNombre(f.nombre));
   if(fotos){
     const hermanos=DB.articulos.filter(x=>gidDe(x)===gid && (claveColor(x.color)===colorNuevo || (x===a)));
     hermanos.forEach((x,i)=>{ x.imagen= i===0? fotos.thumb : null; });
@@ -4278,7 +4535,8 @@ async function guardarVariante(){
   const pub=f.pub, nuevaTienda=f.tienda;
   invF.cambiado=false;
   guardarDB(); cerrarModal('modal-variante'); renderInventario();
-  toast(pub && tiendaRef(nuevaTienda) ? 'Guardado. La tienda se actualiza en unos segundos.' : 'Variante actualizada');
+  if(otraIgual) toast('Guardado. Ya existe otra prenda llamada "'+f.nombre+'": usa 🔗 Unir referencias repetidas para juntarlas en una sola.');
+  else toast(pub && tiendaRef(nuevaTienda) ? 'Guardado. La tienda se actualiza en unos segundos.' : 'Variante actualizada');
 }
 function imprimirEtiquetaVariante(){
   const id=document.getElementById('var-id').value;
@@ -4572,7 +4830,7 @@ function guardarVenta(){
   const direccion=document.getElementById('fac-direccion').value.trim();
   const metodo=document.getElementById('fac-metodo').value;
   const vendedor=document.getElementById('fac-vendedor-field').style.display!=='none' ? document.getElementById('fac-vendedor').value : (currentUser? currentUser.nombre : '');
-  const numero=DB.config.siguienteNumero||1;
+  const numero=tomarNumero('ventas','siguienteNumero');
   if(esCredito && !cliente){ toast('Para una venta con '+metodoSel+' escribe el nombre del cliente (así queda el crédito identificado).'); return; }
 
   let montoEfectivo=0, montoTransferencia=0;
@@ -5399,11 +5657,13 @@ function abrirModalCompra(){
   ['cm-factura','cm-buscar','cm-costo','cm-n-nombre','cm-n-cat','cm-n-tallas','cm-n-colores','cm-n-costo','cm-n-precio','cm-abono'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('cm-cant').value=1; document.getElementById('cm-n-cant').value=1; document.getElementById('cm-fletes').value=0;
   document.getElementById('cm-pago').value='credito';
+  llenarSelectCategoria('cm-n-cat', document.getElementById('cm-tienda').value, '');
   cmRefrescarLista(); cmPintar(); abrirModal('modal-compra');
 }
 function cmEtiqueta(a){ return `${a.nombre} · ${a.talla} · ${a.color}${a.codigoBarras?' · '+a.codigoBarras:''}`; }
 function cmRefrescarLista(){
   const t=document.getElementById('cm-tienda').value;
+  const sc=document.getElementById('cm-n-cat'); if(sc && sc.dataset.tienda!==t) llenarSelectCategoria('cm-n-cat', t, '');
   document.getElementById('cm-dl').innerHTML=DB.articulos.filter(a=>tiendaDeArticulo(a)===t).sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(a=>`<option value="${escH(cmEtiqueta(a))}">`).join('');
 }
 function cmBuscarArticulo(txt){
@@ -5435,7 +5695,7 @@ function cmAgregarNueva(){
   const tallas=g('cm-n-tallas').value.split(',').map(s=>s.trim()).filter(Boolean), colores=g('cm-n-colores').value.split(',').map(s=>s.trim()).filter(Boolean);
   const grupoId=uid();
   (tallas.length?tallas:['Única']).forEach(t=>(colores.length?colores:['Único']).forEach(c=>{
-    cmLineas.push({nueva:true, grupoId, nombre, categoria:g('cm-n-cat').value.trim(), talla:t, color:c, cantidad:cant, costoUnit:costo, precio});
+    cmLineas.push({nueva:true, grupoId, nombre, categoria:(g('cm-n-cat').value||'').replace('__nueva','').trim(), talla:t, color:c, cantidad:cant, costoUnit:costo, precio});
   }));
   ['cm-n-nombre','cm-n-cat','cm-n-tallas','cm-n-colores','cm-n-costo','cm-n-precio'].forEach(id=>g(id).value=''); g('cm-n-cant').value=1;
   cmPintar();
@@ -7890,6 +8150,7 @@ function esperarEstadoAuth(){
   return new Promise(res=>{ const un=fbAuth.onAuthStateChanged(u=>{ un(); res(u); }); });
 }
 async function conectarSincronizacion(firebaseConfigObj, storeCode, esConexionManual, adminEmail, passAdmin){
+  if(!tabActiva) return;
   adminEmail=(adminEmail||'').trim();
   try{
     if(!firebaseApp){ firebaseApp=firebase.initializeApp(firebaseConfigObj); }
@@ -7907,6 +8168,7 @@ async function conectarSincronizacion(firebaseConfigObj, storeCode, esConexionMa
         return;
       }
     }
+    if(!tabActiva) return;
     firestoreRef=firebase.firestore().collection('stores').doc(storeCode);
     syncStoreCode=storeCode;
     // NUNCA se reemplaza a ciegas: lo de este equipo y lo de la nube se UNEN (ventas, gastos, clientes… de los dos lados se conservan)
@@ -7923,6 +8185,7 @@ async function conectarSincronizacion(firebaseConfigObj, storeCode, esConexionMa
       // si un equipo con la versión anterior siguió guardando en el documento viejo, se rescata lo que agregó
       if(viejo && viejo.exists){ const vd=viejo.data(); legadoMs=vd._updatedAtMs||0; if(legadoMs>(remoto._legadoMs||0)) legado=migrarDB(vd); }
     }
+    if(!tabActiva) return;
     if(remoto){
       let unido=fusionar(base, DB, remoto, '', base? 'local' : 'remoto');
       if(legado){ unido=fusionar(null, unido, legado, '', 'local'); unido._legadoMs=legadoMs; }
@@ -7934,7 +8197,7 @@ async function conectarSincronizacion(firebaseConfigObj, storeCode, esConexionMa
     }
     if(syncUnsub){ try{ syncUnsub(); }catch(e){} }
     syncUnsub=refPrincipal().onSnapshot(async doc=>{
-      if(!doc.exists || aplicandoSnapshotRemoto) return;
+      if(!tabActiva || !doc.exists || aplicandoSnapshotRemoto) return;
       if(doc.metadata && doc.metadata.hasPendingWrites) return; // es el eco de lo que este equipo acaba de guardar
       if(syncEnCurso){ syncOtraVez=true; return; } // se está subiendo: al terminar se vuelve a unir con lo último de la nube (evita contar dos veces)
       const principal=doc.data();
@@ -7943,7 +8206,9 @@ async function conectarSincronizacion(firebaseConfigObj, storeCode, esConexionMa
       let remoto;
       try{ remoto=await armarNube(principal, null); }catch(e){ console.error('Leyendo partes de la nube', e); syncOtraVez=true; programarSync(2000); return; }
       if(syncEnCurso){ syncOtraVez=true; return; }
-      const unido=fusionar(base, DB, remoto, '', 'local');
+      const baseAhora=leerBase();
+      if(baseAhora && (principal._updatedAtMs||0)<=(baseAhora._updatedAtMs||0)) return; // mientras se leía ya se unió esto o algo más nuevo
+      const unido=fusionar(baseAhora, DB, remoto, '', 'local');
       guardarBase(remoto);
       const cambio=!igualSinMs(unido, DB);
       if(cambio){ aplicarDatosUnidos(unido, true); toast('🔄 Datos actualizados desde otro dispositivo'); }
@@ -8046,7 +8311,7 @@ async function leerNube(tx){
   const pr=sn.data(); const db=await armarNube(pr, tx); db._partesIdx=pr._partes||{}; return db;
 }
 function leerBase(){ try{ return JSON.parse(localStorage.getItem(claveBase())||'null'); }catch(e){ return null; } }
-function guardarBase(b){ try{ localStorage.setItem(claveBase(), JSON.stringify(b)); }catch(e){ console.error('No se pudo guardar la base de sincronización', e); } }
+function guardarBase(b){ if(!tabActiva) return; try{ localStorage.setItem(claveBase(), JSON.stringify(b)); }catch(e){ console.error('No se pudo guardar la base de sincronización', e); } }
 function marcarPendiente(v){ try{ if(v) localStorage.setItem('almacenropa_sync_pend', String(Date.now())); else localStorage.removeItem('almacenropa_sync_pend'); }catch(e){} actualizarEstadoSync(); }
 function pendienteSync(){ try{ return !!localStorage.getItem('almacenropa_sync_pend'); }catch(e){ return false; } }
 function esColeccionIds(arr){ if(!Array.isArray(arr)) return false; const vistos=new Set(); return arr.every(x=>{ if(!(x && typeof x==='object' && !Array.isArray(x) && x.id!=null && x.id!=='')) return false; const k=String(x.id); if(vistos.has(k)) return false; vistos.add(k); return true; }); }
@@ -8054,8 +8319,14 @@ function esColeccionIds(arr){ if(!Array.isArray(arr)) return false; const vistos
 const CAMPOS_SUMABLES=/^(stock|siguiente[A-Za-z]*|saldo[A-Za-z]*|totalAbonado)$/;
 function fusionar(b, l, r, clave, prefiere){
   prefiere=prefiere||'local';
-  // stock y consecutivos: si los dos equipos los movieron, se suman ambos movimientos (aunque queden iguales)
-  if(typeof l==='number' && typeof r==='number' && typeof b==='number' && CAMPOS_SUMABLES.test(clave||'') && l!==b && r!==b) return b+(l-b)+(r-b);
+  // consecutivos de facturas y apartados: se toma el mayor válido. NUNCA se suman (sumarlos los duplicaba en cada sincronización)
+  if(/^siguiente/.test(clave||'') && (typeof l==='number' || typeof r==='number')){
+    const c=[l,r].filter(numeroSano); return c.length? Math.max(...c) : (numeroSano(b)? b : 1);
+  }
+  // stock y saldos: si los dos equipos los movieron de forma distinta, se suman ambos movimientos
+  if(typeof l==='number' && typeof r==='number' && typeof b==='number' && CAMPOS_SUMABLES.test(clave||'') && l!==b && r!==b && l!==r){
+    const v=b+(l-b)+(r-b); return Number.isFinite(v)? v : l;
+  }
   const hayBase=b!==undefined && b!==null;
   if(igualJSON(l,r)){
     // iguales: si los dos cambiaron lo mismo desde la base, se revisa por dentro (p. ej. 2 ventas que dejaron el mismo stock)
@@ -8094,7 +8365,7 @@ function fusionar(b, l, r, clave, prefiere){
   }
   if(typeof l==='number' && typeof r==='number'){
     if(clave==='_updatedAtMs') return Math.max(l,r);
-    if(typeof b==='number' && CAMPOS_SUMABLES.test(clave||'')) return b+(l-b)+(r-b);
+    if(typeof b==='number' && CAMPOS_SUMABLES.test(clave||'') && !/^siguiente/.test(clave||'')){ const v=b+(l-b)+(r-b); if(Number.isFinite(v)) return v; }
   }
   return clonar(prefiere==='remoto'? r : l);
 }
@@ -8104,7 +8375,7 @@ function aplicarDatosUnidos(nuevo, repintar){
   try{
     const m=migrarDB(nuevo);
     Object.keys(DB).forEach(k=>delete DB[k]); Object.assign(DB, m);
-    try{ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }catch(e){ console.error(e); }
+    if(tabActiva){ try{ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }catch(e){ console.error(e); } }
     if(repintar){
       const hayModalAbierto=document.querySelector('.modal-bg.active');
       const enfocadoEnCampo=document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
@@ -8120,7 +8391,7 @@ function programarSync(ms){
 }
 let syncReemplazar=false;
 async function sincronizarAhora(){
-  if(!syncActivo || !firestoreRef) return;
+  if(!tabActiva || !syncActivo || !firestoreRef) return;
   if(syncEnCurso){ syncOtraVez=true; return; }
   syncEnCurso=true;
   const enviado=clonar(DB);
@@ -8626,7 +8897,7 @@ function confirmarFacturarPedido(){
   if(t.esCred && !nombre){ toast('Escribe el nombre del cliente'); return; }
   const items=t.lineas.map(l=>({articuloId:l.a.id, nombre:l.a.nombre, talla:l.a.talla, color:l.a.color, cantidad:l.cant, precio:l.a.precio, costo:l.a.costo||0}));
   items.forEach(it=>ajustarStockPorItem(it,it.cantidad,-1));
-  const numero=DB.config.siguienteNumero||1;
+  const numero=tomarNumero('ventas','siguienteNumero');
   const costoTotal=items.reduce((s,it)=>s+it.costo*it.cantidad,0);
   const vendedor=document.getElementById('pw-vendedor')?.value||'';
   const venta={
