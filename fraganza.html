@@ -85,6 +85,13 @@
   .card .nm{margin-top:10px;font-size:14.5px;font-weight:500;line-height:1.3;}
   .card .pr{font-family:'Jost',sans-serif;font-size:17px;font-weight:500;margin-top:2px;}
   .card .sz{font-size:12px;color:var(--soft);margin-top:1px;}
+  /* ofertas */
+  .pr-of{color:#B3261E;}
+  .pr-antes{color:var(--soft);font-weight:400;font-size:.82em;margin-left:4px;}
+  .tag-of{position:absolute;right:8px;top:8px;background:#B3261E;color:#fff;border-radius:4px;font-size:11.5px;font-weight:600;padding:3px 7px;z-index:1;}
+  .agotado .tag-of{display:none;}
+  .ahorro{font-size:12.5px;color:#B3261E;margin:-6px 0 10px;font-weight:500;}
+  .tot.ah{color:#B3261E;font-size:13px;}
   .vacio-msg{text-align:center;color:var(--soft);padding:70px 16px;}
   .vacio-msg h2{font-size:22px;color:var(--ink);margin-bottom:6px;}
   .cerrada{background:var(--wash);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:6px 0 16px;font-size:14px;}
@@ -270,13 +277,31 @@ let CFG={nombre:'Fraganza by CM',abierta:true,medios:[],envioActivo:true,retiroE
 let PRODS=[], cargado=false, categoria='Todo', texto='';
 let CART=[]; try{ CART=JSON.parse(localStorage.getItem('fraganza_bolsa')||'[]'); }catch(e){}
 let prodAbierto=null, selColor=null, selTalla=null, selQty=1, fotosCache={}, galIdx=0;
-let paso='bolsa', ultimoPedido=null, enviando=false;
+let paso='bolsa', ultimoPedido=null, enviando=false, ultimoAhorro=0;
 let db=null, baseRef=null;
-let fotosRef=null; // Fraganza: las fotos viven en la base de Regia
+let fotosRef=null; // fotos antiguas de Fraganza (antes se guardaban en la base de Regia)
 
 function abrirVisor(src){ const v=$('visor'); $('visor-img').src=src; v.classList.add('on'); v.scrollTop=0; }
 function cerrarVisor(){ $('visor').classList.remove('on'); $('visor-img').removeAttribute('src'); }
 function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('on'); clearTimeout(toast.t); toast.t=setTimeout(()=>t.classList.remove('on'),2800); }
+// ---------- ofertas ----------
+// El sistema publica el precio ya rebajado y el precio anterior (precioAntes). Si el descuento tiene fecha de fin,
+// al pasar esa fecha la tienda vuelve sola al precio normal aunque el sistema no se haya abierto.
+function aplicarOfertas(lista){
+  const ahora=Date.now();
+  (lista||[]).forEach(p=>{
+    if(!(p.descuento>0)) return;
+    if(p.descHasta && ahora>p.descHasta){
+      p.variantes.forEach(v=>{ if(v.precioAntes){ v.precio=v.precioAntes; delete v.precioAntes; } });
+      const ps=p.variantes.map(v=>v.precio).filter(x=>x>0); if(ps.length) p.precio=Math.min(...ps);
+      p.descuento=0; delete p.precioAntes; return;
+    }
+    if(!p.variantes.some(v=>v.precioAntes>v.precio)) p.descuento=0;
+  });
+}
+const enOferta=p=>p.descuento>0;
+const precioHtml=(ahora,antes)=> antes>ahora ? `<span class="pr-of">${fmt(ahora)}</span><s class="pr-antes">${fmt(antes)}</s>` : fmt(ahora);
+function ahorroBolsa(){ return CART.reduce((s,l)=>{ const r=buscar(l); return s+(r&&r.v.precioAntes>r.v.precio?(r.v.precioAntes-r.v.precio)*l.cantidad:0); },0); }
 function guardarBolsa(){ try{ localStorage.setItem('fraganza_bolsa', JSON.stringify(CART)); }catch(e){} actualizarBolsaN(); }
 function actualizarBolsaN(){ const n=CART.reduce((s,l)=>s+l.cantidad,0); const b=$('bag-n'); b.textContent=n; b.hidden=!n; }
 
@@ -296,9 +321,9 @@ function iniciar(){
   }, e=>console.error(e));
   baseRef.collection('productos').onSnapshot(snap=>{
     PRODS=snap.docs.map(d=>d.data()).filter(p=>p && !p.oculto && Array.isArray(p.variantes) && p.nombre);
-    MKF('normalizar',PRODS);
-    cargado=true; revisarBolsa(); render(); abrirDesdeLink();
-    if(prodAbierto){ const p=PRODS.find(x=>x.id===prodAbierto.id); if(p){ prodAbierto=p; pintarProducto(true); } }
+    MKF('normalizar',PRODS); aplicarOfertas(PRODS); aplicarPortadas();
+    cargado=true; revisarBolsa(); render(); abrirDesdeLink(); rellenarPortadas();
+    if(prodAbierto){ const p=PRODS.find(x=>x.id===prodAbierto.id); if(p){ prodAbierto=p; pintarProducto(true); cargarFotosProducto(p); } }
     if($('sheet-bag').classList.contains('on') && paso==='bolsa') pintarBolsa();
   }, e=>{ console.error(e); cargado=true; $('count').textContent='No pudimos cargar el catálogo. Revisa tu conexión e intenta de nuevo.'; });
 }
@@ -314,11 +339,12 @@ function pintarEsqueleto(){ $('grid').innerHTML=Array.from({length:8}).map(()=>'
 function render(){
   if(!cargado) return;
   MKF('setProds',PRODS);
-  const cats=['Todo',...[...new Set(PRODS.map(catDe).filter(Boolean))].sort((a,b)=>window.MK?MK.ordenCats(a,b):a.localeCompare(b,'es'))];
+  const hayOfertas=PRODS.some(p=>enOferta(p)&&stockTotal(p)>0);
+  const cats=['Todo',...(hayOfertas?['Ofertas']:[]),...[...new Set(PRODS.map(catDe).filter(Boolean))].filter(c=>c!=='Ofertas').sort((a,b)=>window.MK?MK.ordenCats(a,b):a.localeCompare(b,'es'))];
   if(!cats.includes(categoria)) categoria='Todo';
   $('cats').innerHTML=cats.length>2?cats.map(c=>`<button class="chip" aria-pressed="${c===categoria}" data-c="${esc(c)}">${esc(c)}</button>`).join(''):'';
   const q=texto.trim().toLowerCase();
-  let lista=PRODS.filter(p=>(categoria==='Todo'||catDe(p)===categoria) && (!q||(p.nombre+' '+(p.categoria||'')+' '+catDe(p)+' '+(p.descripcion||'')).toLowerCase().includes(q)));
+  let lista=PRODS.filter(p=>(categoria==='Todo'||(categoria==='Ofertas'?enOferta(p):catDe(p)===categoria)) && (!q||(p.nombre+' '+(p.categoria||'')+' '+catDe(p)+' '+(p.descripcion||'')).toLowerCase().includes(q)));
   lista.sort((a,b)=>{ const sa=stockTotal(a)>0?0:1, sb=stockTotal(b)>0?0:1; return sa-sb || (b.publicadoEn||0)-(a.publicadoEn||0) || a.nombre.localeCompare(b.nombre,'es'); });
   $('count').textContent=lista.length? (window.MK?MK.palabra(lista.length):(lista.length+(lista.length===1?' perfume':' perfumes'))) : '';
   if(!lista.length){
@@ -329,8 +355,8 @@ function render(){
     const tallas=[...new Set(p.variantes.filter(v=>v.stock>0).map(v=>v.talla))].filter(t=>t!=='Única');
     return `<button class="card ${agotado?'agotado':''}" data-id="${esc(p.id)}" aria-label="${esc(nom(p.nombre))}, ${fmt(p.precio)}">
       <div class="ph ${p.thumb?'':'vacio'}">${p.thumb?`<img src="${esc(p.thumb)}" alt="${esc(nom(p.nombre))}" loading="lazy">`:`<img src="${LOGO}" alt="">`}
-      ${window.MK?MK.etiqueta(p):(agotado?'<span class="tag">Agotado</span>':'')}</div>
-      <div class="nm">${esc(nom(p.nombre))}</div><div class="pr">${fmt(p.precio)}</div>${tallas.length?`<div class="sz">${esc(tallas.join(' · '))}</div>`:''}</button>`;
+      ${window.MK?MK.etiqueta(p):(agotado?'<span class="tag">Agotado</span>':'')}${enOferta(p)?`<span class="tag-of">-${p.descuento}%</span>`:''}</div>
+      <div class="nm">${esc(nom(p.nombre))}</div><div class="pr">${precioHtml(p.precio,enOferta(p)?p.precioAntes:0)}</div>${tallas.length?`<div class="sz">${esc(tallas.join(' · '))}</div>`:''}</button>`;
   }).join('');
   MKF('despuesRender',{categoria,texto});
 }
@@ -362,6 +388,25 @@ async function compartirProducto(){
 }
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ if($('visor').classList.contains('on')) cerrarVisor(); else cerrarHojas(); } });
 
+
+// Si una prenda tiene fotos en la nube pero le falta la miniatura, se usa su primera foto como portada
+const portadasNube={};
+function aplicarPortadas(){ PRODS.forEach(p=>{ if(!p.thumb){ const v=portadasNube[p.id+'|'+(p.fotosV||0)]; if(typeof v==='string' && v) p.thumb=v; } }); }
+function rellenarPortadas(){
+  const faltan=PRODS.filter(p=>!p.thumb && p.nFotos>0 && !(p.id+'|'+(p.fotosV||0) in portadasNube)).slice(0,24);
+  if(!faltan.length) return;
+  Promise.all(faltan.map(async p=>{ const k=p.id+'|'+(p.fotosV||0); portadasNube[k]='';
+    try{ const fs=await leerFotosNube(p.id); if(fs.length) portadasNube[k]=fs[0].src; }catch(e){ console.error(e); } }))
+    .then(()=>{ aplicarPortadas(); render(); });
+}
+// El sistema guarda las fotos de los perfumes en la base de Fraganza; las más antiguas quedaron en la de Regia
+async function leerFotosNube(id){
+  for(const ref of [baseRef.collection('fotos'), fotosRef]){
+    try{ const d=await ref.doc(id).get(); const imgs=d.exists?(d.data().imgs||[]):[]; if(imgs.length) return imgs.map(src=>({src,color:''})); }
+    catch(e){ console.error(e); }
+  }
+  return [];
+}
 /* ---------- producto ---------- */
 async function abrirProducto(id){
   const p=PRODS.find(x=>x.id===id); if(!p) return;
@@ -374,10 +419,15 @@ async function abrirProducto(id){
   if(todosColores.length===1) selColor=todosColores[0];
   selTalla=null; autoTalla();
   pintarProducto(false); abrirHoja('sheet-prod');
-  if(p.nFotos>0 && !fotosCache[p.id]){
-    try{ const d=await fotosRef.doc(p.id).get(); fotosCache[p.id]=d.exists?(d.data().imgs||[]):[]; }catch(e){ fotosCache[p.id]=[]; }
-    if(prodAbierto && prodAbierto.id===p.id) pintarProducto(true);
-  }
+  await cargarFotosProducto(p);
+}
+// Trae las fotos de la nube; si el perfume cambió de fotos (fotosV), las vuelve a pedir
+async function cargarFotosProducto(p){
+  const k=p.id+'|'+(p.fotosV||0)+'|'+(p.nFotos||0);
+  if(!(p.nFotos>0) || fotosCache[p.id+'_k']===k) return;
+  fotosCache[p.id+'_k']=k;
+  try{ fotosCache[p.id]=(await leerFotosNube(p.id)).map(f=>f.src); }catch(e){ delete fotosCache[p.id+'_k']; }
+  if(prodAbierto && prodAbierto.id===p.id) pintarProducto(true);
 }
 function autoTalla(){
   const p=prodAbierto; if(!p) return;
@@ -408,7 +458,7 @@ function pintarProducto(conservar){
   <div class="prod-body">
     <div class="gal"><div class="gal-main">${fotos.length?`<img src="${esc(fotos[galIdx])}" alt="${esc(p.nombre)}">`:`<div class="ph vacio" style="height:100%;border-radius:0"><img src="${LOGO}" alt=""></div>`}</div>
       ${fotos.length>1?`<div class="gal-th">${fotos.map((f,i)=>`<button data-g="${i}" aria-label="Foto ${i+1}" aria-current="${i===galIdx}"><img src="${esc(f)}" alt=""></button>`).join('')}</div>`:''}</div>
-    <div class="info"><h2>${esc(p.nombre)}</h2><div class="precio">${fmt(v?v.precio:p.precio)}</div>
+    <div class="info"><h2>${esc(p.nombre)}</h2><div class="precio">${precioHtml(v?v.precio:p.precio, v?(v.precioAntes||0):(enOferta(p)?p.precioAntes:0))}</div>${(v?v.precioAntes>v.precio:enOferta(p))?`<div class="ahorro">-${p.descuento}% · ahorras ${fmt(v?v.precioAntes-v.precio:p.precioAntes-p.precio)}${p.descHasta?' · hasta el '+esc(new Date(p.descHasta).toLocaleDateString('es-CO',{day:'numeric',month:'long'})):''}</div>`:''}
       ${p.descripcion?`<div class="desc">${esc(p.descripcion)}</div>`:''}
       ${colorHtml}${tallaHtml}
       <div class="stock-note ${v&&v.stock<=3&&v.stock>0?'ultimas':''}">${esc(nota)}</div>
@@ -465,10 +515,10 @@ function pintarBolsa(){
   const falta=CFG.envioActivo&&CFG.envioGratisDesde>0? CFG.envioGratisDesde-t.sub : 0;
   sh.innerHTML=cabBolsa('Mi bolsa')+`<div class="bag-b">${CART.map((l,i)=>{ const r=buscar(l); if(!r) return ''; const img=r.p.thumb;
     return `<div class="ln"><div class="im">${img?`<img src="${esc(img)}" alt="">`:''}</div><div class="d"><b>${esc(nom(r.p.nombre))}</b><small>${[r.v.talla!=='Única'?esc(r.v.talla):'',r.v.color!=='Único'?esc(r.v.color):''].filter(Boolean).join(' · ')}</small>
-      <div class="row2"><div style="display:flex;align-items:center"><div class="qty"><button data-m="${i}" data-d="-1" aria-label="Menos">−</button><span>${l.cantidad}</span><button data-m="${i}" data-d="1" aria-label="Más" ${l.cantidad>=r.v.stock?'disabled':''}>+</button></div><button class="rm" data-r="${i}">Quitar</button></div><span class="lp">${fmt(r.v.precio*l.cantidad)}</span></div></div></div>`; }).join('')}
+      <div class="row2"><div style="display:flex;align-items:center"><div class="qty"><button data-m="${i}" data-d="-1" aria-label="Menos">−</button><span>${l.cantidad}</span><button data-m="${i}" data-d="1" aria-label="Más" ${l.cantidad>=r.v.stock?'disabled':''}>+</button></div><button class="rm" data-r="${i}">Quitar</button></div><span class="lp">${precioHtml(r.v.precio*l.cantidad, r.v.precioAntes>r.v.precio? r.v.precioAntes*l.cantidad : 0)}</span></div></div></div>`; }).join('')}
     ${falta>0&&falta<=CFG.envioGratisDesde?`<div class="pend">Te faltan ${fmt(falta)} para envío gratis.</div>`:''}
     ${CFG.envioGratisDesde>0&&falta<=0&&CFG.envioActivo?'<div class="free">¡Tu envío es gratis!</div>':''}
-  </div><div class="bag-f"><div class="tot"><span>Subtotal</span><span>${fmt(t.sub)}</span></div><div class="tot" style="color:var(--soft);font-size:12.5px"><span>El envío se calcula al finalizar</span></div>
+  </div><div class="bag-f"><div class="tot"><span>Subtotal</span><span>${fmt(t.sub)}</span></div>${ahorroBolsa()>0?`<div class="tot ah"><span>Ahorras con los descuentos</span><span>${fmt(ahorroBolsa())}</span></div>`:''}<div class="tot" style="color:var(--soft);font-size:12.5px"><span>El envío se calcula al finalizar</span></div>
   <button class="btn pri" style="width:100%;margin-top:10px" id="b-seguir" ${CFG.abierta?'':'disabled'}>${CFG.abierta?'Continuar con mi pedido':'Tienda cerrada'}</button></div>`;
   MKF('enBolsa',sh);
 }
@@ -505,6 +555,7 @@ function pintarDatos(err){
     <input class="hp" id="f-web" tabindex="-1" autocomplete="off" aria-hidden="true">
     ${E.general?`<div class="errbox">${esc(E.general)}</div>`:''}
   </div><div class="bag-f"><div class="tot"><span>Subtotal</span><span>${fmt(t.sub)}</span></div>
+    ${ahorroBolsa()>0?`<div class="tot ah"><span>Ahorras</span><span>${fmt(ahorroBolsa())}</span></div>`:''}
     ${FORM.entrega==='envio'?`<div class="tot"><span>Envío</span><span>${t.envio?fmt(t.envio):(window.MK&&MK.fleteTexto()&&!(CFG.envioGratisDesde>0&&t.sub>=CFG.envioGratisDesde)?'Por confirmar':'Gratis')}</span></div>`:''}
     <div class="tot g"><span>Total</span><span>${fmt(t.total)}</span></div>
     <button class="btn pri" style="width:100%;margin-top:10px" id="b-enviar" ${enviando?'disabled':''}>${enviando?'Enviando…':'Hacer pedido'}</button>
@@ -539,7 +590,7 @@ async function enviarPedido(){
   try{ localStorage.setItem('regia_datos',JSON.stringify({nombre:FORM.nombre,telefono:FORM.telefono,correo:FORM.correo,cedula:FORM.cedula,direccion:FORM.direccion,ciudad:FORM.ciudad})); }catch(e){}
   const t=totales(FORM.entrega);
   const items=CART.map(l=>{ const r=buscar(l); return {pid:r.p.id,vid:r.v.id,nombre:limpio(r.p.nombre,80),talla:limpio(r.v.talla,20),color:limpio(r.v.color,30),cantidad:l.cantidad,precio:r.v.precio}; });
-  const codigo=codigoPedido();
+  const codigo=codigoPedido(); ultimoAhorro=ahorroBolsa();
   const doc={codigo,estado:'nuevo',creado:Date.now(),nombre,telefono:tel,cedula:limpio(FORM.cedula,20),correo:limpio(FORM.correo,80),
     entrega:FORM.entrega,direccion:FORM.entrega==='envio'?limpio(FORM.direccion,120):'',ciudad:FORM.entrega==='envio'?limpio(FORM.ciudad,60):'',
     medioPago:FORM.medioPago,notas:limpio(FORM.notas,200),items,subtotal:t.sub,envio:t.envio,total:t.total};
@@ -557,7 +608,7 @@ async function enviarPedido(){
 function pintarListo(){
   const p=ultimoPedido, medio=(CFG.medios||[]).find(m=>m.id===p.medioPago);
   const lista=p.items.map(i=>`${i.cantidad}x ${i.nombre} (${i.talla}/${i.color})`).join('\n');
-  const msg=`Hola, soy ${p.nombre}. Hice el pedido ${p.codigo} en la tienda por ${fmt(p.total)}:\n${lista}\n`+(p.entrega==='envio'?`Envío a: ${p.direccion}, ${p.ciudad}\n`:'Recojo en tienda\n')+`Pago: ${medio?medio.label:p.medioPago}`;
+  const msg=`Hola, soy ${p.nombre}. Hice el pedido ${p.codigo} en la tienda por ${fmt(p.total)}:\n${lista}\n`+(p.entrega==='envio'?`Envío a: ${p.direccion}, ${p.ciudad}\n`:'Recojo en tienda\n')+`Pago: ${medio?medio.label:p.medioPago}`+(ultimoAhorro>0?`\nAhorro por descuentos: ${fmt(ultimoAhorro)}`:'');
   const wa=CFG.whatsapp? 'https://wa.me/'+CFG.whatsapp+'?text='+encodeURIComponent(msg) : '';
   const pagoHtml=p.medioPago==='transferencia'&&CFG.datosPago?`<div class="pago"><b>Para pagar</b>${esc(CFG.datosPago)}<br><br>Total a pagar: <strong>${fmt(p.total)}</strong></div>`:`<p>Total: <strong>${fmt(p.total)}</strong></p>`;
   if(wa){

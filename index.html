@@ -90,6 +90,9 @@
   @media(max-width:700px){.tj-grid{grid-template-columns:1fr;}}
   #tp-fotos{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 10px;}
   .inv-fotos{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 8px;}
+  .desc-box{border:1px dashed var(--border);border-radius:10px;padding:10px 12px 10px;margin:8px 0 12px;background:var(--surface-2);}
+  .desc-box .field{margin-bottom:8px;}
+  .tj-antes{text-decoration:line-through;color:var(--ink-soft);font-size:11.5px;display:block;}
   .inv-foto{position:relative;width:84px;height:104px;border-radius:10px;overflow:hidden;border:1px solid var(--border);background:var(--surface-2);}
   .inv-foto img{width:100%;height:100%;object-fit:cover;}
   .inv-foto .tp-tag{font-size:10px;}
@@ -879,8 +882,10 @@
     <div class="toolbar">
       <div class="field"><label>Tienda</label><select id="inv-tienda" onchange="renderInventario()"><option value="todas">Las dos tiendas</option><option value="regia">Regia by CM</option><option value="fraganza">Fraganza by CM</option></select></div>
       <div class="field"><label>Categoría</label><select id="inv-categoria" onchange="renderInventario()"><option value="">Todas</option></select></div>
+      <div class="field"><label>Existencias</label><select id="inv-stock" onchange="try{localStorage.setItem('inv_filtro_stock',this.value)}catch(e){};renderInventario()"><option value="todas">Todo</option><option value="con">Solo lo que tengo en stock</option><option value="sin">Solo agotados</option></select></div>
       <div class="field search-box"><label>Buscar</label><input type="text" id="inv-buscar" oninput="renderInventario()" placeholder="Nombre, talla, color…"></div>
     </div>
+    <p class="pw-meta" id="inv-resumen" style="margin:-4px 0 10px;"></p>
     <div class="card">
       <table>
         <thead><tr><th></th><th>Artículo</th><th>Tienda</th><th>Categoría</th><th class="center">Talla</th><th class="center">Color</th><th class="right solo-gerencia">Costo</th><th class="right">Precio</th><th class="right">Stock</th><th class="right solo-gerencia">Margen</th><th class="solo-gerencia"></th></tr></thead>
@@ -1533,9 +1538,10 @@
         <div class="toolbar">
           <div class="field search-box"><label>Buscar producto</label><input type="text" id="tj-buscar" oninput="tiendaFiltroTxt=this.value;renderTienda()" placeholder="Nombre o categoría…"></div>
           <div class="field"><label>Tienda</label><select onchange="tiendaFiltroTienda=this.value;renderTienda()"><option value="todas">Las dos</option><option value="regia">Regia by CM</option><option value="fraganza">Fraganza by CM</option></select></div>
-          <div class="field"><label>Mostrar</label><select onchange="tiendaFiltroEstado=this.value;renderTienda()"><option value="todos">Todos</option><option value="pub">En tienda</option><option value="nopub">Ocultos</option><option value="tend">★ En tendencia</option></select></div>
+          <div class="field"><label>Mostrar</label><select onchange="tiendaFiltroEstado=this.value;renderTienda()"><option value="todos">Todos</option><option value="pub">En tienda</option><option value="nopub">Ocultos</option><option value="tend">★ En tendencia</option><option value="dsc">% Con descuento</option></select></div>
           <button class="btn ghost" onclick="publicarVisibles(true)">Publicar los que veo</button>
           <button class="btn ghost" onclick="publicarVisibles(false)">Ocultar los que veo</button>
+          <button class="btn ghost" onclick="abrirDescuentoMasivo()">% Descuento a los que veo</button>
         </div>
         <p class="pw-meta" style="margin:0 0 10px;">★ Las prendas marcadas <b>En tendencia</b> salen destacadas en la portada de la tienda web. Lo ideal es tener entre 3 y 8 por tienda.</p>
         <table><thead><tr><th></th><th>Producto</th><th class="right">Desde</th><th class="right">Stock</th><th class="center">Estado</th><th></th></tr></thead><tbody id="tj-lista"></tbody></table>
@@ -1664,11 +1670,32 @@
     <label class="chk"><input type="checkbox" id="tp-pub"> Mostrar en la tienda</label>
     <label class="chk" style="margin-left:14px;"><input type="checkbox" id="tp-tend"> ★ En tendencia (sale en la portada)</label>
     <div class="field" style="margin-top:10px;"><label>Descripción para el cliente</label><textarea id="tp-desc" rows="4" maxlength="600" style="width:100%;" placeholder="Material, ajuste, cuidados, a qué combina…"></textarea></div>
+    <div class="desc-box">
+      <div class="row">
+        <div class="field"><label>Descuento en la tienda web (%)</label><input type="number" id="tp-dsc-pct" min="0" max="90" step="1" placeholder="0 = sin descuento" oninput="previewDescuento('tp')"></div>
+        <div class="field"><label>Válido hasta <span style="font-weight:400;color:var(--ink-soft)">(opcional)</span></label><input type="date" id="tp-dsc-hasta" oninput="previewDescuento('tp')"></div>
+      </div>
+      <p class="pw-meta" id="tp-dsc-prev" style="margin:-4px 0 0;">Aplica a todas las tallas y colores.</p>
+    </div>
     <div class="field"><label>Fotos en la tienda</label>
       <div id="tp-fotos"></div>
       <p class="pw-meta">Las fotos se suben en <b>Inventario → Editar</b> (una vez por color) y llegan solas a la tienda.</p>
     </div>
     <div class="modal-actions"><button class="btn ghost" onclick="cerrarModal('modal-tienda-producto')">Cancelar</button><button class="btn gold" onclick="guardarProductoTienda()">Guardar</button></div>
+  </div>
+</div>
+
+<!-- ===== Modal: descuento a varias prendas ===== -->
+<div class="modal-bg" id="modal-dsc-masivo">
+  <div class="modal" style="width:440px;">
+    <h3>Descuento en la tienda web</h3>
+    <p class="pw-meta" id="dm-info" style="margin-top:-6px;"></p>
+    <div class="row">
+      <div class="field"><label>Descuento (%)</label><input type="number" id="dm-pct" min="0" max="90" step="1" placeholder="Ej: 20"></div>
+      <div class="field"><label>Válido hasta <span style="font-weight:400;color:var(--ink-soft)">(opcional)</span></label><input type="date" id="dm-hasta"></div>
+    </div>
+    <p class="pw-meta">Pon <b>0</b> para quitar el descuento a estas prendas. En la tienda se verá el precio anterior tachado y la etiqueta con el %.</p>
+    <div class="modal-actions"><button class="btn ghost" onclick="cerrarModal('modal-dsc-masivo')">Cancelar</button><button class="btn gold" onclick="aplicarDescuentoMasivo()">Aplicar</button></div>
   </div>
 </div>
 
@@ -1781,7 +1808,7 @@
       <div class="field"><label>Costo unitario</label><input type="number" id="var-costo" min="0" oninput="actualizarSugerido('var')"></div>
       <div class="field">
         <label>Precio de venta</label>
-        <input type="number" id="var-precio" min="0">
+        <input type="number" id="var-precio" min="0" oninput="previewDescuento('var')">
         <div style="font-size:11.5px;color:var(--ink-soft);margin-top:4px;" id="var-sugerido">Ingresa el costo para ver el precio sugerido.</div>
       </div>
     </div>
@@ -1802,6 +1829,13 @@
       <p class="pw-meta" id="var-fotos-nota" style="margin-top:6px;">La primera es la portada. Sirven para todas las tallas de este color y se publican solas en la tienda.</p>
     </div>
     <label class="chk" style="margin:4px 0 6px;"><input type="checkbox" id="var-pub"> Mostrar esta prenda en la tienda web</label>
+    <div class="desc-box">
+      <div class="row">
+        <div class="field"><label>Descuento en la tienda web (%)</label><input type="number" id="var-dsc-pct" min="0" max="90" step="1" placeholder="0 = sin descuento" oninput="previewDescuento('var')"></div>
+        <div class="field"><label>Válido hasta <span style="font-weight:400;color:var(--ink-soft)">(opcional)</span></label><input type="date" id="var-dsc-hasta" oninput="previewDescuento('var')"></div>
+      </div>
+      <p class="pw-meta" id="var-dsc-prev" style="margin:-4px 0 0;">Aplica a todas las tallas y colores de esta prenda.</p>
+    </div>
     <div class="field">
       <label>Código de barras</label>
       <input type="text" id="var-codigo" placeholder="Se genera automáticamente si lo dejas vacío">
@@ -2408,7 +2442,7 @@ document.addEventListener('DOMContentLoaded', ()=>{ if(!tabActiva) pantallaOtraT
 if(!tabActiva && document.body) setTimeout(pantallaOtraTab, 0);
 
 let DB = cargarDB();
-const APP_VERSION='2026-10-22.3';
+const APP_VERSION='2026-10-28.2';
 document.addEventListener('DOMContentLoaded',()=>{ const el=document.getElementById('foot-version'); if(el) el.textContent='Versión '+APP_VERSION; });
 let firebaseApp=null, firestoreRef=null, syncStoreCode=null, syncActivo=false, aplicandoSnapshotRemoto=false;
 
@@ -4271,10 +4305,16 @@ function renderInventario(){
   const tbody=document.getElementById('tbl-inventario');
   const fT=document.getElementById('inv-tienda')?.value||'todas';
   llenarFiltroCategorias();
+  const selS=document.getElementById('inv-stock');
+  if(selS && !selS.dataset.ini){ selS.dataset.ini='1'; try{ const g=localStorage.getItem('inv_filtro_stock'); if(g) selS.value=g; }catch(e){} }
+  const fS=selS?.value||'todas';
   const lista=DB.articulos.filter(a=>
     (fT==='todas'||tiendaDeArticulo(a)===fT) && pasaFiltroCategoria(a) && (a.nombre+a.talla+a.color+a.categoria).toLowerCase().includes(q)
+    && (fS==='todas' || (fS==='con' ? (Number(a.stock)||0)>0 : (Number(a.stock)||0)<=0))
   ).sort((a,b)=>a.nombre.localeCompare(b.nombre));
-  if(!lista.length){ tbody.innerHTML='<tr><td colspan="11"><div class="empty">No hay artículos. Agrega el primero con “+ Nuevo artículo”.</div></td></tr>'; return; }
+  const res=document.getElementById('inv-resumen');
+  if(res){ const u=lista.reduce((s,a)=>s+Math.max(0,Number(a.stock)||0),0); res.textContent=lista.length? lista.length+' variante(s) · '+u+' unidad(es)'+(fS==='con'?' en stock':fS==='sin'?' · agotadas':'') : ''; }
+  if(!lista.length){ tbody.innerHTML='<tr><td colspan="11"><div class="empty">'+(DB.articulos.length? (fS==='con'?'No hay artículos con stock que coincidan.':fS==='sin'?'No hay artículos agotados que coincidan. ¡Bien!':'No hay artículos que coincidan con el filtro.') : 'No hay artículos. Agrega el primero con “+ Nuevo artículo”.')+'</div></td></tr>'; return; }
   tbody.innerHTML=lista.map(a=>{
     const margen = a.precio>0 ? (((a.precio-a.costo)/a.precio)*100).toFixed(0) : '0';
     const bajo = a.stock<= (DB.config.umbralStock||3);
@@ -4385,20 +4425,25 @@ function deduplicarImagenes(db){
   return n;
 }
 function miniatura(dataUrl, cb){ const img=new Image(); img.onload=()=>{ const s=Math.min(1,440/Math.max(img.width,img.height)); const c=document.createElement('canvas'); c.width=Math.round(img.width*s); c.height=Math.round(img.height*s); c.getContext('2d').drawImage(img,0,0,c.width,c.height); cb(c.toDataURL('image/jpeg',0.6)); }; img.onerror=()=>cb(dataUrl); img.src=dataUrl; }
+// "NEGRO", "Negro" y " negro " son el mismo color para las fotos
+function canonColor(c){ return String(claveColor(c)).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim(); }
+function mismoColor(x,y){ return canonColor(x)===canonColor(y); }
 async function cargarFotosVariante(a){
-  invF={gid:gidDe(a), color:claveColor(a.color), tienda:tiendaDeArticulo(a), fotos:[], otros:{imgs:[],colores:[]}, cargando:false, cambiado:false, nube:false};
+  const abierto=a.id;
+  invF={gid:gidDe(a), color:claveColor(a.color), tienda:tiendaDeArticulo(a), fotos:[], otros:{imgs:[],colores:[]}, cargando:false, cambiado:false, nube:false, cargoNube:false, artId:abierto};
   const ref=tiendaRef(invF.tienda);
   invF.nube=!!ref;
   if(ref){
     invF.cargando=true; pintarFotosVariante();
     try{
-      const d=await ref.collection('fotos').doc(invF.gid).get();
-      if(d.exists){ const dd=d.data(); (dd.imgs||[]).forEach((src,i)=>{ const c=(dd.colores||[])[i]||''; if(c===invF.color) invF.fotos.push(src); else { invF.otros.imgs.push(src); invF.otros.colores.push(c); } }); }
-    }catch(e){ console.error(e); toast('No se pudieron cargar las fotos de la nube'); }
+      const d=await conLimite(ref.collection('fotos').doc(invF.gid).get(), 30000);
+      if(invF.artId!==abierto) return; // se abrió otra prenda mientras cargaba
+      if(d.exists){ const dd=d.data(); (dd.imgs||[]).forEach((src,i)=>{ const c=(dd.colores||[])[i]||''; if(c && mismoColor(c,invF.color)) invF.fotos.push(src); else { invF.otros.imgs.push(src); invF.otros.colores.push(c); } }); }
+      invF.cargoNube=true;
+    }catch(e){ console.error(e); if(invF.artId!==abierto) return; toast('⚠ No se pudieron cargar las fotos de la nube. Las que subas se agregan sin borrar las que ya están.'); }
     invF.cargando=false;
   }
   if(!invF.fotos.length && imagenDe(a)){ invF.fotos=[imagenDe(a)]; invF.miniLocal=invF.fotos[0]; }
-  invF.sinNubeAlAbrir=!ref;
   pintarFotosVariante();
 }
 function pintarFotosVariante(){
@@ -4441,25 +4486,33 @@ function quitarFotoVariante(i){ invF.fotos.splice(i,1); invF.cambiado=true; pint
 function portadaFotoVariante(i){ const [f]=invF.fotos.splice(i,1); invF.fotos.unshift(f); invF.cambiado=true; pintarFotosVariante(); }
 function conLimite(promesa, ms){ return Promise.race([promesa, new Promise((_,rej)=>setTimeout(()=>rej({code:'tiempo agotado: revisa tu conexión a internet'}), ms))]); }
 // Sube las fotos del color a la nube. Devuelve {ok, thumb, nFotos} o {ok:false}. No modifica DB (eso se hace después, sobre los datos vigentes).
-async function guardarFotosVariante(gid, color, tienda){
-  const portada=invF.fotos[0]||null;
-  const thumb=portada? await new Promise(r=>miniatura(portada,r)) : null;
+// Antes se escribía la lista de fotos que se leyó al ABRIR la ventana. Si esa lectura fallaba (señal débil) o si
+// otro equipo había subido fotos mientras tanto, se borraban las fotos de los demás colores. Ahora, al guardar,
+// se vuelve a leer lo que hay en la nube en ese momento y solo se reemplazan las fotos de ESTE color.
+async function guardarFotosVariante(gid, color, tienda, colorViejo, viejoSigueEnUso){
   const ref=tiendaRef(tienda);
-  if(!ref) return {ok:true, thumb, nFotos:null};
-  if(invF.sinNubeAlAbrir){
-    // la ventana se abrió antes de conectar: se traen las fotos que ya estaban en la nube para no borrarlas
-    try{
-      const d=await conLimite(ref.collection('fotos').doc(gid).get(), 30000);
-      invF.otros={imgs:[],colores:[]}; const propias=[];
-      if(d.exists){ const dd=d.data(); (dd.imgs||[]).forEach((src,i)=>{ const c=(dd.colores||[])[i]||''; if(c===color) propias.push(src); else { invF.otros.imgs.push(src); invF.otros.colores.push(c); } }); }
-      const nuevas=invF.fotos.filter(f=>f!==invF.miniLocal);
-      invF.fotos=[...nuevas, ...propias.filter(f=>!nuevas.includes(f))];
-      if(!invF.fotos.length && invF.miniLocal) invF.fotos=[invF.miniLocal];
-      invF.fotos=invF.fotos.slice(0, MAX_FOTOS_COLOR);
-      invF.sinNubeAlAbrir=false;
-    }catch(e){ console.error(e); alert('No se pudieron revisar las fotos que ya hay en la nube ('+(e.code||e.message)+'). Revisa tu conexión y pulsa Guardar otra vez.'); return {ok:false}; }
+  if(!ref){ const p=invF.fotos[0]||null; return {ok:true, thumb:p? await new Promise(r=>miniatura(p,r)) : null, nFotos:null}; }
+  const docRef=ref.collection('fotos').doc(gid);
+  // 1) lo que hay en la nube AHORA
+  let actual;
+  try{ const d=await conLimite(docRef.get(), 30000); actual=d.exists? d.data() : {imgs:[],colores:[]}; }
+  catch(e){ console.error(e); alert('No se pudieron revisar las fotos que ya hay en la nube ('+(e.code||e.message)+'). Para no borrar ninguna, no se guardó nada.\n\nRevisa tu conexión y pulsa Guardar otra vez.'); return {ok:false}; }
+  const otrosImgs=[], otrosCol=[], propiasNube=[];
+  (actual.imgs||[]).forEach((src,i)=>{
+    const c=(actual.colores||[])[i]||'';
+    const esEste= c && (mismoColor(c,color) || (colorViejo && !viejoSigueEnUso && mismoColor(c,colorViejo)));
+    if(esEste) propiasNube.push(src); else { otrosImgs.push(src); otrosCol.push(c); }
+  });
+  // 2) las fotos finales de este color
+  let propias;
+  if(invF.cargoNube) propias=invF.fotos.slice();               // la ventana mostró lo de la nube: lo que se ve es lo que queda
+  else {                                                        // no se pudo ver la nube al abrir: se agregan, sin quitar nada
+    const nuevas=invF.fotos.filter(f=>f!==invF.miniLocal);
+    propias=[...nuevas, ...propiasNube.filter(f=>!nuevas.includes(f))];
+    if(!propias.length && invF.miniLocal) propias=[invF.miniLocal];
   }
-  let imgs=[...invF.otros.imgs, ...invF.fotos]; const colores=[...invF.otros.colores, ...invF.fotos.map(()=>color)];
+  propias=propias.filter((f,i)=>propias.indexOf(f)===i).slice(0, MAX_FOTOS_COLOR);
+  let imgs=[...otrosImgs, ...propias]; const colores=[...otrosCol, ...propias.map(()=>color)];
   const LIM=850000, peso=()=>imgs.reduce((s,x)=>s+x.length,0);
   // si pesan mucho juntas, se reducen solas (primero un poco, luego más) en vez de rechazar el guardado
   for(const [lado,cal] of [[1200,0.75],[1000,0.7],[800,0.66],[700,0.6],[600,0.55],[520,0.5]]){
@@ -4468,8 +4521,11 @@ async function guardarFotosVariante(gid, color, tienda){
   }
   if(peso()>LIM){ alert('Las fotos de esta prenda pesan demasiado juntas ('+Math.round(peso()/1024)+' KB de 830 KB), incluso reducidas. Quita una foto de este color o de otro color de la misma prenda y vuelve a guardar.'); return {ok:false}; }
   try{
-    await conLimite(ref.collection('fotos').doc(gid).set({imgs, colores, actualizado:Date.now(), v:3}), 45000);
+    await conLimite(docRef.set({imgs, colores, actualizado:Date.now(), v:3}), 45000);
   }catch(e){ console.error(e); alert('No se pudieron subir las fotos a la tienda ('+(e.code||e.message)+').\n\nNo se cerró la ventana: revisa tu conexión y pulsa Guardar otra vez.'); return {ok:false}; }
+  const portada=imgs[otrosImgs.length]||null; // la primera foto de este color (ya reducida si hizo falta)
+  const thumb=portada? await new Promise(r=>miniatura(portada,r)) : null;
+  invF.fotos=propias; invF.otros={imgs:otrosImgs, colores:otrosCol}; invF.cargoNube=true;
   return {ok:true, thumb, nFotos:imgs.length};
 }
 function editarVariante(id){
@@ -4488,6 +4544,7 @@ function editarVariante(id){
   document.getElementById('var-codigo').value=a.codigoBarras;
   document.getElementById('var-imagen-input').value='';
   document.getElementById('var-pub').checked=!!((DB.tienda.grupos||{})[gidDe(a)]||{}).publicado;
+  llenarCamposDescuento('var', (DB.tienda.grupos||{})[gidDe(a)], DB.articulos.filter(x=>gidDe(x)===gidDe(a)));
   actualizarSugerido('var');
   abrirModal('modal-variante');
   cargarFotosVariante(a);
@@ -4518,15 +4575,19 @@ async function guardarVariante(){
     stock:parseInt(document.getElementById('var-stock').value)||0, codigoBarras:document.getElementById('var-codigo').value.trim()||generarCodigoBarras(),
     tienda:document.getElementById('var-tienda').value||'regia', pub:document.getElementById('var-pub').checked,
     nombre:document.getElementById('var-nombre').value.trim().replace(/\s+/g,' '), categoria:(document.getElementById('var-categoria').value||'').replace('__nueva','').trim() };
+  { const d=leerCamposDescuento('var'); f.descPct=d.pct; f.descHasta=d.hasta; }
+  if(f.descPct && f.descHasta && f.descHasta<hoyISO()){ toast('La fecha del descuento ya pasó: cámbiala o déjala vacía'); document.getElementById('var-dsc-hasta').focus(); return; }
   if(!f.nombre){ toast('Escribe el nombre de la prenda'); document.getElementById('var-nombre').focus(); return; }
   const gid=gidDe(a0), colorViejo=claveColor(a0.color), colorNuevo=claveColor(f.color);
   // 2) subir fotos (puede tardar); no se toca DB mientras tanto
   let fotos=null;
-  if(invF.cambiado){
+  const cambiaColor=!mismoColor(colorViejo,colorNuevo);
+  const viejoSigueEnUso=DB.articulos.some(x=>x.id!==id && gidDe(x)===gid && mismoColor(x.color,colorViejo));
+  if(invF.cambiado || (cambiaColor && invF.cargoNube && tiendaRef(invF.tienda))){
     guardandoVariante=true;
     const btn=document.querySelector('#modal-variante .btn.gold, #modal-variante button[onclick*="guardarVariante"]');
     const txt=btn?btn.textContent:''; if(btn){ btn.disabled=true; btn.textContent='Guardando fotos…'; }
-    try{ fotos=await guardarFotosVariante(gid, colorNuevo, f.tienda); }
+    try{ fotos=await guardarFotosVariante(gid, colorNuevo, f.tienda, colorViejo, viejoSigueEnUso); }
     finally{ guardandoVariante=false; if(btn){ btn.disabled=false; btn.textContent=txt; } }
     if(!fotos.ok) return;
   }
@@ -4538,7 +4599,7 @@ async function guardarVariante(){
   grupoTienda.forEach(x=>{ x.tienda=f.tienda; x.nombre=f.nombre; x.categoria=f.categoria; });
   const otraIgual= normNombre(nombreAntes)!==normNombre(f.nombre) && DB.articulos.some(x=>gidDe(x)!==gidDe(a) && tiendaDeArticulo(x)===f.tienda && normNombre(x.nombre)===normNombre(f.nombre));
   if(fotos){
-    const hermanos=DB.articulos.filter(x=>gidDe(x)===gid && (claveColor(x.color)===colorNuevo || (x===a)));
+    const hermanos=DB.articulos.filter(x=>gidDe(x)===gid && (mismoColor(x.color,colorNuevo) || (x===a)));
     hermanos.forEach((x,i)=>{ x.imagen= i===0? fotos.thumb : null; });
   } else if(colorViejo!==colorNuevo && !a.imagen){
     // cambió el color: conserva la foto que tenía el color anterior
@@ -4551,10 +4612,14 @@ async function guardarVariante(){
   if(f.pub) T.activada=true;
   g.publicado=f.pub;
   if(fotos && fotos.nFotos!==null){ g.nFotos=fotos.nFotos; g.fotosV=Date.now(); }
+  // descuento de la tienda web (vale para todas las tallas y colores de la prenda)
+  g.descuento=f.descPct; g.descuentoHasta=f.descPct? f.descHasta : '';
   const pub=f.pub, nuevaTienda=f.tienda;
   invF.cambiado=false;
   guardarDB(); cerrarModal('modal-variante'); renderInventario();
   if(otraIgual) toast('Guardado. Ya existe otra prenda llamada "'+f.nombre+'": usa 🔗 Unir referencias repetidas para juntarlas en una sola.');
+  else if(fotos && !pub) toast('Fotos guardadas. Ojo: esta prenda NO está publicada; marca "Mostrar esta prenda en la tienda web" para que se vea.');
+  else if(fotos && fotos.nFotos===null) toast('⚠ Guardado solo en este equipo: no estás conectado a la nube, por eso la foto no llega a la tienda web.');
   else toast(pub && tiendaRef(nuevaTienda) ? 'Guardado. La tienda se actualiza en unos segundos.' : 'Variante actualizada');
 }
 function imprimirEtiquetaVariante(){
@@ -8239,7 +8304,7 @@ async function conectarSincronizacion(firebaseConfigObj, storeCode, esConexionMa
     syncActivo=true;
     if(pendienteSync()) programarSync(200);
     try{
-      if(document.getElementById('modal-variante')?.classList.contains('active') && invF.sinNubeAlAbrir){
+      if(document.getElementById('modal-variante')?.classList.contains('active') && !invF.cargoNube){
         const a=DB.articulos.find(x=>x.id===document.getElementById('var-id').value);
         if(a && !invF.cambiado) cargarFotosVariante(a); else { invF.nube=true; pintarFotosVariante(); }
       }
@@ -8585,14 +8650,92 @@ function urlTienda(t){
 
 /* ---------- Publicación del catálogo (solo escribe lo que cambió) ---------- */
 function construirDocProducto(gid, arts){
-  const T=DB.tienda, g=T.grupos[gid]||{}, res=reservadoWeb();
-  const variantes=arts.map(a=>({id:a.id, talla:a.talla||'Única', color:a.color||'Único', precio:Number(a.precio)||0, stock:Math.max(0,(Number(a.stock)||0)-(res[a.id]||0))}));
+  const T=DB.tienda, g=T.grupos[gid]||{}, res=reservadoWeb(), pct=descuentoDe(gid);
+  const variantes=arts.map(a=>{
+    const normal=Number(a.precio)||0, v={id:a.id, talla:a.talla||'Única', color:a.color||'Único', precio:precioConDescuento(normal,pct), stock:Math.max(0,(Number(a.stock)||0)-(res[a.id]||0))};
+    if(pct && v.precio<normal) v.precioAntes=normal;
+    return v;
+  });
   const precios=variantes.map(v=>v.precio).filter(p=>p>0);
-  return {
+  const doc={
     id:gid, nombre:arts[0].nombre||'', categoria:arts[0].categoria||'', descripcion:g.descripcion||'',
     precio:precios.length?Math.min(...precios):0, thumb:(arts.find(a=>a.imagen)||{}).imagen||'',
     nFotos:g.nFotos||0, fotosV:g.fotosV||0, publicadoEn:g.publicadoEn||0, tendencia:g.tendencia||0, variantes, fotosColor:fotosPorColor(arts), v:3
   };
+  if(pct && variantes.some(v=>v.precioAntes)){
+    const conPrecio=variantes.filter(v=>v.precio>0), barata=conPrecio.length? conPrecio.reduce((m,v)=>v.precio<m.precio?v:m) : null;
+    doc.descuento=pct; doc.precioAntes=barata&&barata.precioAntes? barata.precioAntes : 0; doc.descHasta=finDelDiaMs(g.descuentoHasta);
+  }
+  return doc;
+}
+/* ---------- Descuentos de la tienda web ---------- */
+// El % se guarda por prenda (todas sus tallas y colores). Se publica el precio ya rebajado (redondeado a $100)
+// y el precio anterior, para que la tienda lo muestre tachado. Si tiene fecha, se acaba solo ese día a medianoche.
+function redondearPrecio(x){ return Math.max(0, Math.round(x/100)*100); }
+function descuentoGuardado(gid){ const g=(DB.tienda.grupos||{})[gid]; return g? Math.min(90,Math.max(0,Math.round(Number(g.descuento)||0))) : 0; }
+function descuentoDe(gid){ const p=descuentoGuardado(gid); if(!p) return 0; const h=((DB.tienda.grupos||{})[gid]||{}).descuentoHasta; return (h && hoyISO()>h)? 0 : p; }
+function precioConDescuento(precio,pct){ precio=Number(precio)||0; return pct>0 && precio>0 ? redondearPrecio(precio*(1-pct/100)) : precio; }
+function precioWebDe(a){ return precioConDescuento(a.precio, descuentoDe(gidDe(a))); }
+function finDelDiaMs(iso){ if(!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return 0; const [y,m,d]=iso.split('-').map(Number); return new Date(y,m-1,d,23,59,59,999).getTime(); }
+function fechaCorta(iso){ try{ const [y,m,d]=iso.split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('es-CO',{day:'numeric',month:'short'}); }catch(e){ return iso; } }
+let dscArtsEditando={};
+function llenarCamposDescuento(pref, g, arts){
+  g=g||{};
+  document.getElementById(pref+'-dsc-pct').value=g.descuento? Math.round(g.descuento) : '';
+  document.getElementById(pref+'-dsc-hasta').value=g.descuento? (g.descuentoHasta||'') : '';
+  document.getElementById(pref+'-dsc-hasta').min=hoyISO();
+  dscArtsEditando[pref]=arts||[];
+  previewDescuento(pref);
+}
+function leerCamposDescuento(pref){
+  const pct=Math.min(90,Math.max(0,Math.round(parseFloat(document.getElementById(pref+'-dsc-pct').value)||0)));
+  const h=(document.getElementById(pref+'-dsc-hasta').value||'').trim();
+  return {pct, hasta:/^\d{4}-\d{2}-\d{2}$/.test(h)? h : ''};
+}
+function previewDescuento(pref){
+  const el=document.getElementById(pref+'-dsc-prev'); if(!el) return;
+  const {pct,hasta}=leerCamposDescuento(pref);
+  const raw=parseFloat(document.getElementById(pref+'-dsc-pct').value)||0;
+  let base;
+  if(pref==='var') base=parseFloat(document.getElementById('var-precio').value)||0;
+  else { const ps=(dscArtsEditando[pref]||[]).map(a=>Number(a.precio)||0).filter(x=>x>0); base=ps.length? Math.min(...ps) : 0; }
+  el.style.color='';
+  if(!pct){ el.textContent= pref==='var'? 'Aplica a todas las tallas y colores de esta prenda. Deja 0 para vender al precio normal.' : 'Aplica a todas las tallas y colores. Deja 0 para vender al precio normal.'; return; }
+  if(raw>90){ el.style.color='var(--danger)'; el.textContent='El máximo es 90 %.'; return; }
+  if(hasta && hasta<hoyISO()){ el.style.color='var(--danger)'; el.textContent='Esa fecha ya pasó: el descuento no se vería en la tienda.'; return; }
+  const nuevo=precioConDescuento(base,pct);
+  el.innerHTML= base? `En la tienda web: <b>${fmt(nuevo)}</b> <s>${fmt(base)}</s> · ahorra ${fmt(base-nuevo)}${pref==='tp'?' (precio más bajo)':''}${hasta?' · hasta el '+escH(fechaCorta(hasta)):''}` : `-${pct} % en la tienda web${hasta?' hasta el '+escH(fechaCorta(hasta)):''}`;
+}
+function gruposVisiblesTienda(){
+  const T=DB.tienda, q=tiendaFiltroTxt.toLowerCase(), out=[];
+  tiendaGrupos().forEach((arts,gid)=>{
+    const g=T.grupos[gid]||{};
+    if(q && !(arts[0].nombre+' '+(arts[0].categoria||'')).toLowerCase().includes(q)) return;
+    if(tiendaFiltroTienda!=='todas' && tiendaDeArticulo(arts[0])!==tiendaFiltroTienda) return;
+    if(tiendaFiltroEstado==='pub'&&!g.publicado) return;
+    if(tiendaFiltroEstado==='nopub'&&g.publicado) return;
+    if(tiendaFiltroEstado==='tend'&&!g.tendencia) return;
+    if(tiendaFiltroEstado==='dsc'&&!descuentoGuardado(gid)) return;
+    out.push(gid);
+  });
+  return out;
+}
+function abrirDescuentoMasivo(){
+  const n=gruposVisiblesTienda().length;
+  if(!n){ toast('No hay prendas en la lista. Cambia el filtro o la búsqueda.'); return; }
+  document.getElementById('dm-info').textContent='Se aplica a las '+n+' prenda(s) que tienes en la lista ahora'+(tiendaFiltroTxt?' (búsqueda: "'+tiendaFiltroTxt+'")':'')+'.';
+  document.getElementById('dm-pct').value=''; document.getElementById('dm-hasta').value=''; document.getElementById('dm-hasta').min=hoyISO();
+  abrirModal('modal-dsc-masivo'); setTimeout(()=>document.getElementById('dm-pct').focus(),100);
+}
+function aplicarDescuentoMasivo(){
+  const raw=parseFloat(document.getElementById('dm-pct').value);
+  if(isNaN(raw) || raw<0 || raw>90){ toast('Escribe un descuento entre 0 y 90 %'); return; }
+  const pct=Math.round(raw), h=document.getElementById('dm-hasta').value||'';
+  if(pct && h && h<hoyISO()){ toast('Esa fecha ya pasó'); return; }
+  const T=DB.tienda; T.grupos=T.grupos||{}; const gids=gruposVisiblesTienda(); let ocultas=0;
+  gids.forEach(gid=>{ const g=T.grupos[gid]||(T.grupos[gid]={}); g.descuento=pct; g.descuentoHasta=pct? h : ''; if(pct && !g.publicado) ocultas++; });
+  guardarDB(); cerrarModal('modal-dsc-masivo'); renderTienda();
+  toast(pct? ('-'+pct+' % aplicado a '+gids.length+' prenda(s)'+(ocultas?' · '+ocultas+' están ocultas y no se ven en la tienda':'')) : ('Descuento quitado a '+gids.length+' prenda(s)'));
 }
 // Una foto por color (la del inventario), para que la tienda cambie la imagen al elegir el color
 function fotosPorColor(arts){
@@ -8886,7 +9029,7 @@ function abrirConfirmarPedido(id){
   const lineas=lineasPedidoActuales(p);
   const vend=(DB.config.vendedores||[]);
   const metodoDef=metodoVentaDePedido(p);
-  const filas=lineas.map(l=>`<div class="pw-it ${l.motivo?'mal':''}"><span>${l.cant}× ${escH(l.it.nombre)} <em>${escH(l.it.talla)} / ${escH(l.it.color)}</em>${l.motivo?` <span class="badge danger">${escH(l.motivo)}${l.pidio!==l.cant?' (pidió '+l.pidio+')':''}</span>`:''}${l.a&&Number(l.a.precio)!==Number(l.it.precio)?` <span class="badge gold">precio ${fmt(l.it.precio)} → ${fmt(l.a.precio)}</span>`:''}</span><span>${l.a?fmt(l.a.precio*l.cant):'—'}</span></div>`).join('');
+  const filas=lineas.map(l=>`<div class="pw-it ${l.motivo?'mal':''}"><span>${l.cant}× ${escH(l.it.nombre)} <em>${escH(l.it.talla)} / ${escH(l.it.color)}</em>${l.motivo?` <span class="badge danger">${escH(l.motivo)}${l.pidio!==l.cant?' (pidió '+l.pidio+')':''}</span>`:''}${l.a&&Number(precioWebDe(l.a))!==Number(l.it.precio)?` <span class="badge gold">precio ${fmt(l.it.precio)} → ${fmt(precioWebDe(l.a))}</span>`:''}${l.a&&precioWebDe(l.a)<Number(l.a.precio)?` <span class="badge danger">-${descuentoDe(gidDe(l.a))} % web</span>`:''}</span><span>${l.a?fmt(precioWebDe(l.a)*l.cant):'—'}</span></div>`).join('');
   document.getElementById('pw-modal-body').innerHTML=`
     <p class="pw-meta" style="margin-top:0">${escH(p.nombre)} · ${escH(p.telefono||'')} · pedido ${escH(p.codigo)}</p>
     ${ya?`<div class="aviso-pw">Este pedido ya aparece facturado como venta N.° ${escH(ya)}.</div>`:''}
@@ -8897,7 +9040,7 @@ function abrirConfirmarPedido(id){
       <div class="field" id="pw-comision-wrap" style="display:none"><label>Comisión financiera (%)</label><input type="number" id="pw-comision" min="0" max="100" step="0.01" oninput="recalcularPedidoModal()"></div>
     </div>
     <div class="row">
-      <div class="field"><label>Descuento (%)</label><input type="number" id="pw-descuento" min="0" max="100" value="0" oninput="recalcularPedidoModal()"></div>
+      <div class="field"><label>Descuento adicional (%)</label><input type="number" id="pw-descuento" min="0" max="100" value="0" oninput="recalcularPedidoModal()"></div>
       ${vend.length?`<div class="field"><label>Vendedor</label><select id="pw-vendedor"><option value="">—</option>${vend.map(v=>`<option>${escH(v)}</option>`).join('')}</select></div>`:''}
     </div>
     <div id="pw-resumen" class="pw-tot"></div>
@@ -8910,13 +9053,15 @@ function abrirConfirmarPedido(id){
 function totalesPedidoModal(){
   const p=pedidoEnModal; const lineas=lineasPedidoActuales(p).filter(l=>l.a&&l.cant>0);
   const subtotal=lineas.reduce((s,l)=>s+l.a.precio*l.cant,0);
+  // descuento de la tienda web (el precio que vio el cliente) + el % adicional que pongas aquí
+  const descWeb=lineas.reduce((s,l)=>s+Math.max(0,l.a.precio-precioWebDe(l.a))*l.cant,0);
   const pct=Math.min(100,Math.max(0,parseFloat(document.getElementById('pw-descuento')?.value)||0));
-  const descuento=subtotal*pct/100;
+  const descuento=descWeb+(subtotal-descWeb)*pct/100;
   const metodo=document.getElementById('pw-metodo')?.value||'Efectivo';
   const esCred=esMetodoCredito(metodo);
   const comPct=esCred && !esInter(metodo)? Math.max(0,parseFloat(document.getElementById('pw-comision')?.value)||0):0;
   const comision=esCred? calcularComisionFin(subtotal-descuento,comPct):0;
-  return {lineas,subtotal,descuento,metodo,esCred,comPct,comision,total:subtotal-descuento+comision};
+  return {lineas,subtotal,descuento,descWeb,metodo,esCred,comPct,comision,total:subtotal-descuento+comision};
 }
 function recalcularPedidoModal(){
   if(!pedidoEnModal) return;
@@ -8924,7 +9069,7 @@ function recalcularPedidoModal(){
   const wrap=document.getElementById('pw-comision-wrap'), inp=document.getElementById('pw-comision');
   if(esMetodoCredito(metodo) && !esInter(metodo)){ wrap.style.display=''; if(inp.dataset.m!==metodo){ inp.value=comisionDefaultPct(metodo); inp.dataset.m=metodo; } } else { wrap.style.display='none'; inp.dataset.m=''; }
   const t=totalesPedidoModal();
-  document.getElementById('pw-resumen').innerHTML=`<span>${t.descuento>0?'Descuento '+fmt(t.descuento)+' · ':''}${t.comision>0?'Comisión '+fmt(t.comision)+' · ':''}${t.lineas.length} producto(s)</span><strong>Total venta ${fmt(t.total)}</strong>`;
+  document.getElementById('pw-resumen').innerHTML=`<span>${t.descuento>0?'Descuento '+fmt(t.descuento)+(t.descWeb>0?' (web '+fmt(t.descWeb)+')':'')+' · ':''}${t.comision>0?'Comisión '+fmt(t.comision)+' · ':''}${t.lineas.length} producto(s)</span><strong>Total venta ${fmt(t.total)}</strong>`;
   const b=document.getElementById('pw-btn-facturar'); if(b) b.disabled=!t.lineas.length;
 }
 function confirmarFacturarPedido(){
@@ -9013,6 +9158,7 @@ function renderTienda(){
     if(tiendaFiltroEstado==='pub'&&!pub) return false;
     if(tiendaFiltroEstado==='nopub'&&pub) return false;
     if(tiendaFiltroEstado==='tend'&&!T.grupos[gid]?.tendencia) return false;
+    if(tiendaFiltroEstado==='dsc'&&!descuentoGuardado(gid)) return false;
     if(tiendaFiltroTienda!=='todas' && tiendaDeArticulo(arts[0])!==tiendaFiltroTienda) return false;
     return !q || (arts[0].nombre+' '+(arts[0].categoria||'')).toLowerCase().includes(q);
   }).sort((a,b)=>((T.grupos[b[0]]||{}).tendencia?1:0)-((T.grupos[a[0]]||{}).tendencia?1:0) || a[1][0].nombre.localeCompare(b[1][0].nombre));
@@ -9023,9 +9169,9 @@ function renderTienda(){
     return `<tr>
       <td>${img?`<img src="${img}" class="tj-th">`:'<div class="tj-th"></div>'}</td>
       <td>${badgeTienda(tiendaDeArticulo(arts[0]))} <strong>${escH(arts[0].nombre)}</strong><div class="pw-meta">${escH(arts[0].categoria||'Sin categoría')} · ${arts.length} variante(s)${g.descripcion?'':' · sin descripción'}</div></td>
-      <td class="right num">${precios.length?fmt(Math.min(...precios)):'—'}</td>
+      <td class="right num">${(()=>{ if(!precios.length) return '—'; const mn=Math.min(...precios), pc=descuentoDe(gid); return pc? `<span class="tj-antes">${fmt(mn)}</span>${fmt(precioConDescuento(mn,pc))}` : fmt(mn); })()}</td>
       <td class="right num">${stock}</td>
-      <td class="center">${g.publicado?(sinFoto?'<span class="badge gold">Sin foto</span>':'<span class="badge success">En tienda</span>'):'<span class="badge">Oculto</span>'}${g.tendencia?' <span class="badge gold">★ Tendencia</span>':''}</td>
+      <td class="center">${g.publicado?(sinFoto?'<span class="badge gold">Sin foto</span>':'<span class="badge success">En tienda</span>'):'<span class="badge">Oculto</span>'}${g.tendencia?' <span class="badge gold">★ Tendencia</span>':''}${descuentoGuardado(gid)?(descuentoDe(gid)?` <span class="badge danger" title="${g.descuentoHasta?'Hasta el '+escH(fechaCorta(g.descuentoHasta)):'Sin fecha de fin'}">-${descuentoDe(gid)} %</span>`:' <span class="badge" title="La fecha del descuento ya pasó">Descuento vencido</span>'):''}</td>
       <td class="right"><button class="btn ${g.tendencia?'gold':'ghost'} sm" onclick="alternarTendencia('${escH(gid)}')" title="Destacar en la portada de la tienda">${g.tendencia?'★ En tendencia':'☆ Tendencia'}</button> <button class="btn ${g.publicado?'ghost':'gold'} sm" onclick="alternarPublicado('${escH(gid)}')">${g.publicado?'Ocultar':'Publicar'}</button> <button class="btn ghost sm" onclick="abrirProductoTienda('${escH(gid)}')">Detalles y fotos</button> <button class="btn ghost sm" onclick="copiarLinkProducto('${escH(gid)}')" title="Link directo a esta prenda para tus redes">🔗 Link</button></td></tr>`;
   }).join('') : '<tr><td colspan="6"><div class="empty">No hay productos que coincidan. Crea artículos en Inventario y luego publícalos aquí.</div></td></tr>';
 }
@@ -9118,20 +9264,22 @@ function recomprimirDataUrl(src, lado, calidad){
 }
 async function abrirProductoTienda(gid){
   const arts=tiendaGrupos().get(gid); if(!arts) return;
-  tiendaGrupoEditando=gid; tiendaFotosEditando=[]; tiendaFotosColor=[]; tiendaFotosQuitadas=false;
+  tiendaGrupoEditando=gid; tiendaFotosEditando=[]; tiendaFotosColor=[]; tiendaFotosOriginales=[]; tiendaFotosQuitadas=false;
   const g=DB.tienda.grupos[gid]||{};
   document.getElementById('tp-titulo').textContent=arts[0].nombre;
   document.getElementById('tp-desc').value=g.descripcion||'';
   document.getElementById('tp-pub').checked=!!g.publicado;
   document.getElementById('tp-tend').checked=!!g.tendencia;
+  llenarCamposDescuento('tp', g, arts);
   pintarFotosTienda();
   abrirModal('modal-tienda-producto');
   const ref=tiendaRef(tiendaDeArticulo(arts[0]));
   if(ref && g.nFotos>0){
-    try{ const d=await ref.collection('fotos').doc(gid).get(); if(d.exists && tiendaGrupoEditando===gid){ const dd=d.data(); tiendaFotosEditando=(dd.imgs||[]); tiendaFotosColor=tiendaFotosEditando.map((_,i)=>((dd.colores||[])[i])||''); pintarFotosTienda(); } }
+    try{ const d=await ref.collection('fotos').doc(gid).get(); if(d.exists && tiendaGrupoEditando===gid){ const dd=d.data(); tiendaFotosEditando=(dd.imgs||[]).slice(); tiendaFotosOriginales=tiendaFotosEditando.slice(); tiendaFotosColor=tiendaFotosEditando.map((_,i)=>((dd.colores||[])[i])||''); pintarFotosTienda(); } }
     catch(e){ console.error(e); toast('No se pudieron cargar las fotos de la nube'); }
   }
 }
+let tiendaFotosOriginales=[];
 const MAX_FOTOS_TIENDA=8;
 function coloresGrupoTienda(arts){ return [...new Set((arts||[]).map(a=>a.color||'Único'))].filter(c=>c!=='Único'); }
 let tiendaFotosQuitadas=false;
@@ -9152,13 +9300,28 @@ async function guardarProductoTienda(){
   let nFotos=null;
   if(ref && tiendaFotosQuitadas){
     try{
-      await conLimite(ref.collection('fotos').doc(gid).set({imgs:tiendaFotosEditando, colores:tiendaFotosEditando.map((_,i)=>tiendaFotosColor[i]||''), actualizado:Date.now(), v:3}), 45000);
-      nFotos=tiendaFotosEditando.length;
+      // se relee la nube y solo se quitan las fotos que borraste (no se pisan fotos subidas desde otro equipo)
+      const docRef=ref.collection('fotos').doc(gid);
+      const d=await conLimite(docRef.get(), 30000); const dd=d.exists? d.data() : {imgs:[],colores:[]};
+      const quedan=new Set(tiendaFotosEditando), quitadas=new Set(tiendaFotosOriginales.filter(x=>!quedan.has(x)));
+      const imgs=[], colores=[];
+      (dd.imgs||[]).forEach((src,i)=>{ if(!quitadas.has(src)){ imgs.push(src); colores.push((dd.colores||[])[i]||''); } });
+      await conLimite(docRef.set({imgs, colores, actualizado:Date.now(), v:3}), 45000);
+      nFotos=imgs.length;
+      // si se quitó la portada de un color, la miniatura del inventario pasa a la siguiente foto de ese color
+      const artsG=tiendaGrupos().get(gid)||[];
+      for(const c of [...new Set(artsG.map(a=>claveColor(a.color)))]){
+        const i=colores.findIndex(x=>x && mismoColor(x,c));
+        const conImg=artsG.filter(a=>mismoColor(a.color,c));
+        if(i>=0){ const th=await new Promise(r=>miniatura(imgs[i],r)); conImg.forEach((a,k)=>{ a.imagen= k===0? th : null; }); }
+        else if(dd.imgs && dd.colores && (dd.colores||[]).some(x=>x && mismoColor(x,c))) conImg.forEach(a=>{ a.imagen=null; });
+      }
     }catch(e){ console.error(e); toast('⚠ No se pudieron quitar las fotos ('+(e.code||e.message)+'). Los demás cambios sí se guardaron.'); }
   }
   // se aplica sobre los datos vigentes (por si llegó una sincronización mientras se esperaba la nube)
   const T=DB.tienda; T.grupos=T.grupos||{}; const g=T.grupos[gid]||(T.grupos[gid]={});
   g.descripcion=desc;
+  const dsc=leerCamposDescuento('tp'); g.descuento=dsc.pct; g.descuentoHasta=dsc.pct? dsc.hasta : '';
   if(quiere && !g.publicado && !g.publicadoEn) g.publicadoEn=Date.now();
   g.publicado=quiere;
   g.tendencia= tend ? (g.tendencia||Date.now()) : 0;
