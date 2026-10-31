@@ -2442,7 +2442,7 @@ document.addEventListener('DOMContentLoaded', ()=>{ if(!tabActiva) pantallaOtraT
 if(!tabActiva && document.body) setTimeout(pantallaOtraTab, 0);
 
 let DB = cargarDB();
-const APP_VERSION='2026-10-28.2';
+const APP_VERSION='2026-10-31.1';
 document.addEventListener('DOMContentLoaded',()=>{ const el=document.getElementById('foot-version'); if(el) el.textContent='Versión '+APP_VERSION; });
 let firebaseApp=null, firestoreRef=null, syncStoreCode=null, syncActivo=false, aplicandoSnapshotRemoto=false;
 
@@ -2526,15 +2526,44 @@ function migrarDB(db){
   try{ deduplicarImagenes(db); }catch(e){}
   return db;
 }
+/* ---------- Guardado local a prueba de "almacenamiento lleno" ----------
+   Antes los datos solo se guardaban en localStorage (límite ~5 MB). Con las fotos de las prendas se llenaba:
+   la venta quedaba solo en memoria y, al volver a abrir el sistema, se cargaba una copia VIEJA que al unirse
+   con la nube devolvía el stock y borraba las ventas en todos los dispositivos.
+   Ahora cada guardado va también a IndexedDB (sin ese límite) y al abrir se carga siempre la copia más reciente. */
+const DB_SEQ_KEY=DB_KEY+'_seq', DB_IDB_KEY='db:'+DB_KEY, PEND_IDB_KEY='pend:'+DB_KEY;
+let DB_SEQ_N=0, PEND_IDB=0, avisoLlenoMostrado=false;
+function persistirLocal(avisar){
+  if(!tabActiva) return;
+  const seq=Date.now()*1000+((++DB_SEQ_N)%1000);
+  let json; try{ json=JSON.stringify(DB); }catch(e){ console.error(e); return; }
+  let okLS=false;
+  try{ localStorage.setItem(DB_KEY, json); localStorage.setItem(DB_SEQ_KEY, String(seq)); okLS=true; }
+  catch(err){ try{ localStorage.removeItem(DB_SEQ_KEY); }catch(x){} } // la copia de localStorage queda marcada como vieja
+  idbGuardar(DB_IDB_KEY, {seq, json}).catch(e=>{
+    console.error('No se pudo guardar en IndexedDB', e);
+    if(!okLS && avisar){ toast('⚠ Este navegador no tiene espacio para guardar los datos. No cierres el sistema hasta que la nube sincronice.'); }
+  });
+  if(!okLS && !avisoLlenoMostrado){ avisoLlenoMostrado=true; console.warn('localStorage lleno: los datos se guardan en IndexedDB'); }
+}
+// Al abrir: si la copia de IndexedDB es más nueva que la de localStorage, se usa esa
+async function cargarDBLocalMasReciente(){
+  try{
+    const r=await idbLeer(DB_IDB_KEY);
+    try{ PEND_IDB=Number(await idbLeer(PEND_IDB_KEY))||0; }catch(e){}
+    if(!r || !r.json) return;
+    const seqLS=Number(localStorage.getItem(DB_SEQ_KEY))||0;
+    if(r.seq>seqLS){
+      const m=migrarDB(JSON.parse(r.json));
+      Object.keys(DB).forEach(k=>delete DB[k]); Object.assign(DB, m);
+      console.warn('Datos cargados desde IndexedDB (más recientes que localStorage)');
+    }
+  }catch(e){ console.warn('IndexedDB no disponible', e); }
+}
 function guardarDB(){
   if(!tabActiva){ pantallaOtraTab(); return; }
   DB._updatedAtMs=Date.now();
-  try{
-    localStorage.setItem(DB_KEY, JSON.stringify(DB));
-  }catch(err){
-    console.error('Error guardando en almacenamiento local', err);
-    toast('⚠ El almacenamiento de este navegador está lleno (posiblemente por fotos de productos). El cambio no quedó guardado localmente — intenta borrar alguna imagen de un artículo.');
-  }
+  persistirLocal(true);
   if(typeof programarPublicacion==='function') programarPublicacion();
   if(syncActivo && firestoreRef && !aplicandoSnapshotRemoto) programarSync();
   else if(!syncActivo && cargarConfigSync()) marcarPendiente(true); // sin conexión: queda pendiente y se une al reconectar
@@ -8191,7 +8220,7 @@ function importarBackup(){
       localStorage.setItem(DB_KEY, JSON.stringify(nuevo));
       DB=cargarDB();
       DB._updatedAtMs=Date.now();
-      try{ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }catch(e){}
+      persistirLocal(true);
       if(syncActivo && firestoreRef){
         // restaurar = reemplazar a propósito lo que hay en la nube
         syncReemplazar=true; programarSync(0);
@@ -8274,7 +8303,9 @@ async function conectarSincronizacion(firebaseConfigObj, storeCode, esConexionMa
     }
     if(!tabActiva) return;
     if(remoto){
-      let unido=fusionar(base, DB, remoto, '', base? 'local' : 'remoto');
+      // Si este equipo no tiene cambios sin subir, lo correcto es la nube: así una copia local vieja
+      // nunca devuelve stock ni borra ventas hechas en otro dispositivo.
+      let unido= (base && !pendienteSync()) ? clonar(remoto) : fusionar(base, DB, remoto, '', base? 'local' : 'remoto');
       if(legado){ unido=fusionar(null, unido, legado, '', 'local'); unido._legadoMs=legadoMs; }
       guardarBase(remoto);
       aplicarDatosUnidos(unido, false);
@@ -8418,8 +8449,8 @@ async function cargarBase(){
 function leerBase(){ return BASE_CLAVE===claveBase()? BASE_MEM : null; }
 function guardarBase(b){ if(!tabActiva) return; const k=claveBase(); BASE_MEM=b; BASE_CLAVE=k;
   idbGuardar(k,b).catch(e=>{ console.warn('Base en IndexedDB', e); try{ localStorage.setItem(k, JSON.stringify(b)); }catch(x){ console.error('No se pudo guardar la base de sincronización', x); } }); }
-function marcarPendiente(v){ try{ if(v) localStorage.setItem('almacenropa_sync_pend', String(Date.now())); else localStorage.removeItem('almacenropa_sync_pend'); }catch(e){} actualizarEstadoSync(); }
-function pendienteSync(){ try{ return !!localStorage.getItem('almacenropa_sync_pend'); }catch(e){ return false; } }
+function marcarPendiente(v){ PEND_IDB=v? Date.now() : 0; if(tabActiva){ idbGuardar(PEND_IDB_KEY, PEND_IDB).catch(()=>{}); } try{ if(v) localStorage.setItem('almacenropa_sync_pend', String(Date.now())); else localStorage.removeItem('almacenropa_sync_pend'); }catch(e){} actualizarEstadoSync(); }
+function pendienteSync(){ if(PEND_IDB) return true; try{ return !!localStorage.getItem('almacenropa_sync_pend'); }catch(e){ return false; } }
 function esColeccionIds(arr){ if(!Array.isArray(arr)) return false; const vistos=new Set(); return arr.every(x=>{ if(!(x && typeof x==='object' && !Array.isArray(x) && x.id!=null && x.id!=='')) return false; const k=String(x.id); if(vistos.has(k)) return false; vistos.add(k); return true; }); }
 // números que varios equipos pueden mover a la vez: se suman las diferencias (2 ventas en 2 equipos = 2 unidades menos)
 const CAMPOS_SUMABLES=/^(stock|siguiente[A-Za-z]*|saldo[A-Za-z]*|totalAbonado)$/;
@@ -8481,7 +8512,7 @@ function aplicarDatosUnidos(nuevo, repintar){
   try{
     const m=migrarDB(nuevo);
     Object.keys(DB).forEach(k=>delete DB[k]); Object.assign(DB, m);
-    if(tabActiva){ try{ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }catch(e){ console.error(e); } }
+    persistirLocal(false);
     if(repintar){
       const hayModalAbierto=document.querySelector('.modal-bg.active');
       const enfocadoEnCampo=document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
@@ -8529,7 +8560,7 @@ async function sincronizarAhora(){
     // lo que se haya registrado aquí mientras se subía, se conserva encima
     const final=fusionar(enviado, DB, resultado, '', 'local');
     if(!igualSinMs(final, DB)) aplicarDatosUnidos(final, true);
-    else { DB._updatedAtMs=resultado._updatedAtMs; try{ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }catch(e){} }
+    else { DB._updatedAtMs=resultado._updatedAtMs; persistirLocal(false); }
     if(igualSinMs(final, resultado)) marcarPendiente(false); else syncOtraVez=true;
     syncFallos=0; ocultarAvisoSync();
   }catch(e){
@@ -9426,7 +9457,8 @@ function descargarConfigTienda(){
 }
 
 /* ================= INIT ================= */
-function initApp(){
+async function initApp(){
+  await cargarDBLocalMasReciente();
   document.getElementById('brand-name').textContent=DB.config.nombre||'Almacén';
   document.getElementById('login-brand-nombre').textContent=DB.config.nombre||'Almacén';
   document.getElementById('sidebar-logo-img').src=LOGO_DATA_URI;
